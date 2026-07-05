@@ -1,0 +1,21 @@
+# ===========================================================
+# Configuração de testes — substitui application.yml principal
+# durante a execução de `mvn test`
+#
+# O banco de dados é desativado para que os testes unitários
+# não dependam de PostgreSQL disponível.
+# Testes de integração que precisam de banco devem usar
+# @DataJpaTest ou um container TestContainers (futuro).
+# ===========================================================
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+
+logging:
+  level:
+    com.totem.fastfood: WARN
+    org.springframework: WARN
