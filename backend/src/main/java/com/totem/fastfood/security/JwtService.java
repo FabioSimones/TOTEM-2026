@@ -1,5 +1,6 @@
 package com.totem.fastfood.security;
 
+import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -14,6 +15,9 @@ import java.util.Date;
 
 @Service
 public class JwtService {
+
+    public static final String TIPO_USUARIO = "USER";
+    public static final String TIPO_DISPOSITIVO = "DEVICE";
 
     private final SecretKey chave;
     private final long expirationMinutes;
@@ -31,6 +35,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(usuario.getEmail())
+                .claim("tipo", TIPO_USUARIO)
                 .claim("perfil", usuario.getPerfil().name())
                 .claim("restauranteId", usuario.getRestaurante() != null ? usuario.getRestaurante().getId() : null)
                 .issuedAt(Date.from(agora))
@@ -39,8 +44,28 @@ public class JwtService {
                 .compact();
     }
 
+    public String gerarTokenDispositivo(Dispositivo dispositivo) {
+        Instant agora = Instant.now();
+        Instant expiraEm = agora.plusSeconds(expirationMinutes * 60);
+
+        return Jwts.builder()
+                .subject(dispositivo.getCodigoIdentificacao())
+                .claim("tipo", TIPO_DISPOSITIVO)
+                .claim("dispositivoId", dispositivo.getId())
+                .claim("tipoDispositivo", dispositivo.getTipoDispositivo().name())
+                .claim("restauranteId", dispositivo.getRestaurante() != null ? dispositivo.getRestaurante().getId() : null)
+                .issuedAt(Date.from(agora))
+                .expiration(Date.from(expiraEm))
+                .signWith(chave)
+                .compact();
+    }
+
     public long getExpirationSeconds() {
         return expirationMinutes * 60;
+    }
+
+    public String extrairTipo(String token) {
+        return parseClaims(token).get("tipo", String.class);
     }
 
     public String extrairEmail(String token) {
@@ -53,6 +78,10 @@ public class JwtService {
 
     public Long extrairRestauranteId(String token) {
         return parseClaims(token).get("restauranteId", Long.class);
+    }
+
+    public Long extrairDispositivoId(String token) {
+        return parseClaims(token).get("dispositivoId", Long.class);
     }
 
     public boolean isTokenValido(String token) {

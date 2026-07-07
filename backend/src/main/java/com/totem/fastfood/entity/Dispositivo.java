@@ -35,12 +35,28 @@ public class Dispositivo {
     @Column(name = "tipo_dispositivo", nullable = false, length = 50)
     private TipoDispositivo tipoDispositivo;
 
+    /** Habilitação administrativa: revogar/reativar alteram este campo. */
     @Column(nullable = false)
     @Builder.Default
     private Boolean ativo = true;
 
     @Column(name = "ultimo_acesso")
     private LocalDateTime ultimoAcesso;
+
+    /** Código de uso único informado em POST /api/auth/dispositivos/ativar. Nulo após o uso. */
+    @Column(name = "codigo_ativacao", length = 100, unique = true)
+    private String codigoAtivacao;
+
+    /** Indica se o dispositivo já concluiu o pareamento via código de ativação. */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean ativado = false;
+
+    @Column(name = "ativado_em")
+    private LocalDateTime ativadoEm;
+
+    @Column(name = "revogado_em")
+    private LocalDateTime revogadoEm;
 
     @CreationTimestamp
     @Column(name = "criado_em", nullable = false, updatable = false)
