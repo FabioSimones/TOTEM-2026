@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -114,6 +115,26 @@ public class GlobalExceptionHandler {
 
         log.debug("Argumento inválido em {}: {}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity.badRequest().body(error);
+    }
+
+    /**
+     * Credenciais inválidas no login (email inexistente, senha incorreta ou usuário inativo).
+     * Mensagem genérica para não revelar qual dado está incorreto.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiError> handleAuthentication(
+            AuthenticationException ex, HttpServletRequest request) {
+
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Não autenticado")
+                .message("Email ou senha inválidos")
+                .path(request.getRequestURI())
+                .build();
+
+        log.debug("Falha de autenticação em {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     /**

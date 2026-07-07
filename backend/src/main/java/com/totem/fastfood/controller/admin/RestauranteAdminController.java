@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Admin - Restaurantes", description = "Gerenciamento de restaurantes (requer SUPER_ADMIN — proteção aplicada na TASK-010)")
+@Tag(name = "Admin - Restaurantes", description = "Gerenciamento de restaurantes (requer autenticação; restrição a SUPER_ADMIN será aplicada na TASK-011)")
 @RestController
 @RequestMapping("/api/admin/restaurantes")
 @RequiredArgsConstructor
