@@ -11,14 +11,16 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Admin - Restaurantes", description = "Gerenciamento de restaurantes (requer autenticação; restrição a SUPER_ADMIN será aplicada na TASK-011)")
+@Tag(name = "Admin - Restaurantes", description = "Gerenciamento de restaurantes (requer Bearer JWT e perfil SUPER_ADMIN)")
 @RestController
 @RequestMapping("/api/admin/restaurantes")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class RestauranteAdminController {
 
     private final RestauranteService restauranteService;

@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -135,6 +136,27 @@ public class GlobalExceptionHandler {
 
         log.debug("Falha de autenticação em {}: {}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    /**
+     * Usuário autenticado, mas sem o perfil exigido pelo endpoint (@PreAuthorize).
+     * Diferente de AuthenticationException: aqui a identidade já foi validada,
+     * apenas falta permissão.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Acesso negado")
+                .message("Você não tem permissão para executar esta ação")
+                .path(request.getRequestURI())
+                .build();
+
+        log.debug("Acesso negado em {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     /**

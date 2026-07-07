@@ -4,6 +4,7 @@ import com.totem.fastfood.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -14,13 +15,15 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Configuração real de segurança — TASK-010.
+ * Configuração real de segurança — TASK-010/011.
  *
- * Autenticação stateless via JWT. Controle fino por perfil
- * (SUPER_ADMIN, ADMIN_RESTAURANTE, etc.) será feito na TASK-011.
+ * Autenticação stateless via JWT. Autorização fina por perfil é feita
+ * via {@code @PreAuthorize} nos controllers (ver RestauranteAdminController),
+ * habilitada aqui por {@link EnableMethodSecurity}.
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
