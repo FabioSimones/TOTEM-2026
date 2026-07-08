@@ -1,8 +1,11 @@
 package com.totem.fastfood.controller.totem;
 
+import com.totem.fastfood.dto.totem.pagamento.IniciarPagamentoTotemRequest;
+import com.totem.fastfood.dto.totem.pagamento.PagamentoTotemResponse;
 import com.totem.fastfood.dto.totem.pedido.CriarPedidoTotemRequest;
 import com.totem.fastfood.dto.totem.pedido.PedidoTotemResponse;
 import com.totem.fastfood.entity.Dispositivo;
+import com.totem.fastfood.service.PagamentoTotemService;
 import com.totem.fastfood.service.PedidoTotemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Totem - Pedidos", description = "Criação de pedidos pelo dispositivo TOTEM (requer Bearer JWT de dispositivo)")
+@Tag(name = "Totem - Pedidos", description = "Criação, consulta e pagamento de pedidos pelo dispositivo TOTEM (requer Bearer JWT de dispositivo)")
 @RestController
 @RequestMapping("/api/totem/pedidos")
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PedidoTotemController {
 
     private final PedidoTotemService pedidoTotemService;
+    private final PagamentoTotemService pagamentoTotemService;
 
     @Operation(summary = "Criar pedido",
             description = "Cria um pedido com itens do cardápio do restaurante do dispositivo autenticado. "
@@ -56,5 +60,22 @@ public class PedidoTotemController {
             @PathVariable Long id,
             @AuthenticationPrincipal Dispositivo dispositivo) {
         return ResponseEntity.ok(pedidoTotemService.consultarPorId(id, dispositivo));
+    }
+
+    @Operation(summary = "Iniciar pagamento do pedido",
+            description = "Processa o pagamento via PaymentProvider (simulado no MVP) e atualiza o status do pedido "
+                    + "conforme o resultado. O valor é obtido do pedido — nunca do request.")
+    @ApiResponse(responseCode = "201", description = "Pagamento processado e persistido")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos ou pedido não pode receber pagamento no status atual")
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
+    @ApiResponse(responseCode = "403", description = "Perfil ou dispositivo sem permissão")
+    @ApiResponse(responseCode = "404", description = "Pedido não encontrado para o restaurante do dispositivo")
+    @PostMapping("/{id}/pagamento")
+    public ResponseEntity<PagamentoTotemResponse> iniciarPagamento(
+            @PathVariable Long id,
+            @RequestBody @Valid IniciarPagamentoTotemRequest request,
+            @AuthenticationPrincipal Dispositivo dispositivo) {
+        PagamentoTotemResponse response = pagamentoTotemService.iniciarPagamento(id, request, dispositivo);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
