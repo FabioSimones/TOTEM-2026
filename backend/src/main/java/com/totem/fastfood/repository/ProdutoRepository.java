@@ -17,4 +17,7 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
     /** Verifica duplicidade de nome excluindo o próprio produto (para update). */
     boolean existsByRestauranteIdAndNomeIgnoreCaseAndIdNot(Long restauranteId, String nome, Long id);
+
+    List<Produto> findByRestauranteIdAndCategoriaIdAndDisponivelTrueOrderByOrdemExibicaoAscNomeAsc(
+            Long restauranteId, Long categoriaId);
 }

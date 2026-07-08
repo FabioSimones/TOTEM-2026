@@ -13,4 +13,6 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 
     /** Verifica duplicidade de nome excluindo a própria categoria (para update). */
     boolean existsByRestauranteIdAndNomeIgnoreCaseAndIdNot(Long restauranteId, String nome, Long id);
+
+    List<Categoria> findByRestauranteIdAndAtivaTrueOrderByOrdemExibicaoAscNomeAsc(Long restauranteId);
 }
