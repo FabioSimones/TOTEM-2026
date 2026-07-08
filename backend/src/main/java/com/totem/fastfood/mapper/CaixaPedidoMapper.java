@@ -1,5 +1,6 @@
 package com.totem.fastfood.mapper;
 
+import com.totem.fastfood.dto.caixa.pedido.CancelarPedidoResponse;
 import com.totem.fastfood.dto.caixa.pedido.EnviarPedidoCozinhaResponse;
 import com.totem.fastfood.dto.caixa.pedido.RetirarPedidoResponse;
 import com.totem.fastfood.entity.Pedido;
@@ -25,6 +26,18 @@ public class CaixaPedidoMapper {
                 pedido.getNumeroPedido(),
                 statusAnterior,
                 pedido.getStatusPedido(),
+                pedido.getAtualizadoEm()
+        );
+    }
+
+    public CancelarPedidoResponse toCancelarPedidoResponse(
+            Pedido pedido, StatusPedido statusAnterior, String motivo) {
+        return new CancelarPedidoResponse(
+                pedido.getId(),
+                pedido.getNumeroPedido(),
+                statusAnterior,
+                pedido.getStatusPedido(),
+                motivo,
                 pedido.getAtualizadoEm()
         );
     }

@@ -1,5 +1,7 @@
 package com.totem.fastfood.controller.caixa;
 
+import com.totem.fastfood.dto.caixa.pedido.CancelarPedidoRequest;
+import com.totem.fastfood.dto.caixa.pedido.CancelarPedidoResponse;
 import com.totem.fastfood.dto.caixa.pedido.EnviarPedidoCozinhaResponse;
 import com.totem.fastfood.dto.caixa.pedido.RetirarPedidoResponse;
 import com.totem.fastfood.entity.Dispositivo;
@@ -7,12 +9,14 @@ import com.totem.fastfood.service.CaixaPedidoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -58,5 +62,23 @@ public class CaixaPedidoController {
             @PathVariable Long id,
             @AuthenticationPrincipal Dispositivo dispositivo) {
         return ResponseEntity.ok(caixaPedidoService.marcarComoRetirado(id, dispositivo));
+    }
+
+    @Operation(summary = "Cancelar pedido",
+            description = "Cancela um pedido do restaurante do dispositivo CAIXA enquanto ainda não foi enviado "
+                    + "para a cozinha (CRIADO, AGUARDANDO_PAGAMENTO, AGUARDANDO_PAGAMENTO_DINHEIRO ou PAGO). "
+                    + "Não exclui dados e não implementa estorno: se o pedido já estava PAGO, o pagamento "
+                    + "permanece AUTORIZADO.")
+    @ApiResponse(responseCode = "200", description = "Pedido cancelado")
+    @ApiResponse(responseCode = "400", description = "Pedido não pode ser cancelado no status atual, ou motivo ausente/inválido")
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
+    @ApiResponse(responseCode = "403", description = "Perfil ou dispositivo sem permissão")
+    @ApiResponse(responseCode = "404", description = "Pedido não encontrado para o restaurante do dispositivo")
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<CancelarPedidoResponse> cancelarPedido(
+            @PathVariable Long id,
+            @RequestBody @Valid CancelarPedidoRequest request,
+            @AuthenticationPrincipal Dispositivo dispositivo) {
+        return ResponseEntity.ok(caixaPedidoService.cancelarPedido(id, request, dispositivo));
     }
 }
