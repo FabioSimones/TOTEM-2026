@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a primeira tela real (ativação de dispositivo). A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia).
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem.
 
 ## Stack
 
@@ -47,11 +47,13 @@ src/
 ├── pages/          # telas, uma pasta por módulo (totem/, caixa/, cozinha/, admin/)
 ├── components/
 │   ├── layout/     # AppLayout, ModuleHeader — layout compartilhado
-│   └── ui/         # Button, Input, ErrorMessage, ThemeToggle — componentes mínimos reutilizáveis
+│   ├── ui/         # Button, Input, ErrorMessage, ThemeToggle — componentes mínimos reutilizáveis
+│   └── totem/      # CategoriaCardapioSection, ProdutoCard — específicos da tela de cardápio
 ├── contexts/       # ThemeContext.tsx — estado do tema
 ├── hooks/          # useTheme.ts
-├── services/       # api.ts (HTTP), tokenStorage.ts (sessão), authService.ts, ...
+├── services/       # api.ts (HTTP), tokenStorage.ts (sessão), authService.ts, totemService.ts, ...
 ├── types/          # tipos TypeScript espelhando os DTOs do backend
+├── utils/          # formatters.ts (ex.: formatCurrencyBRL)
 └── styles/         # tokens.css, themes.css, global.css
 ```
 
@@ -63,13 +65,13 @@ src/
 |---|---|---|
 | `/` | `HomePage` | Ponto de entrada |
 | `/ativar-dispositivo` | `AtivarDispositivoPage` | **Real** — ativação de dispositivo (Totem/Caixa/Cozinha) |
-| `/totem` | `TotemHomePage` | Totem (placeholder) |
+| `/totem` | `TotemHomePage` | **Real** — cardápio do restaurante do dispositivo TOTEM |
 | `/caixa` | `CaixaHomePage` | Caixa (placeholder) |
 | `/cozinha` | `CozinhaHomePage` | Cozinha (placeholder) |
 | `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
 | `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
 
-`/ativar-dispositivo` (TASK-029) é a primeira tela com lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029) e `/totem` (TASK-031) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
 
 ## Como testar a ativação de dispositivo
 
@@ -79,6 +81,19 @@ src/
 4. Cole o `codigoAtivacao` e envie. Sucesso esperado: mensagem de confirmação e redirecionamento automático para `/totem`, `/caixa`, `/cozinha` ou `/admin`, conforme o `tipoDispositivo` cadastrado.
 5. Confirme no DevTools → Application → Local Storage: chaves `totem.accessToken` e `totem.dispositivo` preenchidas.
 6. Código vazio não chega a chamar o backend (validação no cliente); código inválido/já usado retorna erro do backend, exibido na tela.
+
+## Como testar o cardápio do Totem (`/totem`)
+
+Requer backend rodando e um dispositivo **TOTEM** já ativado (ver seção anterior).
+
+1. Sem token salvo, abrir `http://localhost:5173/totem` diretamente redireciona para `/ativar-dispositivo` — a tela nunca chega a chamar o backend sem sessão.
+2. Após ativar um dispositivo TOTEM, `/totem` chama `GET /api/totem/cardapio` automaticamente ao montar (`totemService.buscarCardapio`), mostrando "Carregando cardápio..." enquanto aguarda.
+3. Sucesso: categorias e produtos disponíveis aparecem em grid (1 coluna no mobile, 2–3 no desktop), com nome, descrição, preço formatado em R$, imagem (ou um emoji placeholder se `imagemUrl` for nulo) e selos "Destaque"/"Recomendado" quando aplicável. O botão "Adicionar" é só um placeholder desabilitado — carrinho é uma task futura.
+4. Marcar um produto como `disponivel=false` ou uma categoria como `ativa=false` no admin (`PATCH /api/admin/produtos/{id}/disponibilidade`, `PUT /api/admin/categorias/{id}`) e recarregar a tela: o item some — a filtragem já é feita pelo backend, o frontend só renderiza o que a API retorna.
+5. Sem nenhuma categoria/produto disponível: mensagem "Nenhum produto disponível no momento."
+6. Token inválido/expirado (edite `totem.accessToken` no DevTools para um valor qualquer): a tela mostra "Sessão expirada..." e limpa a sessão local, com botão para voltar à ativação.
+7. Token de outro tipo de dispositivo (ex.: ative um CAIXA e depois visite `/totem` manualmente sem reativar): mostra "Este dispositivo não tem permissão..." sem apagar a sessão (o token continua válido para `/caixa`).
+8. Alterne o tema (💡) e confirme que cards, selos e botões se adaptam a dark/light sem cor fora do lugar.
 
 ## Cliente HTTP e sessão
 
@@ -115,7 +130,8 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Tela real do Totem: cardápio (`GET /api/totem/cardapio`), carrinho, criação de pedido e pagamento — protegida por token de dispositivo `TOTEM` já salvo.
-2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
-3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
-4. Service worker / instalabilidade PWA completa.
+1. Carrinho: seleção de produtos do cardápio, quantidade, observação — botão "Adicionar" em `ProdutoCard` está desabilitado à espera desta task.
+2. Criação de pedido (`POST /api/totem/pedidos`) e pagamento (`POST /api/totem/pedidos/{id}/pagamento`) a partir do carrinho.
+3. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
+4. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
+5. Service worker / instalabilidade PWA completa.
