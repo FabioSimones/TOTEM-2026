@@ -1,0 +1,58 @@
+/**
+ * Variáveis de tema (cor + fonte). :root define o tema padrão (dark),
+ * evitando flash antes do data-theme ser aplicado. [data-theme="light"]
+ * sobrescreve para o tema claro. Ver docs/design-system/temas.md.
+ */
+
+/* ===== Dark & Bold (padrão) ===== */
+:root,
+[data-theme="dark"] {
+  --color-bg: #0c0c0c;
+  --color-bg-gradient-start: #1c0404;
+  --color-bg-gradient-middle: #0c0c0c;
+  --color-bg-gradient-end: #120505;
+
+  --color-surface: #181818;
+  --color-surface-elevated: #1c1c1e;
+  --color-border: #2a2a2c;
+
+  --color-text: #ffffff;
+  --color-text-muted: #888888;
+  --color-text-soft: #555555;
+
+  --color-primary: #e63329;
+  --color-primary-hover: #c0261e;
+  --color-primary-contrast: #ffffff;
+
+  --font-heading: "Oswald", sans-serif;
+  --font-body: "DM Sans", sans-serif;
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --shadow-primary: 0 4px 16px rgba(230, 51, 41, 0.35);
+}
+
+/* ===== Clean & Warm ===== */
+[data-theme="light"] {
+  --color-bg: #fff8f2;
+  --color-bg-gradient-start: #fff0e8;
+  --color-bg-gradient-middle: #fff8f2;
+  --color-bg-gradient-end: #fff3ec;
+
+  --color-surface: #ffffff;
+  --color-surface-elevated: #fff3ec;
+  --color-border: #ead8cc;
+
+  --color-text: #1a1209;
+  --color-text-muted: #8b7a6b;
+  --color-text-soft: #b8a898;
+
+  --color-primary: #e8440a;
+  --color-primary-hover: #c83808;
+  --color-primary-contrast: #ffffff;
+
+  --font-heading: "Sora", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+
+  --shadow-card: 0 4px 20px rgba(26, 18, 9, 0.08);
+  --shadow-primary: 0 4px 16px rgba(232, 68, 10, 0.25);
+}

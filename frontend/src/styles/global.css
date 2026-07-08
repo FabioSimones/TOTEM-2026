@@ -1,17 +1,5 @@
-:root {
-  --color-bg: #f5f5f5;
-  --color-surface: #ffffff;
-  --color-text: #1a1a1a;
-  --color-text-muted: #5f5f5f;
-  --color-primary: #d62828;
-  --color-border: #e0e0e0;
-  --color-error: #b3261e;
-  --color-success: #2e7d32;
-  --font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 2rem;
-}
+@import "./tokens.css";
+@import "./themes.css";
 
 * {
   box-sizing: border-box;
@@ -25,9 +13,30 @@ body,
 
 body {
   margin: 0;
-  font-family: var(--font-family);
-  background-color: var(--color-bg);
+  font-family: var(--font-body);
   color: var(--color-text);
+  background-color: var(--color-bg);
+  background-image: linear-gradient(
+    135deg,
+    var(--color-bg-gradient-start),
+    var(--color-bg-gradient-middle) 50%,
+    var(--color-bg-gradient-end)
+  );
+  background-attachment: fixed;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
 }
 
 .app-layout {
@@ -37,19 +46,31 @@ body {
 }
 
 .module-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
   padding: var(--spacing-lg) var(--spacing-md);
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.module-header__titles {
+  min-width: 0;
 }
 
 .module-header h1 {
   margin: 0 0 var(--spacing-sm) 0;
-  font-size: 1.75rem;
+  font-size: var(--font-size-xl);
 }
 
 .module-header__description {
   margin: 0;
   color: var(--color-text-muted);
+  font-family: var(--font-body);
   max-width: 60ch;
 }
 
@@ -58,22 +79,68 @@ body {
   padding: var(--spacing-lg) var(--spacing-md);
 }
 
-button {
-  font-family: inherit;
-  font-size: 1rem;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: 8px;
+/* ===== Alternador de tema ===== */
+.theme-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
-  background-color: var(--color-primary);
-  color: #fff;
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text);
+  font-size: 1.25rem;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-button:disabled {
+.theme-toggle:hover {
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+/* ===== Botão primário ===== */
+.ui-button {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: none;
+  background-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+  box-shadow: var(--shadow-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.ui-button:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.ui-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ui-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
+/* ===== Campo de formulário ===== */
 .ui-input {
   display: flex;
   flex-direction: column;
@@ -83,27 +150,56 @@ button:disabled {
 }
 
 .ui-input label {
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
 }
 
 .ui-input input {
-  font-family: inherit;
-  font-size: 1rem;
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
   padding: var(--spacing-sm);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
+.ui-input input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.ui-input input::placeholder {
+  color: var(--color-text-soft);
+}
+
+/* ===== Mensagens de estado ===== */
 .ui-error-message {
   color: var(--color-error);
+  font-family: var(--font-body);
   margin: 0 0 var(--spacing-md) 0;
 }
 
 .ui-success-message {
   color: var(--color-success);
+  font-family: var(--font-body);
   margin: 0 0 var(--spacing-md) 0;
 }
 
+/* ===== Tela de ativação de dispositivo ===== */
 .ativar-dispositivo-form {
   max-width: 28rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
 }

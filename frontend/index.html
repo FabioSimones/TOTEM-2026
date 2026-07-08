@@ -5,9 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#d62828" />
+    <meta name="theme-color" content="#e63329" />
     <meta name="description" content="Sistema de autoatendimento Totem Fast Food" />
     <title>Totem Fast Food</title>
+
+    <!-- Fontes do design system: docs/design-system/tipografia.md -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+    />
+
+    <!--
+      Aplica o tema salvo antes do React montar, para evitar um flash do
+      tema padrão (dark) quando o usuário tem "light" salvo. Mantém a
+      chave "totem.theme" em sincronia com ThemeContext.tsx.
+    -->
+    <script>
+      (function () {
+        var stored = localStorage.getItem("totem.theme");
+        var theme = stored === "light" || stored === "dark" ? stored : "dark";
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

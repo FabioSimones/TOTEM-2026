@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a primeira tela real: ativação de dispositivo.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a primeira tela real (ativação de dispositivo). A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia).
 
 ## Stack
 
@@ -8,7 +8,7 @@ Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para F
 - **Vite** como bundler/dev server
 - **react-router-dom** para roteamento
 - **fetch nativo** (sem axios) para chamadas HTTP, centralizado em `src/services/api.ts`
-- CSS puro (`src/styles/global.css`), sem framework de UI
+- CSS puro com tokens/temas (`src/styles/{tokens,themes,global}.css`), sem framework de UI
 
 ## Como instalar e rodar
 
@@ -47,13 +47,15 @@ src/
 ├── pages/          # telas, uma pasta por módulo (totem/, caixa/, cozinha/, admin/)
 ├── components/
 │   ├── layout/     # AppLayout, ModuleHeader — layout compartilhado
-│   └── ui/         # Button, Input, ErrorMessage — componentes mínimos reutilizáveis
+│   └── ui/         # Button, Input, ErrorMessage, ThemeToggle — componentes mínimos reutilizáveis
+├── contexts/       # ThemeContext.tsx — estado do tema
+├── hooks/          # useTheme.ts
 ├── services/       # api.ts (HTTP), tokenStorage.ts (sessão), authService.ts, ...
 ├── types/          # tipos TypeScript espelhando os DTOs do backend
-└── styles/         # CSS global
+└── styles/         # tokens.css, themes.css, global.css
 ```
 
-`hooks/`, `contexts/` e `utils/` propositalmente **não** foram criadas nesta task — ficariam vazias sem nenhuma tela real usando-as ainda. Serão adicionadas na primeira task que precisar delas (ex.: um hook de autenticação quando o login for implementado).
+`hooks/` e `contexts/` foram criadas na TASK-030 para o tema (`ThemeContext`/`useTheme`) — antes disso não existiam por não terem uso real ainda. `utils/` continua propositalmente ausente pelo mesmo motivo; será criada quando houver a primeira função utilitária real.
 
 ## Rotas atuais (todas placeholder)
 
@@ -83,6 +85,17 @@ src/
 - `src/services/api.ts` — `apiFetch<T>(path, options)`: wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente (via `tokenStorage`) quando há um token salvo e `withAuth` não é `false`, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`). `api.get/post/put/patch/delete` são atalhos por verbo HTTP.
 - `src/services/tokenStorage.ts` — único lugar que lê/escreve `localStorage` (chaves `totem.accessToken`, `totem.dispositivo`). **Não é um fluxo de autenticação completo**: sem refresh token, sem expiração tratada, sem contexto de sessão React — aceitável para este estágio do MVP, deve ser revisado se o projeto migrar para um fluxo mais robusto (ex.: cookies httpOnly).
 - `src/services/authService.ts` — funções que chamam os endpoints de autenticação (hoje: `ativarDispositivo`). Páginas nunca chamam `api.ts`/`fetch` diretamente, sempre por um `*Service.ts`.
+
+## Design System e temas
+
+A partir da TASK-030 o frontend tem um Design System documentado em [`docs/design-system/`](../docs/design-system/README.md) (na raiz do repositório) — leia antes de criar qualquer tela nova.
+
+- **Dois temas**: `dark` (Dark & Bold — Oswald + DM Sans, vermelho `#E63329`) e `light` (Clean & Warm — Sora + Plus Jakarta Sans, laranja `#E8440A`). Tema padrão: `dark`.
+- **Como alternar**: clique no ícone 💡 (`ThemeToggle`), presente no cabeçalho de toda página (`ModuleHeader`/`AppLayout`).
+- **Onde ficam os tokens**: `src/styles/tokens.css` (forma/espaçamento/tipografia/movimento, iguais nos dois temas) e `src/styles/themes.css` (cor e fonte, por tema, via atributo `data-theme` em `<html>`). Ambos são importados por `src/styles/global.css`.
+- **Persistência**: `localStorage` na chave `totem.theme` (`"dark"` ou `"light"`) — separada da sessão de autenticação (`tokenStorage.ts`), pois é preferência de interface, não dado de login.
+- **Estado/lógica**: `src/contexts/ThemeContext.tsx` (`ThemeProvider`, montado em `App.tsx`) + `src/hooks/useTheme.ts`.
+- **Como criar uma tela nova seguindo o padrão**: veja o passo a passo em [`docs/design-system/guia-uso-frontend.md`](../docs/design-system/guia-uso-frontend.md) — resumo: sempre `AppLayout`, sempre `var(--color-*)`/`var(--font-*)` (nunca hex fixo), sempre um `*Service.ts` para chamadas HTTP, sempre tratar loading/erro/sucesso.
 
 ## Tipos (`src/types/`)
 
