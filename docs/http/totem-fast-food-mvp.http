@@ -1,0 +1,307 @@
+### Totem Fast Food MVP — coleção de requests
+### Compatível com VS Code REST Client e IntelliJ HTTP Client.
+### Execute os blocos na ordem — cada um depende de valores retornados pelo anterior.
+### Preencha as variáveis @token*/@*Id manualmente após cada resposta (copiar/colar).
+
+@baseUrl = http://localhost:8080
+
+@tokenSuperAdmin =
+@restauranteId =
+@categoriaId =
+@produtoId =
+@codigoAtivacaoTotem =
+@codigoAtivacaoCaixa =
+@codigoAtivacaoCozinha =
+@tokenTotem =
+@tokenCaixa =
+@tokenCozinha =
+@pedidoId =
+
+
+### 1. Health check (público)
+GET {{baseUrl}}/api/health
+
+
+### 2. Login SUPER_ADMIN
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@totem.local",
+  "senha": "Admin@2026!"
+}
+
+### -> copie accessToken para @tokenSuperAdmin
+
+
+### 3. Criar restaurante
+POST {{baseUrl}}/api/admin/restaurantes
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "nome": "Totem Fast Food",
+  "cnpj": "12345678000199",
+  "endereco": "Rua Teste, 100"
+}
+
+### -> copie id para @restauranteId
+
+
+### 4. Criar categoria
+POST {{baseUrl}}/api/admin/categorias
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "nome": "Lanches",
+  "descricao": "Hamburgueres e sanduiches",
+  "ordemExibicao": 1
+}
+
+### -> copie id para @categoriaId
+
+
+### 5. Criar produto disponível
+POST {{baseUrl}}/api/admin/produtos
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "categoriaId": {{categoriaId}},
+  "nome": "X-Burger",
+  "descricao": "Hamburguer artesanal",
+  "preco": 29.90,
+  "imagemUrl": "https://exemplo.com/xburger.png",
+  "disponivel": true,
+  "destaque": true,
+  "recomendado": false,
+  "ordemExibicao": 1
+}
+
+### -> copie id para @produtoId
+
+
+### 6. Cadastrar dispositivo TOTEM
+POST {{baseUrl}}/api/admin/dispositivos
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "nome": "Totem 01",
+  "codigoIdentificacao": "TOTEM_01",
+  "tipoDispositivo": "TOTEM"
+}
+
+### -> copie codigoAtivacao para @codigoAtivacaoTotem
+
+
+### 7. Cadastrar dispositivo CAIXA
+POST {{baseUrl}}/api/admin/dispositivos
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "nome": "Caixa 01",
+  "codigoIdentificacao": "CAIXA_01",
+  "tipoDispositivo": "CAIXA"
+}
+
+### -> copie codigoAtivacao para @codigoAtivacaoCaixa
+
+
+### 8. Cadastrar dispositivo COZINHA
+POST {{baseUrl}}/api/admin/dispositivos
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "nome": "Cozinha 01",
+  "codigoIdentificacao": "COZINHA_01",
+  "tipoDispositivo": "COZINHA"
+}
+
+### -> copie codigoAtivacao para @codigoAtivacaoCozinha
+
+
+### 9. Ativar dispositivo TOTEM
+POST {{baseUrl}}/api/auth/dispositivos/ativar
+Content-Type: application/json
+
+{
+  "codigoAtivacao": "{{codigoAtivacaoTotem}}"
+}
+
+### -> copie accessToken para @tokenTotem
+
+
+### 10. Ativar dispositivo CAIXA
+POST {{baseUrl}}/api/auth/dispositivos/ativar
+Content-Type: application/json
+
+{
+  "codigoAtivacao": "{{codigoAtivacaoCaixa}}"
+}
+
+### -> copie accessToken para @tokenCaixa
+
+
+### 11. Ativar dispositivo COZINHA
+POST {{baseUrl}}/api/auth/dispositivos/ativar
+Content-Type: application/json
+
+{
+  "codigoAtivacao": "{{codigoAtivacaoCozinha}}"
+}
+
+### -> copie accessToken para @tokenCozinha
+
+
+### 12. Consultar cardápio (Totem)
+GET {{baseUrl}}/api/totem/cardapio
+Authorization: Bearer {{tokenTotem}}
+
+
+### ===== FLUXO A — pagamento eletrônico (PIX) =====
+
+### 13. Criar pedido (Totem)
+POST {{baseUrl}}/api/totem/pedidos
+Content-Type: application/json
+Authorization: Bearer {{tokenTotem}}
+
+{
+  "tipoConsumo": "LOCAL",
+  "clienteNome": "Fabio",
+  "itens": [
+    { "produtoId": {{produtoId}}, "quantidade": 2, "observacao": "Sem cebola" }
+  ]
+}
+
+### -> copie pedidoId para @pedidoId
+
+
+### 14. Consultar pedido (Totem)
+GET {{baseUrl}}/api/totem/pedidos/{{pedidoId}}
+Authorization: Bearer {{tokenTotem}}
+
+
+### 15. Iniciar pagamento PIX (Totem) — esperado: AUTORIZADO / PAGO
+POST {{baseUrl}}/api/totem/pedidos/{{pedidoId}}/pagamento
+Content-Type: application/json
+Authorization: Bearer {{tokenTotem}}
+
+{
+  "formaPagamento": "PIX"
+}
+
+
+### 16. Enviar pedido para cozinha (Caixa) — exige pedido PAGO
+POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/enviar-cozinha
+Authorization: Bearer {{tokenCaixa}}
+
+
+### 17. Listar pedidos da cozinha
+GET {{baseUrl}}/api/cozinha/pedidos
+Authorization: Bearer {{tokenCozinha}}
+
+
+### 18. Cozinha: ENVIADO_PARA_COZINHA -> EM_PREPARO
+PATCH {{baseUrl}}/api/cozinha/pedidos/{{pedidoId}}/status
+Content-Type: application/json
+Authorization: Bearer {{tokenCozinha}}
+
+{
+  "statusPedido": "EM_PREPARO",
+  "observacao": "Preparo iniciado"
+}
+
+
+### 19. Cozinha: EM_PREPARO -> PRONTO
+PATCH {{baseUrl}}/api/cozinha/pedidos/{{pedidoId}}/status
+Content-Type: application/json
+Authorization: Bearer {{tokenCozinha}}
+
+{
+  "statusPedido": "PRONTO",
+  "observacao": "Pedido pronto para retirada"
+}
+
+
+### 20. Caixa: marcar como retirado — exige pedido PRONTO
+POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/retirar
+Authorization: Bearer {{tokenCaixa}}
+
+
+### ===== FLUXO B — pagamento em dinheiro (pendência no caixa) =====
+### Repita os passos 13/14 para gerar um novo pedido antes de continuar.
+
+### 21. Iniciar pagamento DINHEIRO (Totem) — esperado: PENDENTE / AGUARDANDO_PAGAMENTO_DINHEIRO
+POST {{baseUrl}}/api/totem/pedidos/{{pedidoId}}/pagamento
+Content-Type: application/json
+Authorization: Bearer {{tokenTotem}}
+
+{
+  "formaPagamento": "DINHEIRO"
+}
+
+
+### 22. Confirmar pagamento em dinheiro (Caixa) — esperado: AUTORIZADO / PAGO
+POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/confirmar-pagamento
+Content-Type: application/json
+Authorization: Bearer {{tokenCaixa}}
+
+{
+  "observacao": "Cliente pagou em dinheiro"
+}
+
+
+### ===== FLUXO C — cancelamento pelo Caixa =====
+### Repita os passos 13/14 para gerar um novo pedido antes de continuar.
+
+### 23. Cancelar pedido (Caixa) — permitido em CRIADO/AGUARDANDO_*/PAGO
+POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/cancelar
+Content-Type: application/json
+Authorization: Bearer {{tokenCaixa}}
+
+{
+  "motivo": "Cliente desistiu do pedido"
+}
+
+
+### ===== CENÁRIOS DE ERRO =====
+
+### 24. Sem token -> 401
+GET {{baseUrl}}/api/cozinha/pedidos
+
+### 25. Token de dispositivo errado -> 403 (Totem tentando endpoint de Caixa)
+POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/enviar-cozinha
+Authorization: Bearer {{tokenTotem}}
+
+### 26. Pedido sem item -> 400
+POST {{baseUrl}}/api/totem/pedidos
+Content-Type: application/json
+Authorization: Bearer {{tokenTotem}}
+
+{
+  "tipoConsumo": "LOCAL",
+  "clienteNome": "Fabio",
+  "itens": []
+}
+
+### 27. Cancelar sem motivo -> 400 (Bean Validation)
+POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/cancelar
+Content-Type: application/json
+Authorization: Bearer {{tokenCaixa}}
+
+{
+}
+
+### 28. Pedido inexistente -> 404
+GET {{baseUrl}}/api/totem/pedidos/999999
+Authorization: Bearer {{tokenTotem}}
