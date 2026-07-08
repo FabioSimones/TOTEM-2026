@@ -1,6 +1,7 @@
 package com.totem.fastfood.controller.caixa;
 
 import com.totem.fastfood.dto.caixa.pedido.EnviarPedidoCozinhaResponse;
+import com.totem.fastfood.dto.caixa.pedido.RetirarPedidoResponse;
 import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.service.CaixaPedidoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,5 +43,20 @@ public class CaixaPedidoController {
             @PathVariable Long id,
             @AuthenticationPrincipal Dispositivo dispositivo) {
         return ResponseEntity.ok(caixaPedidoService.enviarParaCozinha(id, dispositivo));
+    }
+
+    @Operation(summary = "Marcar pedido como retirado",
+            description = "Transiciona um pedido PRONTO do restaurante do dispositivo CAIXA para RETIRADO, "
+                    + "encerrando o ciclo operacional do pedido.")
+    @ApiResponse(responseCode = "200", description = "Pedido marcado como retirado")
+    @ApiResponse(responseCode = "400", description = "Pedido não está com status PRONTO")
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
+    @ApiResponse(responseCode = "403", description = "Perfil ou dispositivo sem permissão")
+    @ApiResponse(responseCode = "404", description = "Pedido não encontrado para o restaurante do dispositivo")
+    @PostMapping("/{id}/retirar")
+    public ResponseEntity<RetirarPedidoResponse> marcarComoRetirado(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Dispositivo dispositivo) {
+        return ResponseEntity.ok(caixaPedidoService.marcarComoRetirado(id, dispositivo));
     }
 }
