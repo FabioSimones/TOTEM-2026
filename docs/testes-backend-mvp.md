@@ -1,6 +1,6 @@
 # Testes do Backend MVP — Totem Fast Food
 
-Documento de validação ponta a ponta do backend, produzido na TASK-026. Não descreve funcionalidades novas — apenas consolida como validar o que já está implementado (TASK-004 a TASK-024).
+Documento de validação ponta a ponta do backend, produzido na TASK-026 e atualizado na TASK-027. Não descreve funcionalidades novas além do que já foi implementado — apenas consolida como validar o backend (TASK-004 a TASK-027).
 
 Ambiente de referência: Windows + PowerShell, comandos com `curl.exe` (mesmo padrão usado em todas as tasks anteriores). Substitua `http://localhost:8080` pela URL real se necessário.
 
@@ -82,10 +82,17 @@ mvn spring-boot:run
 
 | Método | Rota |
 |---|---|
+| GET | `/api/caixa/pedidos/pendentes` |
 | POST | `/api/caixa/pedidos/{id}/confirmar-pagamento` |
 | POST | `/api/caixa/pedidos/{id}/enviar-cozinha` |
 | POST | `/api/caixa/pedidos/{id}/retirar` |
 | POST | `/api/caixa/pedidos/{id}/cancelar` |
+
+`GET /api/caixa/pedidos/pendentes` (TASK-027) retorna pedidos do restaurante do dispositivo que exigem ação do Caixa:
+- `AGUARDANDO_PAGAMENTO_DINHEIRO` → `acaoSugerida=CONFIRMAR_PAGAMENTO`
+- `PAGO` → `acaoSugerida=ENVIAR_PARA_COZINHA`
+
+Pedidos `CRIADO`/`AGUARDANDO_PAGAMENTO` (aguardando o cliente no Totem) e qualquer status a partir de `ENVIADO_PARA_COZINHA` (responsabilidade da Cozinha) não aparecem. Ao contrário da listagem da Cozinha, esta expõe `valorTotal`/`subtotal`, já que o Caixa lida com pagamento.
 
 ### Cozinha (`DEVICE_COZINHA`)
 
@@ -277,13 +284,27 @@ curl.exe -X POST "http://localhost:8080/api/totem/pedidos/PEDIDO_ID_2/pagamento"
 Esperado: `statusPagamento=PENDENTE`, `statusPedido=AGUARDANDO_PAGAMENTO_DINHEIRO`.
 
 ```bash
+curl.exe "http://localhost:8080/api/caixa/pedidos/pendentes" ^
+  -H "Authorization: Bearer TOKEN_CAIXA"
+```
+
+Esperado: `200 OK`, lista contém `PEDIDO_ID_2` com `statusPedido=AGUARDANDO_PAGAMENTO_DINHEIRO` e `acaoSugerida=CONFIRMAR_PAGAMENTO`. Um pedido `ENVIADO_PARA_COZINHA` (ex.: o do Fluxo A) **não** deve aparecer nesta lista.
+
+```bash
 curl.exe -X POST "http://localhost:8080/api/caixa/pedidos/PEDIDO_ID_2/confirmar-pagamento" ^
   -H "Content-Type: application/json" ^
   -H "Authorization: Bearer TOKEN_CAIXA" ^
   -d "{\"observacao\":\"Cliente pagou em dinheiro\"}"
 ```
 
-Esperado: `200 OK`, pagamento `AUTORIZADO`, `statusPedido=PAGO`. A partir daqui repita o restante do fluxo A (`enviar-cozinha` → status → `retirar`).
+Esperado: `200 OK`, pagamento `AUTORIZADO`, `statusPedido=PAGO`.
+
+```bash
+curl.exe "http://localhost:8080/api/caixa/pedidos/pendentes" ^
+  -H "Authorization: Bearer TOKEN_CAIXA"
+```
+
+Esperado: `200 OK`, `PEDIDO_ID_2` agora aparece com `statusPedido=PAGO` e `acaoSugerida=ENVIAR_PARA_COZINHA`. A partir daqui repita o restante do fluxo A (`enviar-cozinha` → status → `retirar`) — após `enviar-cozinha`, uma nova chamada a `GET /api/caixa/pedidos/pendentes` não deve mais listar `PEDIDO_ID_2`.
 
 ### 5.8 Fluxo C — cancelamento pelo Caixa
 
@@ -321,6 +342,7 @@ Esperado: `200 OK`, `statusAnterior=CRIADO`, `statusAtual=CANCELADO`.
 | Cancelar pedido já enviado à cozinha/pronto/retirado/cancelado | `POST /cancelar` fora de `CRIADO/AGUARDANDO_*/PAGO` | `400 Bad Request` |
 | Cancelar sem motivo | `POST /cancelar` com `motivo` vazio/ausente | `400 Bad Request` (Bean Validation) |
 | Dispositivo revogado | `PATCH /api/admin/dispositivos/{id}/revogar` seguido de qualquer chamada com o token revogado | `401`/`403` (autenticação falha no filtro) |
+| Caixa de outro restaurante lista pendentes | `GET /api/caixa/pedidos/pendentes` com `TOKEN_CAIXA` de outro restaurante | `200 OK` com lista vazia (ou sem os pedidos do restaurante alheio) |
 
 ## 7. Testes automatizados existentes
 
@@ -334,7 +356,7 @@ mvn test
 | `BCryptValidationTest` | Hash do SUPER_ADMIN aplicado pela migration V5 corresponde à senha documentada |
 | `GerarSenhaUtilTest` | Utilitário de geração de hash de senha |
 | `payment/FakePaymentProviderTest` | PIX/cartão → `AUTORIZADO`; dinheiro → `PENDENTE` |
-| `service/CaixaPedidoServiceTest` (novo, TASK-026) | `enviarParaCozinha`, `marcarComoRetirado`, `cancelarPedido`: transições válidas e bloqueio de todas as transições inválidas (parametrizado por `StatusPedido`), 404 para pedido inexistente/outro restaurante |
+| `service/CaixaPedidoServiceTest` (TASK-026, ampliado na TASK-027) | `enviarParaCozinha`, `marcarComoRetirado`, `cancelarPedido`: transições válidas e bloqueio de todas as transições inválidas (parametrizado por `StatusPedido`), 404 para pedido inexistente/outro restaurante; `listarPendentes`: busca apenas `AGUARDANDO_PAGAMENTO_DINHEIRO`/`PAGO`, `acaoSugerida` correta por status, lista vazia não chama `ItemPedidoRepository`, nunca altera o pedido |
 | `service/CozinhaPedidoServiceTest` (novo, TASK-026) | `atualizarStatus`: `ENVIADO_PARA_COZINHA→EM_PREPARO`, `EM_PREPARO→PRONTO`, bloqueio de salto e de regressão, bloqueio para pedidos fora do fluxo da cozinha |
 
 Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — validam apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo (autenticação, serialização, banco real).
@@ -349,7 +371,6 @@ Não existe teste de integração real (subindo contexto Spring + banco) no proj
 |---|---|---|
 | `POST /api/auth/refresh` | Documentado, **não implementado** | Implementar em task futura de refresh token, ou remover da doc até lá |
 | `POST /api/auth/logout` | Documentado, **não implementado** | Idem — depende de refresh token existir primeiro |
-| `GET /api/caixa/pedidos/pendentes` | Documentado, **não implementado** | Implementar listagem de pedidos `AGUARDANDO_PAGAMENTO_DINHEIRO` do restaurante do caixa |
 | `POST /api/admin/usuarios`, `GET`, `PUT`, `PATCH /desativar` | Documentados, **nenhum implementado** (não existe `UsuarioAdminController`) | CRUD administrativo de usuários nunca foi implementado em nenhuma task até a 024 — avaliar se é necessário para o MVP ou se pode ficar para depois do frontend |
 | `POST /api/caixa/pedidos/{id}/enviar-cozinha` | **Implementado, não documentado** em `docs/08-endpoints.md` | Adicionar à tabela "Caixa" da doc |
 | `POST /api/caixa/pedidos/{id}/retirar` | **Implementado, não documentado** em `docs/08-endpoints.md` | Adicionar à tabela "Caixa" da doc |
@@ -363,7 +384,6 @@ Nenhuma correção foi aplicada automaticamente, conforme instruído.
 
 - Sem testes de integração (HTTP + banco real) — só unitários de regra de negócio e de autenticação isolada.
 - `POST /api/caixa/pedidos/{id}/enviar-cozinha` e `.../retirar` implementados mas ausentes de `docs/08-endpoints.md`.
-- `GET /api/caixa/pedidos/pendentes` (listagem de pendências do caixa) nunca foi implementado.
 - Não existe listagem administrativa de pedidos/histórico (nenhum endpoint `GET /api/admin/pedidos` ou similar) — hoje só é possível inspecionar pedidos via banco ou via os endpoints operacionais (Totem/Caixa/Cozinha), cada um com seu próprio escopo restrito.
 - CRUD administrativo de `Usuario` nunca foi implementado, apesar de documentado em `docs/08-endpoints.md`.
 
@@ -393,10 +413,11 @@ Nenhuma correção foi aplicada automaticamente, conforme instruído.
 
 **Sim, para o fluxo operacional principal do MVP** (Totem → Pagamento → Caixa → Cozinha → Retirada/Cancelamento), que está implementado, consistente e testável ponta a ponta conforme a seção 5 deste documento.
 
-Ressalvas que o time de frontend precisa saber antes de começar:
+Com a TASK-027, a tela de Caixa ganhou a peça que faltava: `GET /api/caixa/pedidos/pendentes` já entrega, num único request, tudo que o Caixa precisa agir (dinheiro pendente + pago aguardando envio à cozinha), com `acaoSugerida` pronta para decidir qual botão mostrar.
 
-1. Painéis de Caixa e Cozinha vão precisar de **polling manual** (sem WebSocket).
-2. Não há endpoint para o Caixa listar pedidos pendentes de pagamento em dinheiro (`GET /api/caixa/pedidos/pendentes` não existe ainda) — o frontend precisaria de outra forma de descobrir esses pedidos, ou essa lacuna deve ser fechada antes de construir a tela de Caixa.
-3. Login/sessão administrativa não tem refresh token — o frontend admin precisa lidar com expiração de sessão sem um fluxo de renovação automática.
-4. Painel administrativo de usuários não tem backend — se o MVP de frontend incluir gestão de usuários, essa API precisa ser criada antes.
-5. Cancelamento de pedido pago não estorna — se a UI permitir cancelar um pedido pago, deve deixar claro ao operador que o valor não é automaticamente devolvido.
+Ressalvas que o time de frontend ainda precisa saber antes de começar:
+
+1. Painéis de Caixa e Cozinha vão precisar de **polling manual** (sem WebSocket) — inclusive para atualizar a fila de `GET /api/caixa/pedidos/pendentes`.
+2. Login/sessão administrativa não tem refresh token — o frontend admin precisa lidar com expiração de sessão sem um fluxo de renovação automática.
+3. Painel administrativo de usuários não tem backend — se o MVP de frontend incluir gestão de usuários, essa API precisa ser criada antes.
+4. Cancelamento de pedido pago não estorna — se a UI permitir cancelar um pedido pago, deve deixar claro ao operador que o valor não é automaticamente devolvido.

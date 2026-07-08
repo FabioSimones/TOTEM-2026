@@ -201,8 +201,18 @@ Authorization: Bearer {{tokenTotem}}
 }
 
 
+### 15b. Listar pendentes do Caixa (TASK-027) — pedido aparece com acaoSugerida=ENVIAR_PARA_COZINHA
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
+Authorization: Bearer {{tokenCaixa}}
+
+
 ### 16. Enviar pedido para cozinha (Caixa) — exige pedido PAGO
 POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/enviar-cozinha
+Authorization: Bearer {{tokenCaixa}}
+
+
+### 16b. Listar pendentes do Caixa novamente — pedido não deve mais aparecer (ENVIADO_PARA_COZINHA)
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
 Authorization: Bearer {{tokenCaixa}}
 
 
@@ -249,6 +259,11 @@ Authorization: Bearer {{tokenTotem}}
 {
   "formaPagamento": "DINHEIRO"
 }
+
+
+### 21b. Listar pendentes do Caixa — pedido aparece com acaoSugerida=CONFIRMAR_PAGAMENTO
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
+Authorization: Bearer {{tokenCaixa}}
 
 
 ### 22. Confirmar pagamento em dinheiro (Caixa) — esperado: AUTORIZADO / PAGO
@@ -305,3 +320,10 @@ Authorization: Bearer {{tokenCaixa}}
 ### 28. Pedido inexistente -> 404
 GET {{baseUrl}}/api/totem/pedidos/999999
 Authorization: Bearer {{tokenTotem}}
+
+### 29. Listar pendentes sem token -> 401
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
+
+### 30. Listar pendentes com token de outro dispositivo -> 403
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
+Authorization: Bearer {{tokenCozinha}}

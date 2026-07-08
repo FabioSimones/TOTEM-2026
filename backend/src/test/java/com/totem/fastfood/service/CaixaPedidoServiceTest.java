@@ -3,11 +3,14 @@ package com.totem.fastfood.service;
 import com.totem.fastfood.dto.caixa.pedido.CancelarPedidoRequest;
 import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
+import com.totem.fastfood.entity.ItemPedido;
 import com.totem.fastfood.entity.Pedido;
 import com.totem.fastfood.entity.Restaurante;
+import com.totem.fastfood.enums.AcaoCaixa;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.mapper.CaixaPedidoMapper;
 import com.totem.fastfood.repository.HistoricoStatusPedidoRepository;
+import com.totem.fastfood.repository.ItemPedidoRepository;
 import com.totem.fastfood.repository.PedidoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,18 +21,23 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Testes unitários das regras de transição de status do Caixa (TASK-020/023/024).
+ * Testes unitários das regras de status do Caixa (TASK-020/023/024/027).
  * Não usa contexto Spring nem banco — repositories e mapper são mockados.
  */
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +45,9 @@ class CaixaPedidoServiceTest {
 
     @Mock
     private PedidoRepository pedidoRepository;
+
+    @Mock
+    private ItemPedidoRepository itemPedidoRepository;
 
     @Mock
     private HistoricoStatusPedidoRepository historicoStatusPedidoRepository;
@@ -50,7 +61,8 @@ class CaixaPedidoServiceTest {
 
     @BeforeEach
     void setUp() {
-        caixaPedidoService = new CaixaPedidoService(pedidoRepository, historicoStatusPedidoRepository, caixaPedidoMapper);
+        caixaPedidoService = new CaixaPedidoService(
+                pedidoRepository, itemPedidoRepository, historicoStatusPedidoRepository, caixaPedidoMapper);
     }
 
     private Dispositivo dispositivoCaixa() {
@@ -156,5 +168,61 @@ class CaixaPedidoServiceTest {
         assertThrows(IllegalArgumentException.class, () -> caixaPedidoService.cancelarPedido(
                 10L, new CancelarPedidoRequest("Motivo qualquer"), dispositivoCaixa()));
         verify(historicoStatusPedidoRepository, never()).save(any());
+    }
+
+    // ---------- listarPendentes ----------
+
+    @Test
+    void listarPendentes_buscaApenasStatusAguardandoDinheiroEPago_semAlterarPedido() {
+        Pedido pedidoDinheiro = pedidoComStatus(StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO);
+        Pedido pedidoPago = pedidoComStatus(StatusPedido.PAGO);
+        when(pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(eq(RESTAURANTE_ID), any()))
+                .thenReturn(List.of(pedidoDinheiro, pedidoPago));
+        when(itemPedidoRepository.findByPedidoIdIn(anyList())).thenReturn(List.of());
+
+        caixaPedidoService.listarPendentes(dispositivoCaixa());
+
+        ArgumentCaptor<Set<StatusPedido>> statusCaptor = ArgumentCaptor.forClass(Set.class);
+        verify(pedidoRepository).findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(
+                eq(RESTAURANTE_ID), statusCaptor.capture());
+        assertEquals(Set.of(StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO, StatusPedido.PAGO), statusCaptor.getValue());
+
+        verify(pedidoRepository, never()).save(any());
+        verify(historicoStatusPedidoRepository, never()).save(any());
+    }
+
+    @Test
+    void listarPendentes_pedidoAguardandoDinheiro_sugereConfirmarPagamento() {
+        Pedido pedido = pedidoComStatus(StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO);
+        when(pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(eq(RESTAURANTE_ID), any()))
+                .thenReturn(List.of(pedido));
+        when(itemPedidoRepository.findByPedidoIdIn(anyList())).thenReturn(List.of());
+
+        caixaPedidoService.listarPendentes(dispositivoCaixa());
+
+        verify(caixaPedidoMapper).toPendenteResponse(pedido, List.of(), AcaoCaixa.CONFIRMAR_PAGAMENTO);
+    }
+
+    @Test
+    void listarPendentes_pedidoPago_sugereEnviarParaCozinha() {
+        Pedido pedido = pedidoComStatus(StatusPedido.PAGO);
+        when(pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(eq(RESTAURANTE_ID), any()))
+                .thenReturn(List.of(pedido));
+        when(itemPedidoRepository.findByPedidoIdIn(anyList())).thenReturn(List.of());
+
+        caixaPedidoService.listarPendentes(dispositivoCaixa());
+
+        verify(caixaPedidoMapper).toPendenteResponse(pedido, List.of(), AcaoCaixa.ENVIAR_PARA_COZINHA);
+    }
+
+    @Test
+    void listarPendentes_semPedidosPendentes_retornaListaVaziaSemChamarItemRepository() {
+        when(pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(eq(RESTAURANTE_ID), any()))
+                .thenReturn(List.of());
+
+        List<?> resultado = caixaPedidoService.listarPendentes(dispositivoCaixa());
+
+        assertTrue(resultado.isEmpty());
+        verify(itemPedidoRepository, never()).findByPedidoIdIn(any());
     }
 }

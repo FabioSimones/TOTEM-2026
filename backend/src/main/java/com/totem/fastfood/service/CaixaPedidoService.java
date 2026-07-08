@@ -3,13 +3,17 @@ package com.totem.fastfood.service;
 import com.totem.fastfood.dto.caixa.pedido.CancelarPedidoRequest;
 import com.totem.fastfood.dto.caixa.pedido.CancelarPedidoResponse;
 import com.totem.fastfood.dto.caixa.pedido.EnviarPedidoCozinhaResponse;
+import com.totem.fastfood.dto.caixa.pedido.PedidoPendenteCaixaResponse;
 import com.totem.fastfood.dto.caixa.pedido.RetirarPedidoResponse;
 import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
+import com.totem.fastfood.entity.ItemPedido;
 import com.totem.fastfood.entity.Pedido;
+import com.totem.fastfood.enums.AcaoCaixa;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.mapper.CaixaPedidoMapper;
 import com.totem.fastfood.repository.HistoricoStatusPedidoRepository;
+import com.totem.fastfood.repository.ItemPedidoRepository;
 import com.totem.fastfood.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,8 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,7 +47,17 @@ public class CaixaPedidoService {
             StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO,
             StatusPedido.PAGO);
 
+    /**
+     * Status que exigem ação do Caixa: dinheiro aguardando confirmação, ou
+     * pedido já pago aguardando ser enviado à cozinha. Pedidos CRIADO/
+     * AGUARDANDO_PAGAMENTO dependem do cliente no Totem, não do Caixa.
+     */
+    private static final Set<StatusPedido> STATUS_PENDENTES_CAIXA = EnumSet.of(
+            StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO,
+            StatusPedido.PAGO);
+
     private final PedidoRepository pedidoRepository;
+    private final ItemPedidoRepository itemPedidoRepository;
     private final HistoricoStatusPedidoRepository historicoStatusPedidoRepository;
     private final CaixaPedidoMapper caixaPedidoMapper;
 
@@ -137,5 +154,34 @@ public class CaixaPedidoService {
                 pedido.getId(), restauranteId, statusAnterior);
 
         return caixaPedidoMapper.toCancelarPedidoResponse(pedido, statusAnterior, request.motivo());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoPendenteCaixaResponse> listarPendentes(Dispositivo dispositivoCaixa) {
+        Long restauranteId = dispositivoCaixa.getRestaurante().getId();
+
+        List<Pedido> pedidos = pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(
+                restauranteId, STATUS_PENDENTES_CAIXA);
+
+        if (pedidos.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> pedidoIds = pedidos.stream().map(Pedido::getId).toList();
+        Map<Long, List<ItemPedido>> itensPorPedido = itemPedidoRepository.findByPedidoIdIn(pedidoIds).stream()
+                .collect(Collectors.groupingBy(item -> item.getPedido().getId()));
+
+        return pedidos.stream()
+                .map(pedido -> caixaPedidoMapper.toPendenteResponse(
+                        pedido,
+                        itensPorPedido.getOrDefault(pedido.getId(), List.of()),
+                        acaoSugeridaPara(pedido.getStatusPedido())))
+                .toList();
+    }
+
+    private AcaoCaixa acaoSugeridaPara(StatusPedido statusPedido) {
+        return statusPedido == StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO
+                ? AcaoCaixa.CONFIRMAR_PAGAMENTO
+                : AcaoCaixa.ENVIAR_PARA_COZINHA;
     }
 }
