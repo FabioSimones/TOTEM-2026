@@ -1,25 +1,7 @@
 import { ApiError, type ApiErrorResponse } from "../types/api";
+import { getAccessToken } from "./tokenStorage";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
-
-const TOKEN_STORAGE_KEY = "totem.accessToken";
-
-/**
- * Armazenamento simples do token em localStorage. Não é um fluxo de
- * autenticação completo (sem refresh) — apenas o suficiente para o
- * cliente HTTP anexar o header Authorization quando houver token.
- */
-export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
-}
-
-export function setStoredToken(token: string): void {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
-}
-
-export function clearStoredToken(): void {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-}
 
 interface ApiFetchOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
@@ -41,7 +23,7 @@ export async function apiFetch<TResponse>(
   requestHeaders.set("Content-Type", "application/json");
 
   if (withAuth) {
-    const token = getStoredToken();
+    const token = getAccessToken();
     if (token) {
       requestHeaders.set("Authorization", `Bearer ${token}`);
     }

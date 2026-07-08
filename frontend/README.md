@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 como setup inicial — ainda não implementa telas reais, apenas a estrutura base que as próximas tasks vão preencher.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a primeira tela real: ativação de dispositivo.
 
 ## Stack
 
@@ -46,8 +46,9 @@ src/
 ├── routes/         # definição das rotas (AppRoutes.tsx)
 ├── pages/          # telas, uma pasta por módulo (totem/, caixa/, cozinha/, admin/)
 ├── components/
-│   └── layout/     # AppLayout, ModuleHeader — layout compartilhado
-├── services/       # cliente HTTP centralizado (api.ts)
+│   ├── layout/     # AppLayout, ModuleHeader — layout compartilhado
+│   └── ui/         # Button, Input, ErrorMessage — componentes mínimos reutilizáveis
+├── services/       # api.ts (HTTP), tokenStorage.ts (sessão), authService.ts, ...
 ├── types/          # tipos TypeScript espelhando os DTOs do backend
 └── styles/         # CSS global
 ```
@@ -59,22 +60,29 @@ src/
 | Rota | Página | Módulo |
 |---|---|---|
 | `/` | `HomePage` | Ponto de entrada |
-| `/ativar-dispositivo` | `AtivarDispositivoPage` | Ativação de dispositivo (Totem/Caixa/Cozinha) |
-| `/totem` | `TotemHomePage` | Totem |
-| `/caixa` | `CaixaHomePage` | Caixa |
-| `/cozinha` | `CozinhaHomePage` | Cozinha |
-| `/admin/login` | `AdminLoginPage` | Login administrativo |
-| `/admin` | `AdminHomePage` | Painel administrativo |
+| `/ativar-dispositivo` | `AtivarDispositivoPage` | **Real** — ativação de dispositivo (Totem/Caixa/Cozinha) |
+| `/totem` | `TotemHomePage` | Totem (placeholder) |
+| `/caixa` | `CaixaHomePage` | Caixa (placeholder) |
+| `/cozinha` | `CozinhaHomePage` | Cozinha (placeholder) |
+| `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
+| `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
 
-Nenhuma delas tem lógica real ainda — cada uma renderiza apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029) é a primeira tela com lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
 
-## Cliente HTTP (`src/services/api.ts`)
+## Como testar a ativação de dispositivo
 
-- `apiFetch<T>(path, options)` — wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente quando há um token salvo, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`).
-- `api.get/post/put/patch/delete` — atalhos por verbo HTTP.
-- `getStoredToken/setStoredToken/clearStoredToken` — armazenamento simples do token em `localStorage`. **Não é um fluxo de autenticação completo**: não há refresh, expiração tratada ou contexto de sessão — isso é responsabilidade de uma task futura de autenticação real.
+1. Suba o backend: `cd backend && mvn spring-boot:run`.
+2. Faça login como `SUPER_ADMIN` (`POST /api/auth/login`) e cadastre um dispositivo (`POST /api/admin/dispositivos`) — veja exemplos prontos em `docs/http/totem-fast-food-mvp.http` (blocos 2, 6–8). A resposta traz `codigoAtivacao`.
+3. Suba o frontend (`npm run dev`) e abra `http://localhost:5173/ativar-dispositivo`.
+4. Cole o `codigoAtivacao` e envie. Sucesso esperado: mensagem de confirmação e redirecionamento automático para `/totem`, `/caixa`, `/cozinha` ou `/admin`, conforme o `tipoDispositivo` cadastrado.
+5. Confirme no DevTools → Application → Local Storage: chaves `totem.accessToken` e `totem.dispositivo` preenchidas.
+6. Código vazio não chega a chamar o backend (validação no cliente); código inválido/já usado retorna erro do backend, exibido na tela.
 
-Nenhuma tela deve chamar `fetch` diretamente — sempre passar por `api.ts`.
+## Cliente HTTP e sessão
+
+- `src/services/api.ts` — `apiFetch<T>(path, options)`: wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente (via `tokenStorage`) quando há um token salvo e `withAuth` não é `false`, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`). `api.get/post/put/patch/delete` são atalhos por verbo HTTP.
+- `src/services/tokenStorage.ts` — único lugar que lê/escreve `localStorage` (chaves `totem.accessToken`, `totem.dispositivo`). **Não é um fluxo de autenticação completo**: sem refresh token, sem expiração tratada, sem contexto de sessão React — aceitável para este estágio do MVP, deve ser revisado se o projeto migrar para um fluxo mais robusto (ex.: cookies httpOnly).
+- `src/services/authService.ts` — funções que chamam os endpoints de autenticação (hoje: `ativarDispositivo`). Páginas nunca chamam `api.ts`/`fetch` diretamente, sempre por um `*Service.ts`.
 
 ## Tipos (`src/types/`)
 
@@ -94,7 +102,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Fluxo de ativação de dispositivo (`/ativar-dispositivo`) consumindo `POST /api/auth/dispositivos/ativar` de verdade, com o token salvo via `setStoredToken`.
-2. Tela real do Totem: cardápio (`GET /api/totem/cardapio`), carrinho, criação de pedido e pagamento.
-3. Login administrativo real (`POST /api/auth/login`).
+1. Tela real do Totem: cardápio (`GET /api/totem/cardapio`), carrinho, criação de pedido e pagamento — protegida por token de dispositivo `TOTEM` já salvo.
+2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
+3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
 4. Service worker / instalabilidade PWA completa.
