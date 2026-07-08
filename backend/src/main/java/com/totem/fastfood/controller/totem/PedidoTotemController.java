@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,5 +43,18 @@ public class PedidoTotemController {
             @AuthenticationPrincipal Dispositivo dispositivo) {
         PedidoTotemResponse response = pedidoTotemService.criar(request, dispositivo);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Consultar pedido",
+            description = "Retorna os dados e itens de um pedido pertencente ao restaurante do dispositivo autenticado")
+    @ApiResponse(responseCode = "200", description = "Pedido encontrado")
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
+    @ApiResponse(responseCode = "403", description = "Perfil ou dispositivo sem permissão")
+    @ApiResponse(responseCode = "404", description = "Pedido não encontrado para o restaurante do dispositivo")
+    @GetMapping("/{id}")
+    public ResponseEntity<PedidoTotemResponse> consultarPorId(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Dispositivo dispositivo) {
+        return ResponseEntity.ok(pedidoTotemService.consultarPorId(id, dispositivo));
     }
 }

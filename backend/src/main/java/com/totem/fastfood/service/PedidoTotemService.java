@@ -80,6 +80,18 @@ public class PedidoTotemService {
         return pedidoTotemMapper.toResponse(pedido, itens);
     }
 
+    @Transactional(readOnly = true)
+    public PedidoTotemResponse consultarPorId(Long pedidoId, Dispositivo dispositivo) {
+        Long restauranteId = dispositivo.getRestaurante().getId();
+
+        Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
+                .orElseThrow(() -> new NoSuchElementException("Pedido não encontrado para o id: " + pedidoId));
+
+        List<ItemPedido> itens = itemPedidoRepository.findByPedidoId(pedido.getId());
+
+        return pedidoTotemMapper.toResponse(pedido, itens);
+    }
+
     private List<ItemPedido> montarItens(List<ItemPedidoTotemRequest> itensRequest, Long restauranteId) {
         List<ItemPedido> itens = new ArrayList<>();
 
