@@ -9,6 +9,7 @@ import { AdminHomePage } from "../pages/admin/AdminHomePage";
 import { AdminDispositivosPage } from "../pages/admin/AdminDispositivosPage";
 import { AdminRestaurantesPage } from "../pages/admin/AdminRestaurantesPage";
 import { AdminCategoriasPage } from "../pages/admin/AdminCategoriasPage";
+import { AdminProdutosPage } from "../pages/admin/AdminProdutosPage";
 
 export function AppRoutes() {
   return (
@@ -23,6 +24,7 @@ export function AppRoutes() {
       <Route path="/admin/dispositivos" element={<AdminDispositivosPage />} />
       <Route path="/admin/restaurantes" element={<AdminRestaurantesPage />} />
       <Route path="/admin/categorias" element={<AdminCategoriasPage />} />
+      <Route path="/admin/produtos" element={<AdminProdutosPage />} />
     </Routes>
   );
 }

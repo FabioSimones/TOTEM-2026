@@ -1495,3 +1495,11 @@ h6 {
 .admin-filtro-restaurante {
   margin-bottom: var(--spacing-lg);
 }
+
+/* ===== Admin — produtos =====
+   .produto-card__imagem é reaproveitada dentro de .pedido-pendente-card
+   (que tem padding, diferente de .produto-card no Totem, que é full-bleed
+   com overflow:hidden) — aqui arredondamos os cantos da própria imagem. */
+.pedido-pendente-card > .produto-card__imagem {
+  border-radius: var(--radius-md);
+}
