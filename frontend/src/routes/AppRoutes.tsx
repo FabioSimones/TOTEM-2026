@@ -7,6 +7,7 @@ import { CozinhaHomePage } from "../pages/cozinha/CozinhaHomePage";
 import { AdminLoginPage } from "../pages/admin/AdminLoginPage";
 import { AdminHomePage } from "../pages/admin/AdminHomePage";
 import { AdminDispositivosPage } from "../pages/admin/AdminDispositivosPage";
+import { AdminRestaurantesPage } from "../pages/admin/AdminRestaurantesPage";
 
 export function AppRoutes() {
   return (
@@ -19,6 +20,7 @@ export function AppRoutes() {
       <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="/admin" element={<AdminHomePage />} />
       <Route path="/admin/dispositivos" element={<AdminDispositivosPage />} />
+      <Route path="/admin/restaurantes" element={<AdminRestaurantesPage />} />
     </Routes>
   );
 }

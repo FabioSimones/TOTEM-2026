@@ -1441,3 +1441,45 @@ h6 {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+
+/* ===== Admin — ações em linha de formulário/card (dispositivos e restaurantes) ===== */
+.dispositivo-form__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.dispositivo-form__acoes .ui-button,
+.dispositivo-form__acoes .pedido-pendente-card__acao {
+  width: auto;
+  flex: 1;
+  min-width: 10rem;
+}
+
+.dispositivo-form__cancelar,
+.restaurante-card__acao-secundaria {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.dispositivo-form__cancelar:hover:not(:disabled),
+.restaurante-card__acao-secundaria:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.dispositivo-form__cancelar:disabled,
+.restaurante-card__acao-secundaria:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
