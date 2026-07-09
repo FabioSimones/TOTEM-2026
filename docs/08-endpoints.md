@@ -79,12 +79,15 @@ Permissão exigida: SUPER_ADMIN
 
 ## Administração de usuários
 
+Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048).
+
 | Método | Rota | Objetivo |
 |---|---|---|
 | POST | `/api/admin/usuarios` | Cadastrar usuário |
-| GET | `/api/admin/usuarios` | Listar usuários |
-| PUT | `/api/admin/usuarios/{id}` | Atualizar usuário |
-| PATCH | `/api/admin/usuarios/{id}/desativar` | Desativar usuário |
+| GET | `/api/admin/usuarios` | Listar usuários (filtro opcional `restauranteId`) |
+| PUT | `/api/admin/usuarios/{id}` | Atualizar usuário (não altera senha nem `ativo`) |
+| PATCH | `/api/admin/usuarios/{id}/ativar` | Ativar usuário |
+| PATCH | `/api/admin/usuarios/{id}/desativar` | Desativar usuário (bloqueado para o próprio usuário autenticado) |
 
 ## Webhooks futuros
 

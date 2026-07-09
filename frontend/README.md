@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`). A TASK-039 implementou o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`). A TASK-040 ampliou `GET /api/caixa/pedidos/pendentes` (backend) para incluir pedidos `PRONTO` (`acaoSugerida=MARCAR_RETIRADO`) e ligou a retirada (`POST /api/caixa/pedidos/{id}/retirar`) na UI, fechando o ciclo operacional completo Totem → Caixa → Cozinha → Caixa. A TASK-041 foi uma revisão ponta a ponta (sem mudanças de código no frontend). A TASK-042 implementou o login administrativo real (`POST /api/auth/login`) e um painel `/admin` mínimo, autenticando usuário humano (não dispositivo). A TASK-043 implementou a primeira área administrativa real, `/admin/dispositivos` (listar, cadastrar, revogar e reativar dispositivos). A TASK-044 implementou `/admin/restaurantes` (listar, cadastrar, editar, ativar e desativar restaurantes). A TASK-045 implementou `/admin/categorias` (listar com filtro por restaurante, cadastrar, editar e inativar categorias). A TASK-046 implementou `/admin/produtos` (listar com filtro por restaurante, cadastrar, editar, alternar disponibilidade e alternar destaque). A TASK-047 foi uma revisão do frontend administrativo: corrigiu links sem estilo de tema (`<Link>` sem classe caindo no azul padrão do navegador), adicionou navegação "← Painel administrativo" nas 4 subtelas do Admin e documentou a função `buscarRestaurantePorId` (existe mas não é usada por nenhuma tela ainda).
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`). A TASK-039 implementou o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`). A TASK-040 ampliou `GET /api/caixa/pedidos/pendentes` (backend) para incluir pedidos `PRONTO` (`acaoSugerida=MARCAR_RETIRADO`) e ligou a retirada (`POST /api/caixa/pedidos/{id}/retirar`) na UI, fechando o ciclo operacional completo Totem → Caixa → Cozinha → Caixa. A TASK-041 foi uma revisão ponta a ponta (sem mudanças de código no frontend). A TASK-042 implementou o login administrativo real (`POST /api/auth/login`) e um painel `/admin` mínimo, autenticando usuário humano (não dispositivo). A TASK-043 implementou a primeira área administrativa real, `/admin/dispositivos` (listar, cadastrar, revogar e reativar dispositivos). A TASK-044 implementou `/admin/restaurantes` (listar, cadastrar, editar, ativar e desativar restaurantes). A TASK-045 implementou `/admin/categorias` (listar com filtro por restaurante, cadastrar, editar e inativar categorias). A TASK-046 implementou `/admin/produtos` (listar com filtro por restaurante, cadastrar, editar, alternar disponibilidade e alternar destaque). A TASK-047 foi uma revisão do frontend administrativo: corrigiu links sem estilo de tema (`<Link>` sem classe caindo no azul padrão do navegador), adicionou navegação "← Painel administrativo" nas 4 subtelas do Admin e documentou a função `buscarRestaurantePorId` (existe mas não é usada por nenhuma tela ainda). A TASK-048 implementou o backend administrativo de usuários (`UsuarioAdminController`/`UsuarioService`, nunca existia até então, apesar de documentado) e o frontend `/admin/usuarios` (listar com filtro por restaurante, cadastrar, editar, ativar e desativar), fechando o último card "Em breve" do painel Admin.
 
 ## Stack
 
@@ -69,13 +69,14 @@ src/
 | `/caixa` | `CaixaHomePage` | **Real** — lista de pendências, confirmar dinheiro, enviar à cozinha, cancelar e marcar retirada do dispositivo CAIXA (ciclo completo) |
 | `/cozinha` | `CozinhaHomePage` | **Real** — lista de pedidos e avanço de status (`ENVIADO_PARA_COZINHA`→`EM_PREPARO`→`PRONTO`) do dispositivo COZINHA |
 | `/admin/login` | `AdminLoginPage` | **Real** — login de usuário humano (`POST /api/auth/login`) |
-| `/admin` | `AdminHomePage` | **Real** — dados do usuário autenticado, logout, 4 cards funcionais (Restaurantes/Dispositivos/Categorias/Produtos) + "Usuários" placeholder |
+| `/admin` | `AdminHomePage` | **Real** — dados do usuário autenticado, logout, 5 cards funcionais (Restaurantes/Dispositivos/Categorias/Produtos/Usuários) |
 | `/admin/dispositivos` | `AdminDispositivosPage` | **Real** — listar, cadastrar, revogar e reativar dispositivos |
 | `/admin/restaurantes` | `AdminRestaurantesPage` | **Real** — listar, cadastrar, editar, ativar e desativar restaurantes (exige perfil `SUPER_ADMIN`) |
 | `/admin/categorias` | `AdminCategoriasPage` | **Real** — listar (com filtro por restaurante), cadastrar, editar e inativar categorias |
 | `/admin/produtos` | `AdminProdutosPage` | **Real** — listar (com filtro por restaurante), cadastrar, editar, alternar disponibilidade e destaque |
+| `/admin/usuarios` | `AdminUsuariosPage` | **Real** — listar (com filtro por restaurante), cadastrar, editar, ativar e desativar usuários (exige perfil `SUPER_ADMIN`) |
 
-`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036, TASK-037, TASK-039 e TASK-040), `/cozinha` (TASK-038) e `/admin`+`/admin/login`+`/admin/dispositivos`+`/admin/restaurantes`+`/admin/categorias`+`/admin/produtos` (TASK-042 a TASK-046) têm lógica real. `HomePage` (`/`) continua sendo apenas o ponto de entrada, sem lógica própria.
+`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036, TASK-037, TASK-039 e TASK-040), `/cozinha` (TASK-038) e `/admin`+`/admin/login`+`/admin/dispositivos`+`/admin/restaurantes`+`/admin/categorias`+`/admin/produtos`+`/admin/usuarios` (TASK-042 a TASK-048) têm lógica real. `HomePage` (`/`) continua sendo apenas o ponto de entrada, sem lógica própria.
 
 ## Como testar a ativação de dispositivo
 
@@ -363,6 +364,27 @@ A partir da TASK-046, `/admin/produtos` permite listar (com filtro por restauran
 17. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e tente qualquer ação: aparece mensagem de sessão expirada e o botão "Ir para login".
 18. Alterne o tema (💡) com o formulário preenchido (alternadores Sim/Não, seletor de categoria) e com produtos disponíveis/indisponíveis/em destaque na lista — segue os mesmos tokens já usados nas demais telas do Admin.
 
+## Como testar Admin — Usuários (`/admin/usuarios`)
+
+A partir da TASK-048, `/admin/usuarios` permite listar (com filtro por restaurante), cadastrar, editar, ativar e desativar usuários administrativos. **Diferente de Categoria/Produto/Dispositivo, este endpoint exige exclusivamente `SUPER_ADMIN`** (`ADMIN_RESTAURANTE` recebe 403) — gerenciar usuários (inclusive criar outros admins) é mais sensível que gerenciar cardápio.
+
+**Atenção ao contrato real**: `POST`/`PUT` só aceitam `restauranteId` (obrigatório para todo perfil exceto `SUPER_ADMIN`, proibido para `SUPER_ADMIN`), `nome`, `email` e, só no `POST`, `senha` (mínimo 8 caracteres) — **nunca** `ativo` (isso só muda via `PATCH .../ativar` ou `.../desativar`) nem `senha` na edição (alteração de senha por um admin ficou fora do escopo desta task). A resposta nunca inclui a senha/hash.
+
+1. Sem sessão salva, abrir `http://localhost:5173/admin/usuarios` diretamente redireciona para `/admin/login`.
+2. Faça login (`admin@totem.local`/`Admin@2026!`, perfil `SUPER_ADMIN`) e clique no card "Usuários" em `/admin`: a lista carrega via `GET /api/admin/usuarios`. Sem nenhum usuário além do seed, aparece o próprio `SUPER_ADMIN` na lista.
+3. Clique em um perfil diferente de "Super administrador" no formulário sem nenhum restaurante cadastrado: aparece o aviso "Cadastre um restaurante antes de criar usuários que não sejam SUPER_ADMIN.".
+4. Escolha o perfil "Operador de caixa", selecione um restaurante (ver seção "Admin — Restaurantes"), preencha `Nome`, `Email` e `Senha` (mínimo 8 caracteres) e envie.
+5. Confira no DevTools → Network que o corpo é só `{"restauranteId":1,"nome":"...","email":"...","senha":"...","perfil":"OPERADOR_CAIXA"}` — nunca `ativo`.
+6. Sucesso esperado: a lista recarrega, o novo usuário aparece com status "Ativo", perfil e restaurante corretos.
+7. Clique em "Editar": o formulário muda para modo edição, sem campo de senha (não é possível trocar a senha nesta tela). Altere o nome e envie: `PUT /api/admin/usuarios/{id}` é chamado sem `senha`, a lista recarrega com o nome atualizado.
+8. Clique em "Desativar" num usuário diferente do autenticado: confirme o `window.confirm` — `PATCH /api/admin/usuarios/{id}/desativar` (sem corpo). Badge muda para "Inativo" e o botão vira "Ativar". Faça login com esse usuário (se o perfil tiver acesso a alguma tela) para confirmar que o login passa a falhar com "Email ou senha inválidos".
+9. Clique em "Ativar": `PATCH .../ativar`, badge volta a "Ativo".
+10. Tente desativar o próprio usuário autenticado (`admin@totem.local`, o card dele aparece na lista): o backend responde `400` com "Você não pode desativar o seu próprio usuário.", mensagem amigável aparece no card correspondente, sem travar os demais.
+11. Para simular erro 400, tente cadastrar (ou editar) um usuário com um email já usado por outro — mensagem de erro do backend aparece no formulário, sem perder os dados digitados.
+12. Para simular 403, faça login com um usuário `ADMIN_RESTAURANTE` (se existir um cadastrado) e acesse `/admin/usuarios`: aparece "Você não tem permissão para acessar usuários.", sessão preservada.
+13. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e tente qualquer ação: aparece mensagem de sessão expirada e o botão "Ir para login".
+14. Alterne o tema (💡) com o formulário em modo edição e com usuários ativos/inativos na lista — segue os mesmos tokens já usados em Admin Restaurantes/Categorias/Produtos.
+
 ## Cliente HTTP e sessão
 
 - `src/services/api.ts` — `apiFetch<T>(path, options)`: wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente (via `tokenStorage`) quando há um token salvo e `withAuth` não é `false`, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`). `api.get/post/put/patch/delete` são atalhos por verbo HTTP.
@@ -393,6 +415,7 @@ Espelham os DTOs REST do backend (ver `docs/09-contratos-api.md` e `docs/08-endp
 - `dispositivo.ts` — cadastro/revogação/reativação administrativa de dispositivos (`/admin/dispositivos`, TASK-043)
 - `categoria.ts` — CRUD administrativo de categorias (`/admin/categorias`, TASK-045)
 - `produto.ts` — CRUD administrativo de produtos, incluindo disponibilidade/destaque (`/admin/produtos`, TASK-046)
+- `usuario.ts` — CRUD administrativo de usuários, incluindo ativar/desativar (`/admin/usuarios`, TASK-048)
 
 São tipos básicos o suficiente para as próximas tasks usarem — não incluem validação de formulário nem lógica de negócio. Cada arquivo de tipos administrativos documenta, em comentário, quais campos o backend aceita em cada request e quais decisões foram tomadas para não enviar campos indevidos (ex.: `ativo`/`ativa`/`disponivel`/`destaque` geralmente têm um endpoint `PATCH` dedicado e não devem ser reenviados no `PUT` de edição).
 
@@ -410,23 +433,24 @@ Os cadastros administrativos têm dependências entre si — seguir esta ordem e
 4. **Produto** (`/admin/produtos`) — vinculado a um `restauranteId` **e** a uma `categoriaId` já cadastrados para aquele restaurante.
 5. **Dispositivo** (`/admin/dispositivos`) — também depende de um `restauranteId` existente (informado hoje como número avulso, não por seletor — ver "Próximas tasks sugeridas").
 6. **Ativação do dispositivo** (`/ativar-dispositivo`) — usa o `codigoAtivacao` gerado no passo 5 para liberar o Totem/Caixa/Cozinha correspondente.
+7. **Usuário** (`/admin/usuarios`, exige `SUPER_ADMIN`) — perfis diferentes de `SUPER_ADMIN` também dependem de um `restauranteId` existente.
 
 Cada seção "Como testar Admin — ..." acima assume os passos anteriores já feitos.
 
 ## Limitações atuais do Admin
 
-- **CRUD de Usuários não implementado** — o card "Usuários" em `/admin` continua "Em breve"; hoje só existe o usuário seed (`admin@totem.local`, `SUPER_ADMIN`) e qualquer outro usuário/operador precisa ser criado direto no banco ou via `docs/http` (se o endpoint existir no backend).
+- **Sem alteração de senha por um admin** — `/admin/usuarios` não tem endpoint/tela para trocar a senha de um usuário existente (só a definição da senha inicial no cadastro); fora do escopo da TASK-048.
 - **Sem refresh token nem logout no backend** — "Sair" (`AdminHomePage`) e a limpeza de sessão em 401 são só client-side (`localStorage`); o token em si continua válido no backend até expirar por tempo.
 - **Sem upload de imagem** — `imagemUrl` em Produtos é um campo de texto livre; o admin precisa hospedar a imagem em outro lugar e colar a URL.
-- **Sem seletor visual de restaurante em Dispositivos** — `DispositivoForm` ainda usa um campo numérico avulso (`ID do restaurante`), diferente do seletor por botões usado em Categorias/Produtos.
+- **Sem seletor visual de restaurante em Dispositivos** — `DispositivoForm` ainda usa um campo numérico avulso (`ID do restaurante`), diferente do seletor por botões usado em Categorias/Produtos/Usuários.
 - **Sem proteção de rota por perfil no frontend** — todas as páginas administrativas verificam só "existe sessão?", nunca "este perfil pode acessar esta tela?"; quem decide isso de fato é sempre o backend (403).
 
 ## Próximas tasks sugeridas
 
-1. CRUD administrativo de Usuários dentro de `/admin` — único card "Em breve" restante em `AdminHomePage`; `/admin/produtos` (TASK-046) serve de referência de padrão mais completa (form único criar/editar com múltiplos seletores + toggles booleanos + filtro + lista de cards + ações dedicadas) para replicar.
-2. Trocar o campo numérico avulso `ID do restaurante` em `/admin/dispositivos` por um seletor visual como o usado em Categorias/Produtos — `adminRestauranteService.listarRestaurantes()` já é reaproveitável, só falta atualizar `DispositivoForm`.
+1. Alteração de senha de usuário por um admin (`PATCH /api/admin/usuarios/{id}/senha`, ainda não implementado no backend) — ficou fora do escopo da TASK-048 para manter o CRUD inicial enxuto.
+2. Trocar o campo numérico avulso `ID do restaurante` em `/admin/dispositivos` por um seletor visual como o usado em Categorias/Produtos/Usuários — `adminRestauranteService.listarRestaurantes()` já é reaproveitável, só falta atualizar `DispositivoForm`.
 3. Edição de dispositivo (`PUT /api/admin/dispositivos/{id}`, se/quando existir no backend) — hoje só criação, revogação e reativação são suportadas, conforme escopo da TASK-043.
 4. Upload de imagem de produto — hoje `imagemUrl` é só um campo de texto (o admin cola uma URL já hospedada em outro lugar); um upload de verdade exigiria armazenamento de arquivo (S3, disco local, etc.), fora do escopo da TASK-046.
-5. Proteção de rotas mais robusta (ex.: componente `ProtectedRoute` reutilizável, checagem de `perfil` por rota) — hoje cada página (`TotemHomePage`, `CaixaHomePage`, `CozinhaHomePage`, `AdminHomePage`, `AdminDispositivosPage`, `AdminRestaurantesPage`, `AdminCategoriasPage`, `AdminProdutosPage`) repete a mesma checagem de sessão individualmente, e nenhuma delas bloqueia por `perfil` no frontend (a proteção real é sempre o backend retornando 403).
+5. Proteção de rotas mais robusta (ex.: componente `ProtectedRoute` reutilizável, checagem de `perfil` por rota) — hoje cada página (`TotemHomePage`, `CaixaHomePage`, `CozinhaHomePage`, `AdminHomePage`, `AdminDispositivosPage`, `AdminRestaurantesPage`, `AdminCategoriasPage`, `AdminProdutosPage`, `AdminUsuariosPage`) repete a mesma checagem de sessão individualmente, e nenhuma delas bloqueia por `perfil` no frontend (a proteção real é sempre o backend retornando 403).
 6. Refresh token / expiração de sessão tratada — hoje nem dispositivo nem usuário têm renovação automática; o token expira e a próxima chamada falha com 401.
 7. Service worker / instalabilidade PWA completa.

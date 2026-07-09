@@ -21,7 +21,7 @@ const AREAS_ADMIN: AreaAdmin[] = [
   { nome: "Dispositivos", rota: "/admin/dispositivos" },
   { nome: "Categorias", rota: "/admin/categorias" },
   { nome: "Produtos", rota: "/admin/produtos" },
-  { nome: "Usuários" },
+  { nome: "Usuários", rota: "/admin/usuarios" },
 ];
 
 export function AdminHomePage() {
@@ -47,7 +47,7 @@ export function AdminHomePage() {
   }
 
   return (
-    <AppLayout title="Painel Administrativo" description="Gestão de restaurantes, dispositivos, categorias e produtos.">
+    <AppLayout title="Painel Administrativo" description="Gestão de restaurantes, dispositivos, categorias, produtos e usuários.">
       <section className="admin-dashboard">
         <div className="admin-dashboard__usuario">
           <div>

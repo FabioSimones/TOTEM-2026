@@ -69,6 +69,16 @@ mvn spring-boot:run
 | PATCH | `/api/admin/produtos/{id}/disponibilidade` |
 | PATCH | `/api/admin/produtos/{id}/destaque` |
 
+### Admin — Usuário (`SUPER_ADMIN`, implementado na TASK-048)
+
+| Método | Rota |
+|---|---|
+| POST | `/api/admin/usuarios` |
+| GET | `/api/admin/usuarios` (filtro: `restauranteId`) |
+| PUT | `/api/admin/usuarios/{id}` |
+| PATCH | `/api/admin/usuarios/{id}/ativar` |
+| PATCH | `/api/admin/usuarios/{id}/desativar` (bloqueado para o próprio usuário autenticado) |
+
 ### Totem (`DEVICE_TOTEM`)
 
 | Método | Rota |
@@ -366,6 +376,7 @@ mvn test
 | `payment/FakePaymentProviderTest` | PIX/cartão → `AUTORIZADO`; dinheiro → `PENDENTE` |
 | `service/CaixaPedidoServiceTest` (TASK-026, ampliado na TASK-027 e TASK-040) | `enviarParaCozinha`, `marcarComoRetirado`, `cancelarPedido`: transições válidas e bloqueio de todas as transições inválidas (parametrizado por `StatusPedido`), 404 para pedido inexistente/outro restaurante; `listarPendentes`: busca apenas `AGUARDANDO_PAGAMENTO_DINHEIRO`/`PAGO`/`PRONTO`, `acaoSugerida` correta por status (incluindo `PRONTO`→`MARCAR_RETIRADO`), lista vazia não chama `ItemPedidoRepository`, nunca altera o pedido |
 | `service/CozinhaPedidoServiceTest` (novo, TASK-026) | `atualizarStatus`: `ENVIADO_PARA_COZINHA→EM_PREPARO`, `EM_PREPARO→PRONTO`, bloqueio de salto e de regressão, bloqueio para pedidos fora do fluxo da cozinha |
+| `service/UsuarioServiceTest` (novo, TASK-048) | `criar`: `restauranteId` obrigatório/proibido conforme perfil, 404 para restaurante inexistente, e-mail duplicado, senha codificada via `PasswordEncoder`; `atualizar`: e-mail duplicado bloqueado; `desativar`: bloqueio de autodesativação, permitido para outro usuário |
 
 Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — validam apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo (autenticação, serialização, banco real).
 
@@ -379,8 +390,9 @@ Não existe teste de integração real (subindo contexto Spring + banco) no proj
 |---|---|---|
 | `POST /api/auth/refresh` | Documentado, **não implementado** | Implementar em task futura de refresh token, ou remover da doc até lá |
 | `POST /api/auth/logout` | Documentado, **não implementado** | Idem — depende de refresh token existir primeiro |
-| `POST /api/admin/usuarios`, `GET`, `PUT`, `PATCH /desativar` | Documentados, **nenhum implementado** (não existe `UsuarioAdminController`) | CRUD administrativo de usuários nunca foi implementado em nenhuma task até a 024 — avaliar se é necessário para o MVP ou se pode ficar para depois do frontend |
 | `POST /api/webhooks/pix`, `POST /api/webhooks/pagamentos` | Documentados como "futuros", não implementados | Esperado — não é uma divergência real, apenas roadmap ainda não executado |
+
+`POST/GET/PUT /api/admin/usuarios`, `PATCH .../ativar` e `.../desativar` — documentados desde a fase inicial, **implementados na TASK-048** junto com o frontend `/admin/usuarios`. Diferente de Categoria/Produto/Dispositivo, restrito a `SUPER_ADMIN` apenas (gestão de usuários, inclusive outros admins, é mais sensível). Alteração de senha por um admin não foi implementada nesta task (fora do escopo, ver seção 9).
 
 `POST /api/caixa/pedidos/{id}/enviar-cozinha` e `.../retirar` estavam implementados mas ausentes de `docs/08-endpoints.md` desde a TASK-026/TASK-027 — **corrigido na TASK-041** (revisão ponta a ponta).
 
@@ -390,12 +402,11 @@ Não existe teste de integração real (subindo contexto Spring + banco) no proj
 
 - Sem testes de integração (HTTP + banco real) — só unitários de regra de negócio e de autenticação isolada.
 - Não existe listagem administrativa de pedidos/histórico (nenhum endpoint `GET /api/admin/pedidos` ou similar) — hoje só é possível inspecionar pedidos via banco ou via os endpoints operacionais (Totem/Caixa/Cozinha), cada um com seu próprio escopo restrito.
-- CRUD administrativo de `Usuario` nunca foi implementado, apesar de documentado em `docs/08-endpoints.md`.
 - `TotemApplicationTests.contextLoads` falha em ambiente local por erro de criação do bean `JwtService`/`SecurityConfig` — investigado na TASK-041 e confirmado como problema de configuração/ambiente pré-existente, não relacionado a nenhuma mudança de código recente (reproduzido mesmo com `git stash` revertendo as últimas alterações). Fica como dívida técnica a investigar (provável causa: propriedade de configuração do JWT ausente/mal formada no perfil de teste).
 
 ### Pendências de produto
 
-- **Atualizado na TASK-041**: o frontend do Totem, Caixa e Cozinha foi implementado nas TASK-028 a TASK-040 (`frontend/`) e cobre o ciclo operacional completo — só o **painel Admin** continua sem frontend (CRUD de restaurante/categoria/produto/dispositivo/usuário só via `docs/http`/backend direto).
+- **Atualizado na TASK-048**: o frontend do Totem, Caixa, Cozinha e do painel Admin (restaurante/categoria/produto/dispositivo/usuário, TASK-042 a TASK-048) está implementado e cobre o ciclo operacional completo mais a gestão administrativa via `/admin/*`.
 - Sem WebSocket/atualização em tempo real — Caixa e Cozinha usam **polling manual** (botão "Atualizar lista") sobre `GET /api/caixa/pedidos/pendentes` e `GET /api/cozinha/pedidos`; o Totem usa polling automático leve (15s) em `GET /api/totem/pedidos/{id}` para acompanhamento.
 - Sem expiração automática de pedidos não pagos (`StatusPedido.EXPIRADO` existe no enum, mas nada o atribui automaticamente).
 - Sem relatórios/dashboards administrativos.
@@ -426,6 +437,6 @@ Com a TASK-027, a tela de Caixa ganhou a peça que faltava: `GET /api/caixa/pedi
 Ressalvas que o time de frontend ainda precisa saber antes de começar:
 
 1. Painéis de Caixa e Cozinha vão precisar de **polling manual** (sem WebSocket) — inclusive para atualizar a fila de `GET /api/caixa/pedidos/pendentes`. ✅ Confirmado: implementado como botão "Atualizar lista" em ambos.
-2. Login/sessão administrativa não tem refresh token — o frontend admin precisa lidar com expiração de sessão sem um fluxo de renovação automática. Ainda pendente — painel Admin não implementado.
-3. Painel administrativo de usuários não tem backend — se o MVP de frontend incluir gestão de usuários, essa API precisa ser criada antes. Ainda pendente.
+2. Login/sessão administrativa não tem refresh token — o frontend admin precisa lidar com expiração de sessão sem um fluxo de renovação automática. ✅ Confirmado: implementado sem renovação automática, apenas detecção de 401 e redirecionamento para login.
+3. Painel administrativo de usuários não tinha backend. ✅ Resolvido na TASK-048: `UsuarioAdminController`/`UsuarioService` implementados, com frontend `/admin/usuarios`.
 4. Cancelamento de pedido pago não estorna — se a UI permitir cancelar um pedido pago, deve deixar claro ao operador que o valor não é automaticamente devolvido. ✅ Confirmado: `PedidoPendenteCard` no Caixa permite cancelar pedidos `PAGO`, sem indicação de estorno na UI — mesma limitação do backend, documentada no `frontend/README.md`.

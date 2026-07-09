@@ -216,6 +216,63 @@ Response (`200 OK`):
 }
 ```
 
+## Admin — Usuários
+
+Implementado na TASK-048. Todos os endpoints exigem perfil `SUPER_ADMIN`.
+
+### Cadastrar usuário
+
+`POST /api/admin/usuarios`
+
+Request — `restauranteId` é **obrigatório** para todo perfil exceto `SUPER_ADMIN` (que nunca pode ter restaurante, sob pena de `400`); `ativo` é opcional (padrão `true`):
+
+```json
+{
+  "restauranteId": 1,
+  "nome": "Operador Caixa",
+  "email": "caixa@totem.local",
+  "senha": "Senha@2026!",
+  "perfil": "OPERADOR_CAIXA",
+  "ativo": true
+}
+```
+
+Response (`201 Created`) — nunca inclui `senha`/`senhaHash`:
+
+```json
+{
+  "id": 5,
+  "restauranteId": 1,
+  "nome": "Operador Caixa",
+  "email": "caixa@totem.local",
+  "perfil": "OPERADOR_CAIXA",
+  "ativo": true,
+  "criadoEm": "2026-05-05T15:00:00",
+  "atualizadoEm": null
+}
+```
+
+### Listar usuários
+
+`GET /api/admin/usuarios[?restauranteId=]` — mesmo formato de resposta da criação, em lista. Sem filtro, retorna usuários de todos os restaurantes (incluindo `SUPER_ADMIN`).
+
+### Atualizar usuário
+
+`PUT /api/admin/usuarios/{id}` — mesmas regras de `restauranteId` por perfil. **Nunca** aceita `senha` ou `ativo` (ver endpoints dedicados abaixo):
+
+```json
+{
+  "restauranteId": 1,
+  "nome": "Operador de Caixa",
+  "email": "caixa@totem.local",
+  "perfil": "OPERADOR_CAIXA"
+}
+```
+
+### Ativar / desativar usuário
+
+`PATCH /api/admin/usuarios/{id}/ativar` e `PATCH /api/admin/usuarios/{id}/desativar` — sem corpo de requisição, retornam o mesmo formato de `UsuarioAdminResponse`. Desativar o próprio usuário autenticado é bloqueado com `400`.
+
 ## Erro padrão
 
 Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:

@@ -16,6 +16,7 @@
 @tokenCaixa =
 @tokenCozinha =
 @pedidoId =
+@usuarioId =
 
 
 ### 1. Health check (público)
@@ -337,3 +338,54 @@ GET {{baseUrl}}/api/caixa/pedidos/pendentes
 ### 30. Listar pendentes com token de outro dispositivo -> 403
 GET {{baseUrl}}/api/caixa/pedidos/pendentes
 Authorization: Bearer {{tokenCozinha}}
+
+
+### 31. Admin — Cadastrar usuário OPERADOR_CAIXA (TASK-048)
+# @name criarUsuario
+POST {{baseUrl}}/api/admin/usuarios
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "nome": "Operador Caixa",
+  "email": "caixa@totem.local",
+  "senha": "Senha@2026!",
+  "perfil": "OPERADOR_CAIXA",
+  "ativo": true
+}
+
+### -> copie id para @usuarioId
+
+
+### 32. Admin — Listar usuários (opcionalmente filtrado por restauranteId)
+GET {{baseUrl}}/api/admin/usuarios?restauranteId={{restauranteId}}
+Authorization: Bearer {{tokenSuperAdmin}}
+
+
+### 33. Admin — Atualizar usuário
+PUT {{baseUrl}}/api/admin/usuarios/{{usuarioId}}
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "restauranteId": {{restauranteId}},
+  "nome": "Operador de Caixa",
+  "email": "caixa@totem.local",
+  "perfil": "OPERADOR_CAIXA"
+}
+
+
+### 34. Admin — Desativar usuário
+PATCH {{baseUrl}}/api/admin/usuarios/{{usuarioId}}/desativar
+Authorization: Bearer {{tokenSuperAdmin}}
+
+
+### 35. Admin — Reativar usuário
+PATCH {{baseUrl}}/api/admin/usuarios/{{usuarioId}}/ativar
+Authorization: Bearer {{tokenSuperAdmin}}
+
+
+### 36. Admin — Desativar o próprio usuário autenticado -> 400
+PATCH {{baseUrl}}/api/admin/usuarios/1/desativar
+Authorization: Bearer {{tokenSuperAdmin}}

@@ -62,14 +62,25 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Tentar reativar em `/ativar-dispositivo` com o mesmo código → falha (dispositivo revogado)
 - [ ] Reativar pelo Admin → `PATCH .../ativar`, status volta a "Ativo"
 
-## 8. Erros esperados (401/403/404/400)
+## 8. Usuário (`/admin/usuarios`, exige `SUPER_ADMIN`)
+
+- [ ] Sem restaurante cadastrado e perfil diferente de SUPER_ADMIN → aviso "Cadastre um restaurante antes de criar usuários que não sejam SUPER_ADMIN."
+- [ ] Criar usuário `OPERADOR_CAIXA` vinculado ao restaurante do passo 3 → `POST /api/admin/usuarios`, sem campo `ativo` no request, senha nunca aparece na resposta
+- [ ] Editar usuário → `PUT`, sem campo de senha no formulário de edição
+- [ ] Desativar usuário → `PATCH .../desativar`; Ativar → `PATCH .../ativar`
+- [ ] Tentar desativar o próprio usuário autenticado → `400` "Você não pode desativar o seu próprio usuário."
+- [ ] Fazer login com o usuário desativado → falha com "Email ou senha inválidos"
+- [ ] Login com usuário `ADMIN_RESTAURANTE` (se houver) → 403 "Você não tem permissão para acessar usuários.", sessão preservada
+
+## 9. Erros esperados (401/403/404/400)
 
 - [ ] Editar `totem.accessToken` no DevTools para um valor inválido e tentar qualquer ação → sessão expirada, botão "Ir para login", sessão limpa
 - [ ] Acessar qualquer subtela do Admin com token de dispositivo (Totem/Caixa/Cozinha) → 403 amigável, sessão preservada
 - [ ] CNPJ duplicado, nome de categoria duplicado no mesmo restaurante, `codigoIdentificacao` de dispositivo duplicado → 400 amigável no formulário
-- [ ] Restaurante/categoria/dispositivo com ID inexistente → 404 amigável
+- [ ] Restaurante/categoria/dispositivo/usuário com ID inexistente → 404 amigável
+- [ ] Email de usuário duplicado → 400 amigável no formulário
 
-## 9. Consistência visual
+## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição
 - [ ] Nenhum link aparece com a cor azul padrão do navegador (bug corrigido na TASK-047 — `<Link>` sem classe própria)
@@ -77,4 +88,4 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 ## Fora do escopo (ainda não implementado)
 
-CRUD de Usuários, upload de imagem de produto, refresh token, seletor visual de restaurante em Dispositivos, proteção de rota por perfil no frontend — ver "Limitações atuais do Admin" em `frontend/README.md`.
+Alteração de senha de usuário por um admin, upload de imagem de produto, refresh token, seletor visual de restaurante em Dispositivos, proteção de rota por perfil no frontend — ver "Limitações atuais do Admin" em `frontend/README.md`.
