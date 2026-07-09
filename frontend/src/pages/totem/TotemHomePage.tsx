@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AcompanhamentoPedido } from "../../components/totem/AcompanhamentoPedido";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { CartSummary } from "../../components/totem/CartSummary";
 import { CategoriaCardapioSection } from "../../components/totem/CategoriaCardapioSection";
@@ -9,7 +10,7 @@ import { PedidoCriadoResumo } from "../../components/totem/PedidoCriadoResumo";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { useCart } from "../../hooks/useCart";
-import { buscarCardapio, criarPedido, iniciarPagamento } from "../../services/totemService";
+import { buscarCardapio, consultarPedido, criarPedido, iniciarPagamento } from "../../services/totemService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
 import type {
@@ -21,6 +22,9 @@ import type {
   PedidoTotemResponse,
   TipoConsumo,
 } from "../../types/totem";
+import { isPedidoFinalizado } from "../../utils/pedidoStatus";
+
+const INTERVALO_POLLING_MS = 15000;
 
 export function TotemHomePage() {
   const navigate = useNavigate();
@@ -40,6 +44,11 @@ export function TotemHomePage() {
   const [erroPagamento, setErroPagamento] = useState<string | null>(null);
   const [pagamentoSemAutorizacao, setPagamentoSemAutorizacao] = useState(false);
   const [pagamentoResultado, setPagamentoResultado] = useState<PagamentoTotemResponse | null>(null);
+
+  const [pedidoAtual, setPedidoAtual] = useState<PedidoTotemResponse | null>(null);
+  const [atualizandoPedido, setAtualizandoPedido] = useState(false);
+  const [erroAtualizacaoPedido, setErroAtualizacaoPedido] = useState<string | null>(null);
+  const [atualizacaoSemAutorizacao, setAtualizacaoSemAutorizacao] = useState(false);
 
   const carregarCardapio = useCallback(async () => {
     setLoading(true);
@@ -144,6 +153,7 @@ export function TotemHomePage() {
       try {
         const response = await iniciarPagamento(pedidoCriado.pedidoId, request);
         setPagamentoResultado(response);
+        setPedidoAtual({ ...pedidoCriado, statusPedido: response.statusPedido });
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           clearSession();
@@ -167,6 +177,46 @@ export function TotemHomePage() {
     [pedidoCriado],
   );
 
+  const handleAtualizarPedido = useCallback(async () => {
+    if (!pedidoAtual) {
+      return;
+    }
+    setAtualizandoPedido(true);
+    setErroAtualizacaoPedido(null);
+    setAtualizacaoSemAutorizacao(false);
+
+    try {
+      const response = await consultarPedido(pedidoAtual.pedidoId);
+      setPedidoAtual(response);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        setAtualizacaoSemAutorizacao(true);
+        setErroAtualizacaoPedido("Sessão expirada. Ative o dispositivo novamente para continuar.");
+      } else if (error instanceof ApiError && error.status === 403) {
+        setErroAtualizacaoPedido("Este dispositivo não tem permissão para consultar este pedido.");
+      } else if (error instanceof ApiError && error.status === 404) {
+        setErroAtualizacaoPedido("Pedido não encontrado.");
+      } else if (error instanceof ApiError) {
+        setErroAtualizacaoPedido(error.message);
+      } else {
+        setErroAtualizacaoPedido("Não foi possível atualizar o status. Tente novamente.");
+      }
+    } finally {
+      setAtualizandoPedido(false);
+    }
+  }, [pedidoAtual]);
+
+  useEffect(() => {
+    if (!pedidoAtual || isPedidoFinalizado(pedidoAtual.statusPedido)) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      void handleAtualizarPedido();
+    }, INTERVALO_POLLING_MS);
+    return () => window.clearInterval(intervalId);
+  }, [pedidoAtual, handleAtualizarPedido]);
+
   const handleNovoPedido = useCallback(() => {
     setPedidoCriado(null);
     setErroPedido(null);
@@ -174,6 +224,9 @@ export function TotemHomePage() {
     setErroPagamento(null);
     setPagamentoSemAutorizacao(false);
     setPagamentoResultado(null);
+    setPedidoAtual(null);
+    setErroAtualizacaoPedido(null);
+    setAtualizacaoSemAutorizacao(false);
   }, []);
 
   const categorias = cardapio?.categorias ?? [];
@@ -198,7 +251,24 @@ export function TotemHomePage() {
       )}
 
       {!loading && !erro && pagamentoResultado && (
-        <PagamentoResultado resultado={pagamentoResultado} onNovoPedido={handleNovoPedido} />
+        <div className="totem-pos-pagamento">
+          <PagamentoResultado resultado={pagamentoResultado} onNovoPedido={handleNovoPedido} />
+
+          {pedidoAtual && (
+            <AcompanhamentoPedido
+              pedido={pedidoAtual}
+              onAtualizar={() => void handleAtualizarPedido()}
+              atualizando={atualizandoPedido}
+              erro={erroAtualizacaoPedido}
+            />
+          )}
+
+          {atualizacaoSemAutorizacao && (
+            <Button type="button" onClick={() => navigate("/ativar-dispositivo")}>
+              Ir para ativação de dispositivo
+            </Button>
+          )}
+        </div>
       )}
 
       {!loading && !erro && !pagamentoResultado && pedidoCriado && mostrarPagamento && (

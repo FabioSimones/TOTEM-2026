@@ -909,3 +909,107 @@ h6 {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+
+/* ===== Sequência pós-pagamento (resultado + acompanhamento) ===== */
+.totem-pos-pagamento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+/* ===== Acompanhamento do pedido ===== */
+.acompanhamento-pedido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  max-width: 32rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.acompanhamento-pedido__titulo {
+  font-size: var(--font-size-lg);
+}
+
+.acompanhamento-pedido__status {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.acompanhamento-pedido__orientacao {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-text);
+}
+
+.acompanhamento-pedido__detalhes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
+}
+
+.acompanhamento-pedido__detalhes dt {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.acompanhamento-pedido__detalhes dd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.acompanhamento-pedido__itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.acompanhamento-pedido__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.acompanhamento-pedido__item-observacao {
+  color: var(--color-text-muted);
+}
+
+.acompanhamento-pedido__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+}
+
+.acompanhamento-pedido__total strong {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-primary);
+}
+
+.acompanhamento-pedido__atualizar {
+  width: 100%;
+}

@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`).
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve.
 
 ## Stack
 
@@ -136,7 +136,27 @@ Formas de pagamento disponíveis: **Pix**, **Cartão de crédito**, **Cartão de
 6. Se o backend permitir repetir a chamada de pagamento sobre um pedido já `PAGO`, o erro retornado (400) aparece como mensagem amigável na própria tela de pagamento, sem travar a interface.
 7. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido antes de confirmar o pagamento: aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
 8. Alterne o tema (💡) na tela de seleção de pagamento e na tela de resultado (aprovado e pendente) — cores e bordas devem seguir os tokens do Design System nos dois temas.
-9. Consulta/polling de status do pedido e envio para a cozinha **não** fazem parte desta task — ficam para uma task futura.
+9. Logo após o pagamento, a tela `AcompanhamentoPedido` aparece abaixo do resultado — ver seção seguinte para testar o acompanhamento até a retirada.
+
+## Como testar o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`)
+
+A partir da TASK-035, assim que o pagamento é confirmado (qualquer forma), a tela `AcompanhamentoPedido` aparece logo abaixo de `PagamentoResultado`, mostrando o status atual do pedido, uma orientação textual para o cliente e um botão "Atualizar status". Enquanto o pedido não estiver em um status final (`RETIRADO`, `CANCELADO` ou `EXPIRADO`), a tela também faz um **polling leve** — consulta automática a cada 15 segundos via `totemService.consultarPedido` — além da atualização manual pelo botão.
+
+Como o Totem não envia pedido para a cozinha nem confirma pagamento em dinheiro (isso é dos módulos Caixa/Cozinha, fora do escopo desta task), os próximos passos do fluxo precisam ser simulados diretamente na API, usando os blocos do arquivo [`docs/http/totem-fast-food-mvp.http`](../docs/http/totem-fast-food-mvp.http) (ou qualquer cliente HTTP equivalente) com o token de um dispositivo `CAIXA`/`COZINHA` já ativado.
+
+1. Crie um pedido no Totem e pague com **Dinheiro**. Resultado imediato: `PagamentoResultado` mostra "Pagamento pendente" e `AcompanhamentoPedido` mostra o status "Aguardando pagamento no caixa" com a orientação "Dirija-se ao caixa para confirmar o pagamento em dinheiro.".
+2. No `docs/http/totem-fast-food-mvp.http`, use o bloco **22. Confirmar pagamento em dinheiro (Caixa)** (`POST /api/caixa/pedidos/{pedidoId}/confirmar-pagamento` com `tokenCaixa`) para confirmar o pagamento.
+3. No Totem, clique em "Atualizar status" (ou aguarde o polling de até 15s): o status muda para "Pagamento confirmado", com a orientação "Pagamento confirmado. Aguarde o envio para a cozinha.".
+4. Use o bloco **16. Enviar pedido para cozinha (Caixa)** (`POST /api/caixa/pedidos/{pedidoId}/enviar-cozinha`) para enviar o pedido.
+5. Atualize no Totem: status "Enviado para a cozinha".
+6. Use os blocos **18** e **19** (`PATCH /api/cozinha/pedidos/{pedidoId}/status` com `tokenCozinha`, body `{"statusPedido":"EM_PREPARO"}` e depois `{"statusPedido":"PRONTO"}`) para simular o preparo.
+7. Atualize no Totem entre cada passo: status/orientação mudam para "Em preparo" ("Seu pedido está em preparo.") e depois "Pronto para retirada" ("Seu pedido está pronto para retirada.").
+8. Use o bloco **20. Caixa: marcar como retirado** (`POST /api/caixa/pedidos/{pedidoId}/retirar`).
+9. Atualize no Totem: status "Retirado", orientação "Pedido retirado. Obrigado!" — o botão "Atualizar status" some (pedido em status final) e o polling para automaticamente.
+10. Para testar cancelamento, crie outro pedido e use o bloco **23. Cancelar pedido (Caixa)** (`POST /api/caixa/pedidos/{pedidoId}/cancelar`) antes de atingir um status final; atualize no Totem e confirme status "Cancelado" com a orientação "Pedido cancelado." (também sem botão de atualizar).
+11. Para simular sessão expirada durante o acompanhamento, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Atualizar status": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
+12. Abra o DevTools → Network e confirme que cada atualização (manual ou automática) é um `GET /api/totem/pedidos/{id}` sem corpo.
+13. Alterne o tema (💡) com o acompanhamento visível em diferentes status — cores e bordas devem seguir os tokens do Design System nos dois temas.
 
 ## Cliente HTTP e sessão
 
@@ -173,7 +193,8 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Consulta/polling do pedido (`GET /api/totem/pedidos/{id}`) para acompanhar a evolução de status (ex.: confirmação do pagamento em dinheiro pelo caixa, envio para a cozinha) — hoje a tela de resultado do pagamento é estática, sem atualização automática.
-2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
-3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
-4. Service worker / instalabilidade PWA completa.
+1. Frontend do Caixa (`/caixa`): listar pendências, confirmar pagamento em dinheiro, enviar para cozinha, marcar retirada — hoje esses passos só podem ser feitos via `docs/http/totem-fast-food-mvp.http`, o Totem apenas consulta o status já refletido.
+2. Frontend da Cozinha (`/cozinha`): listar pedidos e atualizar status (`EM_PREPARO`/`PRONTO`).
+3. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
+4. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
+5. Service worker / instalabilidade PWA completa.

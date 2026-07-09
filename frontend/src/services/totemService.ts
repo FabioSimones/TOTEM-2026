@@ -24,3 +24,8 @@ export function iniciarPagamento(
 ): Promise<PagamentoTotemResponse> {
   return api.post<PagamentoTotemResponse>(`/api/totem/pedidos/${pedidoId}/pagamento`, request);
 }
+
+/** GET /api/totem/pedidos/{id} — consulta o status atual do pedido (atualização manual/polling). */
+export function consultarPedido(pedidoId: number): Promise<PedidoTotemResponse> {
+  return api.get<PedidoTotemResponse>(`/api/totem/pedidos/${pedidoId}`);
+}
