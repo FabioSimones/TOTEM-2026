@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
 import type { UsuarioAutenticadoResponse } from "../../types/auth";
@@ -11,7 +11,18 @@ const ROTULO_PERFIL: Record<UsuarioAutenticadoResponse["perfil"], string> = {
   OPERADOR_COZINHA: "Operador de cozinha",
 };
 
-const AREAS_FUTURAS = ["Restaurantes", "Dispositivos", "Categorias", "Produtos", "Usuários"];
+interface AreaAdmin {
+  nome: string;
+  rota?: string;
+}
+
+const AREAS_ADMIN: AreaAdmin[] = [
+  { nome: "Restaurantes" },
+  { nome: "Dispositivos", rota: "/admin/dispositivos" },
+  { nome: "Categorias" },
+  { nome: "Produtos" },
+  { nome: "Usuários" },
+];
 
 export function AdminHomePage() {
   const navigate = useNavigate();
@@ -50,12 +61,18 @@ export function AdminHomePage() {
         </div>
 
         <div className="admin-dashboard__areas">
-          {AREAS_FUTURAS.map((area) => (
-            <div key={area} className="admin-dashboard__area-card">
-              <span>{area}</span>
-              <span className="admin-dashboard__area-card-tag">Em breve</span>
-            </div>
-          ))}
+          {AREAS_ADMIN.map((area) =>
+            area.rota ? (
+              <Link key={area.nome} to={area.rota} className="admin-dashboard__area-card admin-dashboard__area-card--link">
+                <span>{area.nome}</span>
+              </Link>
+            ) : (
+              <div key={area.nome} className="admin-dashboard__area-card">
+                <span>{area.nome}</span>
+                <span className="admin-dashboard__area-card-tag">Em breve</span>
+              </div>
+            ),
+          )}
         </div>
       </section>
     </AppLayout>

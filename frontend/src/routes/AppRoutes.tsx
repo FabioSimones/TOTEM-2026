@@ -6,6 +6,7 @@ import { CaixaHomePage } from "../pages/caixa/CaixaHomePage";
 import { CozinhaHomePage } from "../pages/cozinha/CozinhaHomePage";
 import { AdminLoginPage } from "../pages/admin/AdminLoginPage";
 import { AdminHomePage } from "../pages/admin/AdminHomePage";
+import { AdminDispositivosPage } from "../pages/admin/AdminDispositivosPage";
 
 export function AppRoutes() {
   return (
@@ -17,6 +18,7 @@ export function AppRoutes() {
       <Route path="/cozinha" element={<CozinhaHomePage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="/admin" element={<AdminHomePage />} />
+      <Route path="/admin/dispositivos" element={<AdminDispositivosPage />} />
     </Routes>
   );
 }

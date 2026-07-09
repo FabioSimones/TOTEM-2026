@@ -1297,3 +1297,147 @@ h6 {
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+
+.admin-dashboard__area-card--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.admin-dashboard__area-card--link:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ===== Admin — cadastro de dispositivos ===== */
+.dispositivo-form {
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--spacing-lg);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.dispositivo-form__titulo {
+  font-size: var(--font-size-lg);
+}
+
+.dispositivo-form__tipo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.dispositivo-form__tipo-rotulo {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.dispositivo-form__tipo-opcoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.dispositivo-form__tipo-botao {
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.dispositivo-form__tipo-botao:hover {
+  border-color: var(--color-primary);
+}
+
+.dispositivo-form__tipo-botao--ativo {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+/* ===== Admin — card de dispositivo ===== */
+.dispositivo-card__status {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.dispositivo-card__status--ativo {
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.dispositivo-card__status--revogado {
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+
+.dispositivo-card__codigo-ativacao {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-elevated);
+  border: 1px dashed var(--color-border);
+}
+
+.dispositivo-card__codigo-ativacao-rotulo {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.dispositivo-card__codigo-ativacao-valor {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+}
+
+.dispositivo-card__copiar {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.dispositivo-card__copiar:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
