@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { CartSummary } from "../../components/totem/CartSummary";
 import { CategoriaCardapioSection } from "../../components/totem/CategoriaCardapioSection";
+import { PedidoCriadoResumo } from "../../components/totem/PedidoCriadoResumo";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { useCart } from "../../hooks/useCart";
-import { buscarCardapio } from "../../services/totemService";
+import { buscarCardapio, criarPedido } from "../../services/totemService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { CardapioTotemResponse } from "../../types/totem";
+import type { CardapioTotemResponse, CriarPedidoTotemRequest, PedidoTotemResponse, TipoConsumo } from "../../types/totem";
 
 export function TotemHomePage() {
   const navigate = useNavigate();
@@ -18,6 +19,11 @@ export function TotemHomePage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
+
+  const [pedidoCriado, setPedidoCriado] = useState<PedidoTotemResponse | null>(null);
+  const [criandoPedido, setCriandoPedido] = useState(false);
+  const [erroPedido, setErroPedido] = useState<string | null>(null);
+  const [pedidoSemAutorizacao, setPedidoSemAutorizacao] = useState(false);
 
   const carregarCardapio = useCallback(async () => {
     setLoading(true);
@@ -59,6 +65,54 @@ export function TotemHomePage() {
     void carregarCardapio();
   }, [navigate, carregarCardapio]);
 
+  const handleCreateOrder = useCallback(
+    async (dados: { clienteNome: string; tipoConsumo: TipoConsumo }) => {
+      setCriandoPedido(true);
+      setErroPedido(null);
+      setPedidoSemAutorizacao(false);
+
+      const request: CriarPedidoTotemRequest = {
+        tipoConsumo: dados.tipoConsumo,
+        clienteNome: dados.clienteNome,
+        itens: cart.itens.map((item) => ({
+          produtoId: item.produtoId,
+          quantidade: item.quantidade,
+          ...(item.observacao ? { observacao: item.observacao } : {}),
+        })),
+      };
+
+      try {
+        const response = await criarPedido(request);
+        setPedidoCriado(response);
+        cart.clearCart();
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          clearSession();
+          setPedidoSemAutorizacao(true);
+          setErroPedido("Sessão expirada. Ative o dispositivo novamente para continuar.");
+        } else if (error instanceof ApiError && error.status === 403) {
+          setErroPedido("Este dispositivo não tem permissão para criar pedidos.");
+        } else if (error instanceof ApiError && error.status === 404) {
+          setErroPedido(
+            "Um ou mais produtos do carrinho não estão mais disponíveis. Atualize o cardápio e tente novamente.",
+          );
+        } else if (error instanceof ApiError) {
+          setErroPedido(error.message || "Não foi possível criar o pedido. Verifique os dados informados.");
+        } else {
+          setErroPedido("Não foi possível criar o pedido. Tente novamente.");
+        }
+      } finally {
+        setCriandoPedido(false);
+      }
+    },
+    [cart],
+  );
+
+  const handleNovoPedido = useCallback(() => {
+    setPedidoCriado(null);
+    setErroPedido(null);
+  }, []);
+
   const categorias = cardapio?.categorias ?? [];
 
   return (
@@ -80,11 +134,15 @@ export function TotemHomePage() {
         </div>
       )}
 
-      {!loading && !erro && categorias.length === 0 && (
+      {!loading && !erro && pedidoCriado && (
+        <PedidoCriadoResumo pedido={pedidoCriado} onNovoPedido={handleNovoPedido} />
+      )}
+
+      {!loading && !erro && !pedidoCriado && categorias.length === 0 && (
         <p className="totem-estado">Nenhum produto disponível no momento.</p>
       )}
 
-      {!loading && !erro && categorias.length > 0 && (
+      {!loading && !erro && !pedidoCriado && categorias.length > 0 && (
         <div className="totem-layout">
           <div className="totem-layout__cardapio">
             {categorias.map((categoria) => (
@@ -100,7 +158,15 @@ export function TotemHomePage() {
             onRemove={cart.removeItem}
             onChangeObservacao={cart.setObservacao}
             onClear={cart.clearCart}
+            onCreateOrder={handleCreateOrder}
+            criandoPedido={criandoPedido}
+            erroPedido={erroPedido}
           />
+          {pedidoSemAutorizacao && (
+            <Button type="button" onClick={() => navigate("/ativar-dispositivo")}>
+              Ir para ativação de dispositivo
+            </Button>
+          )}
         </div>
       )}
     </AppLayout>

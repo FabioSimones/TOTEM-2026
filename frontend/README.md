@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho.
 
 ## Stack
 
@@ -97,16 +97,30 @@ Requer backend rodando e um dispositivo **TOTEM** já ativado (ver seção anter
 
 ## Como testar o carrinho do Totem
 
-Carrinho local, em memória (`useCart`, `src/hooks/useCart.ts`) — não persiste em `localStorage` e ainda não chama o backend. Nenhum pedido é criado nesta task.
+Carrinho local, em memória (`useCart`, `src/hooks/useCart.ts`) — não persiste em `localStorage`. A partir da TASK-033 o botão "Finalizar pedido" abre um formulário e cria o pedido de verdade no backend (ver seção seguinte).
 
 1. Com o cardápio carregado em `/totem`, clique em "Adicionar" em um produto: ele aparece no carrinho (coluna lateral no desktop, abaixo do cardápio no mobile) com quantidade 1 e subtotal calculado.
 2. Clique em "Adicionar" no mesmo produto novamente: a linha não duplica, a quantidade incrementa.
 3. Use os botões **+**/**−** no carrinho para ajustar a quantidade; subtotal do item e "Total estimado" atualizam a cada mudança.
 4. Diminua a quantidade até zero (ou clique em "Remover"): o item some da lista.
-5. Digite algo no campo "Observação" de um item (ex.: "Sem cebola") — fica associado ao item, mas não é enviado a lugar nenhum ainda.
+5. Digite algo no campo "Observação" de um item (ex.: "Sem cebola") — fica associado ao item e é enviado ao criar o pedido.
 6. Clique em "Limpar carrinho": todos os itens somem e aparece a mensagem "Seu carrinho está vazio.".
-7. O botão "Finalizar pedido" é um placeholder desabilitado — a criação real do pedido (`POST /api/totem/pedidos`) é uma task futura.
-8. Alterne o tema (💡) com itens no carrinho e confirme que cores/bordas continuam consistentes com o resto da tela.
+7. Alterne o tema (💡) com itens no carrinho e confirme que cores/bordas continuam consistentes com o resto da tela.
+
+## Como testar a criação de pedido (`POST /api/totem/pedidos`)
+
+Requer backend rodando, restaurante com categoria ativa e produto disponível, e um dispositivo **TOTEM** já ativado.
+
+1. Suba o backend (`cd backend && mvn spring-boot:run`) e o frontend (`cd frontend && npm run dev`).
+2. Em `/totem`, adicione um ou mais produtos ao carrinho e clique em "Finalizar pedido": aparece o formulário com campo "Seu nome" e as opções "Comer no local" / "Para viagem" (LOCAL selecionado por padrão).
+3. Clique em "Criar pedido" com o nome vazio: nenhuma chamada é feita ao backend, aparece a mensagem "Informe seu nome para continuar.".
+4. Preencha o nome, escolha o tipo de consumo e clique em "Criar pedido": o botão mostra "Aguarde..." durante a chamada a `totemService.criarPedido` (`POST /api/totem/pedidos`).
+5. Confira no DevTools → Network o corpo da requisição: contém apenas `tipoConsumo`, `clienteNome` e `itens[].{produtoId, quantidade, observacao}` — nenhum campo de preço, subtotal, valorTotal ou restauranteId é enviado.
+6. Sucesso esperado: o carrinho é limpo e a tela passa a mostrar o resumo do pedido — número do pedido, status (`CRIADO`), cliente, tipo de consumo, itens com subtotal e total confirmados pelo backend. O botão "Ir para pagamento" aparece desabilitado (implementação é uma task futura).
+7. Clique em "Fazer novo pedido" para voltar ao cardápio e montar um novo carrinho.
+8. Para simular erro de produto indisponível, marque o produto do carrinho como indisponível no admin (`PATCH /api/admin/produtos/{id}/disponibilidade`) antes de clicar em "Criar pedido": o backend responde com erro e a tela mostra uma mensagem amigável, sem perder os dados do formulário.
+9. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido antes de criar o pedido: aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
+10. Alterne o tema (💡) com o formulário aberto e com o resumo do pedido visível — cores e bordas devem seguir os tokens do Design System nos dois temas.
 
 ## Cliente HTTP e sessão
 
@@ -143,7 +157,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Criação de pedido (`POST /api/totem/pedidos`) e pagamento (`POST /api/totem/pedidos/{id}/pagamento`) a partir do carrinho — botão "Finalizar pedido" em `CartSummary` está desabilitado à espera desta task.
+1. Pagamento (`POST /api/totem/pedidos/{id}/pagamento`) a partir do pedido criado — botão "Ir para pagamento" em `PedidoCriadoResumo` está desabilitado à espera desta task.
 2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
 3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
 4. Service worker / instalabilidade PWA completa.
