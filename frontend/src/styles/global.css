@@ -39,6 +39,17 @@ h6 {
   margin: 0;
 }
 
+/* Base de link — sem isso, um <a>/<Link> sem classe própria cai no azul
+   padrão do navegador, fora dos tokens do tema (achado na revisão TASK-047). */
+a {
+  color: var(--color-primary);
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
 .app-layout {
   min-height: 100%;
   display: flex;
@@ -1309,6 +1320,18 @@ h6 {
 .admin-dashboard__area-card--link:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.admin-voltar-link {
+  display: inline-block;
+  margin-bottom: var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.admin-voltar-link:hover {
+  text-decoration: underline;
 }
 
 /* ===== Admin — cadastro de dispositivos ===== */

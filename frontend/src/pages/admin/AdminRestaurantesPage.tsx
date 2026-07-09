@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
+import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { RestauranteCard } from "../../components/admin/restaurantes/RestauranteCard";
 import { RestauranteForm } from "../../components/admin/restaurantes/RestauranteForm";
 import { Button } from "../../components/ui/Button";
@@ -220,6 +221,8 @@ export function AdminRestaurantesPage() {
       title="Restaurantes"
       description="Cadastro e gestão dos restaurantes atendidos pelo sistema."
     >
+      <AdminVoltarLink />
+
       <div className="caixa-toolbar">
         <Button type="button" onClick={() => void carregarRestaurantes()} loading={loading}>
           Atualizar lista

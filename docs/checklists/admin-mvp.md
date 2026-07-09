@@ -1,0 +1,80 @@
+# Checklist — Frontend Administrativo do MVP
+
+Criado na TASK-047 (revisão do frontend administrativo). Complementa [`checklists/checklist-mvp.md`](../../checklists/checklist-mvp.md) e [`docs/checklists/fluxo-operacional-mvp.md`](fluxo-operacional-mvp.md) com passos concretos para validar manualmente o painel `/admin` numa máquina limpa.
+
+Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o porquê desta ordem — cada cadastro depende do anterior.
+
+## 1. Preparação
+
+- [ ] Backend rodando: `cd backend && mvn spring-boot:run`
+- [ ] Frontend rodando: `cd frontend && npm run dev`
+- [ ] Abrir `http://localhost:5173/admin` **sem** sessão salva → redireciona para `/admin/login`
+
+## 2. Login administrativo
+
+- [ ] `/admin/login` com campos vazios → não chama o backend, mostra "Informe e-mail e senha."
+- [ ] Login inválido → mensagem amigável (401), sem revelar se foi e-mail ou senha
+- [ ] Login com `admin@totem.local` / `Admin@2026!` → redireciona para `/admin`, mostra nome/e-mail/perfil
+- [ ] Recarregar `/admin` (F5) → sessão persiste
+- [ ] Botão "Sair" → limpa sessão e volta para `/admin/login`
+
+## 3. Restaurante (`/admin/restaurantes`)
+
+- [ ] Acessar via card "Restaurantes" em `/admin`, ou link "← Painel administrativo" para voltar
+- [ ] Lista vazia mostra "Nenhum restaurante cadastrado."
+- [ ] Criar restaurante com campos vazios → validação client-side, sem chamar o backend
+- [ ] Criar restaurante válido (nome + CNPJ de 14 dígitos) → `POST /api/admin/restaurantes`, aparece na lista com `id` (anotar para os próximos passos)
+- [ ] Editar restaurante → `PUT`, lista atualizada
+- [ ] Desativar → `PATCH .../desativar`; Ativar → `PATCH .../ativar`
+- [ ] Login com usuário `ADMIN_RESTAURANTE` (se houver) → 403 "Você não tem permissão para acessar restaurantes.", sessão preservada
+
+## 4. Categoria (`/admin/categorias`)
+
+- [ ] Sem restaurante cadastrado → aviso "Cadastre um restaurante antes de criar categorias."
+- [ ] Criar categoria vinculada ao restaurante do passo 3 → `POST /api/admin/categorias`, sem campo `ativa` no request
+- [ ] Filtrar por restaurante no topo → `GET .../categorias?restauranteId=`
+- [ ] Editar categoria → `PUT`, restaurante fixo (não editável)
+- [ ] Inativar categoria → `DELETE`, badge vira "Inativa", sem botão de reativar
+
+## 5. Produto (`/admin/produtos`)
+
+- [ ] Sem categoria para o restaurante selecionado → aviso "Cadastre uma categoria para este restaurante antes de criar produtos."
+- [ ] Criar produto (nome, categoria, preço > 0) → `POST /api/admin/produtos`
+- [ ] Preço vazio ou ≤ 0 → bloqueado no cliente, sem chamar o backend
+- [ ] Editar produto → `PUT`, sem `disponivel`/`destaque` no corpo (confirmar no Network)
+- [ ] Alternar disponibilidade → `PATCH .../disponibilidade`
+- [ ] Alternar destaque → `PATCH .../destaque`
+
+## 6. Validar produto no Totem
+
+- [ ] Ativar dispositivo TOTEM do restaurante cadastrado (ver seção 7 abaixo se ainda não existir um)
+- [ ] Abrir `/totem` → produto disponível aparece na categoria correta, com selo "Destaque"/"Recomendado" quando marcado
+- [ ] Marcar produto como indisponível no Admin → recarregar `/totem` → produto some
+- [ ] Marcar como disponível novamente → produto reaparece
+
+## 7. Dispositivo (`/admin/dispositivos`)
+
+- [ ] Criar dispositivo informando o `id` do restaurante (passo 3), nome, código de identificação e tipo
+- [ ] Copiar o `codigoAtivacao` gerado (botão "Copiar")
+- [ ] Abrir `/ativar-dispositivo` em outra aba, colar o código → dispositivo ativa e redireciona conforme o tipo
+- [ ] Voltar a `/admin/dispositivos` e atualizar a lista → "Ativado pelo dispositivo: Sim"
+- [ ] Revogar dispositivo → `PATCH .../revogar`, status "Revogado"
+- [ ] Tentar reativar em `/ativar-dispositivo` com o mesmo código → falha (dispositivo revogado)
+- [ ] Reativar pelo Admin → `PATCH .../ativar`, status volta a "Ativo"
+
+## 8. Erros esperados (401/403/404/400)
+
+- [ ] Editar `totem.accessToken` no DevTools para um valor inválido e tentar qualquer ação → sessão expirada, botão "Ir para login", sessão limpa
+- [ ] Acessar qualquer subtela do Admin com token de dispositivo (Totem/Caixa/Cozinha) → 403 amigável, sessão preservada
+- [ ] CNPJ duplicado, nome de categoria duplicado no mesmo restaurante, `codigoIdentificacao` de dispositivo duplicado → 400 amigável no formulário
+- [ ] Restaurante/categoria/dispositivo com ID inexistente → 404 amigável
+
+## 9. Consistência visual
+
+- [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição
+- [ ] Nenhum link aparece com a cor azul padrão do navegador (bug corrigido na TASK-047 — `<Link>` sem classe própria)
+- [ ] Todas as subtelas têm: título + descrição, link "← Painel administrativo", botão "Atualizar lista", loading, erro amigável, estado vazio
+
+## Fora do escopo (ainda não implementado)
+
+CRUD de Usuários, upload de imagem de produto, refresh token, seletor visual de restaurante em Dispositivos, proteção de rota por perfil no frontend — ver "Limitações atuais do Admin" em `frontend/README.md`.

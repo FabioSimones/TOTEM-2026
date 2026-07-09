@@ -10,7 +10,12 @@ export function listarRestaurantes(): Promise<RestauranteAdminResponse[]> {
   return api.get<RestauranteAdminResponse[]>("/api/admin/restaurantes");
 }
 
-/** GET /api/admin/restaurantes/{id} */
+/**
+ * GET /api/admin/restaurantes/{id} — exportada por completude/paridade com
+ * o backend, mas não é chamada por nenhuma tela nesta task: as páginas
+ * atuais sempre trabalham a partir da lista já carregada (`listarRestaurantes`),
+ * nunca navegam para uma "página de detalhe" de um restaurante específico.
+ */
 export function buscarRestaurantePorId(id: number): Promise<RestauranteAdminResponse> {
   return api.get<RestauranteAdminResponse>(`/api/admin/restaurantes/${id}`);
 }
