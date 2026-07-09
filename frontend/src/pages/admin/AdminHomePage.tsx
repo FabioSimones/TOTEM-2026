@@ -19,7 +19,7 @@ interface AreaAdmin {
 const AREAS_ADMIN: AreaAdmin[] = [
   { nome: "Restaurantes", rota: "/admin/restaurantes" },
   { nome: "Dispositivos", rota: "/admin/dispositivos" },
-  { nome: "Categorias" },
+  { nome: "Categorias", rota: "/admin/categorias" },
   { nome: "Produtos" },
   { nome: "Usuários" },
 ];
