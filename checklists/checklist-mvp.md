@@ -1,5 +1,7 @@
 # Checklist do MVP
 
+> Para passos detalhados de validação do ciclo operacional completo (Totem → Caixa → Cozinha → Caixa → Retirada), ver [`docs/checklists/fluxo-operacional-mvp.md`](../docs/checklists/fluxo-operacional-mvp.md).
+
 ## Administrativo
 
 - [ ] Login administrativo funcionando

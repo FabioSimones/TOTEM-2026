@@ -35,8 +35,10 @@ Permissão exigida: SUPER_ADMIN
 
 | Método | Rota | Objetivo |
 |---|---|---|
-| GET | `/api/caixa/pedidos/pendentes` | Listar pendências de pagamento |
+| GET | `/api/caixa/pedidos/pendentes` | Listar pedidos que exigem ação do Caixa (`AGUARDANDO_PAGAMENTO_DINHEIRO`, `PAGO`, `PRONTO`) |
 | POST | `/api/caixa/pedidos/{id}/confirmar-pagamento` | Confirmar dinheiro ou pagamento manual |
+| POST | `/api/caixa/pedidos/{id}/enviar-cozinha` | Enviar pedido pago para a cozinha |
+| POST | `/api/caixa/pedidos/{id}/retirar` | Marcar pedido pronto como retirado |
 | POST | `/api/caixa/pedidos/{id}/cancelar` | Cancelar pedido pendente |
 
 ## Cozinha

@@ -79,20 +79,57 @@ Pedido vai para cozinha
 ## Fluxo da cozinha
 
 ```text
-Pedido pago aparece na cozinha
+Caixa envia pedido pago para a cozinha
 ↓
-Funcionário inicia preparo
+Pedido aparece na cozinha como ENVIADO_PARA_COZINHA
 ↓
-Pedido muda para EM_PREPARO
+Funcionário da cozinha inicia preparo
+↓
+Status muda para EM_PREPARO
 ↓
 Pedido fica pronto
 ↓
-Status muda para PRONTO
+Funcionário da cozinha marca como PRONTO
 ↓
-Cliente retira
+Pedido some da fila da cozinha e passa a aparecer no Caixa
+↓
+Cliente retira no balcão
+↓
+Funcionário do Caixa marca o pedido como retirado
 ↓
 Status muda para RETIRADO
 ```
+
+## Fluxo operacional completo (Totem → Caixa → Cozinha → Caixa → Retirada)
+
+Consolidação de todos os fluxos acima em um único ciclo de vida do pedido, do ponto de vista de qual módulo executa cada ação (documentado na TASK-041, após a implementação do backend TASK-004–027 e do frontend TASK-028–040):
+
+```text
+TOTEM
+  Cliente monta o carrinho e cria o pedido        → statusPedido=CRIADO
+  Cliente escolhe a forma de pagamento
+    Pix/Cartão → aprovação simulada imediata      → statusPedido=PAGO
+    Dinheiro   → aguarda confirmação no caixa      → statusPedido=AGUARDANDO_PAGAMENTO_DINHEIRO
+↓
+CAIXA (só entra em ação se o pedido não foi pago automaticamente, ou sempre para enviar à cozinha)
+  Se AGUARDANDO_PAGAMENTO_DINHEIRO: operador confirma o dinheiro recebido
+                                                    → statusPedido=PAGO
+  Operador envia o pedido pago para a cozinha       → statusPedido=ENVIADO_PARA_COZINHA
+↓
+COZINHA
+  Equipe inicia o preparo                           → statusPedido=EM_PREPARO
+  Equipe marca como pronto                          → statusPedido=PRONTO
+↓
+CAIXA
+  Cliente retira o pedido no balcão
+  Operador marca como retirado                      → statusPedido=RETIRADO (fim do ciclo)
+↓
+TOTEM
+  Tela de acompanhamento do cliente reflete cada mudança de status acima
+  (atualização manual + polling automático leve de 15s em GET /api/totem/pedidos/{id})
+```
+
+Cancelamento é um desvio possível **antes** do envio à cozinha: o Caixa pode cancelar um pedido em `CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO` ou `PAGO` → `statusPedido=CANCELADO`. A partir de `ENVIADO_PARA_COZINHA` o cancelamento não é mais permitido (envolveria perda de insumos/preparo em andamento).
 
 ## Fluxo de alteração de cardápio
 

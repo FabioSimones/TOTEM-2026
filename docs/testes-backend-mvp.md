@@ -380,28 +380,26 @@ Não existe teste de integração real (subindo contexto Spring + banco) no proj
 | `POST /api/auth/refresh` | Documentado, **não implementado** | Implementar em task futura de refresh token, ou remover da doc até lá |
 | `POST /api/auth/logout` | Documentado, **não implementado** | Idem — depende de refresh token existir primeiro |
 | `POST /api/admin/usuarios`, `GET`, `PUT`, `PATCH /desativar` | Documentados, **nenhum implementado** (não existe `UsuarioAdminController`) | CRUD administrativo de usuários nunca foi implementado em nenhuma task até a 024 — avaliar se é necessário para o MVP ou se pode ficar para depois do frontend |
-| `POST /api/caixa/pedidos/{id}/enviar-cozinha` | **Implementado, não documentado** em `docs/08-endpoints.md` | Adicionar à tabela "Caixa" da doc |
-| `POST /api/caixa/pedidos/{id}/retirar` | **Implementado, não documentado** em `docs/08-endpoints.md` | Adicionar à tabela "Caixa" da doc |
 | `POST /api/webhooks/pix`, `POST /api/webhooks/pagamentos` | Documentados como "futuros", não implementados | Esperado — não é uma divergência real, apenas roadmap ainda não executado |
 
-Nenhuma correção foi aplicada automaticamente, conforme instruído.
+`POST /api/caixa/pedidos/{id}/enviar-cozinha` e `.../retirar` estavam implementados mas ausentes de `docs/08-endpoints.md` desde a TASK-026/TASK-027 — **corrigido na TASK-041** (revisão ponta a ponta).
 
 ## 9. Pendências consolidadas
 
 ### Pendências técnicas
 
 - Sem testes de integração (HTTP + banco real) — só unitários de regra de negócio e de autenticação isolada.
-- `POST /api/caixa/pedidos/{id}/enviar-cozinha` e `.../retirar` implementados mas ausentes de `docs/08-endpoints.md`.
 - Não existe listagem administrativa de pedidos/histórico (nenhum endpoint `GET /api/admin/pedidos` ou similar) — hoje só é possível inspecionar pedidos via banco ou via os endpoints operacionais (Totem/Caixa/Cozinha), cada um com seu próprio escopo restrito.
 - CRUD administrativo de `Usuario` nunca foi implementado, apesar de documentado em `docs/08-endpoints.md`.
+- `TotemApplicationTests.contextLoads` falha em ambiente local por erro de criação do bean `JwtService`/`SecurityConfig` — investigado na TASK-041 e confirmado como problema de configuração/ambiente pré-existente, não relacionado a nenhuma mudança de código recente (reproduzido mesmo com `git stash` revertendo as últimas alterações). Fica como dívida técnica a investigar (provável causa: propriedade de configuração do JWT ausente/mal formada no perfil de teste).
 
 ### Pendências de produto
 
-- Sem frontend (Totem, Caixa, Cozinha, Admin) — todo o MVP foi validado via `curl`/HTTP direto.
-- Sem WebSocket/atualização em tempo real — Caixa e Cozinha dependeriam de polling em `GET /api/caixa/pedidos/pendentes` (quando existir) e `GET /api/cozinha/pedidos`.
+- **Atualizado na TASK-041**: o frontend do Totem, Caixa e Cozinha foi implementado nas TASK-028 a TASK-040 (`frontend/`) e cobre o ciclo operacional completo — só o **painel Admin** continua sem frontend (CRUD de restaurante/categoria/produto/dispositivo/usuário só via `docs/http`/backend direto).
+- Sem WebSocket/atualização em tempo real — Caixa e Cozinha usam **polling manual** (botão "Atualizar lista") sobre `GET /api/caixa/pedidos/pendentes` e `GET /api/cozinha/pedidos`; o Totem usa polling automático leve (15s) em `GET /api/totem/pedidos/{id}` para acompanhamento.
 - Sem expiração automática de pedidos não pagos (`StatusPedido.EXPIRADO` existe no enum, mas nada o atribui automaticamente).
 - Sem relatórios/dashboards administrativos.
-- Adicionais/complementos de produto não implementados (mencionados no contrato de `docs/09-contratos-api.md` como `complementos`, mas fora de escopo em todas as tasks).
+- Adicionais/complementos de produto não implementados — nunca fizeram parte do contrato real (o `complementos` que aparecia em versões antigas de `docs/09-contratos-api.md` era um campo de design nunca implementado; documento corrigido na TASK-041).
 
 ### Pendências de segurança
 
@@ -419,13 +417,15 @@ Nenhuma correção foi aplicada automaticamente, conforme instruído.
 
 ## 10. O backend está pronto para iniciar o frontend?
 
+> **Nota (TASK-041)**: esta seção foi escrita na TASK-027, antes do frontend existir, como um checklist de prontidão do backend. O frontend operacional (Totem/Caixa/Cozinha) foi implementado nas TASK-028 a TASK-040 e todas as 4 ressalvas abaixo se confirmaram corretas na prática. O texto original foi mantido como registro histórico da decisão.
+
 **Sim, para o fluxo operacional principal do MVP** (Totem → Pagamento → Caixa → Cozinha → Retirada/Cancelamento), que está implementado, consistente e testável ponta a ponta conforme a seção 5 deste documento.
 
 Com a TASK-027, a tela de Caixa ganhou a peça que faltava: `GET /api/caixa/pedidos/pendentes` já entrega, num único request, tudo que o Caixa precisa agir (dinheiro pendente + pago aguardando envio à cozinha), com `acaoSugerida` pronta para decidir qual botão mostrar.
 
 Ressalvas que o time de frontend ainda precisa saber antes de começar:
 
-1. Painéis de Caixa e Cozinha vão precisar de **polling manual** (sem WebSocket) — inclusive para atualizar a fila de `GET /api/caixa/pedidos/pendentes`.
-2. Login/sessão administrativa não tem refresh token — o frontend admin precisa lidar com expiração de sessão sem um fluxo de renovação automática.
-3. Painel administrativo de usuários não tem backend — se o MVP de frontend incluir gestão de usuários, essa API precisa ser criada antes.
-4. Cancelamento de pedido pago não estorna — se a UI permitir cancelar um pedido pago, deve deixar claro ao operador que o valor não é automaticamente devolvido.
+1. Painéis de Caixa e Cozinha vão precisar de **polling manual** (sem WebSocket) — inclusive para atualizar a fila de `GET /api/caixa/pedidos/pendentes`. ✅ Confirmado: implementado como botão "Atualizar lista" em ambos.
+2. Login/sessão administrativa não tem refresh token — o frontend admin precisa lidar com expiração de sessão sem um fluxo de renovação automática. Ainda pendente — painel Admin não implementado.
+3. Painel administrativo de usuários não tem backend — se o MVP de frontend incluir gestão de usuários, essa API precisa ser criada antes. Ainda pendente.
+4. Cancelamento de pedido pago não estorna — se a UI permitir cancelar um pedido pago, deve deixar claro ao operador que o valor não é automaticamente devolvido. ✅ Confirmado: `PedidoPendenteCard` no Caixa permite cancelar pedidos `PAGO`, sem indicação de estorno na UI — mesma limitação do backend, documentada no `frontend/README.md`.

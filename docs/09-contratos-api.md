@@ -1,33 +1,34 @@
 # Contratos de Dados da API
 
-## Criar pedido
+Revisado na TASK-041 para refletir os DTOs Java reais (antes desta revisão, este documento continha campos de um design inicial que nunca foram implementados — ver histórico do repositório). Os exemplos abaixo são representativos; para o contrato completo por campo, ver `docs/08-endpoints.md` e os próprios DTOs em `backend/src/main/java/com/totem/fastfood/dto/`.
+
+## Totem
+
+### Criar pedido
 
 `POST /api/totem/pedidos`
 
-Request:
+Request — o frontend nunca envia preço, subtotal, total ou `restauranteId` (vêm sempre do produto cadastrado e do dispositivo autenticado):
 
 ```json
 {
   "tipoConsumo": "LOCAL",
   "clienteNome": "Fabio",
   "itens": [
-    {
-      "produtoId": 10,
-      "quantidade": 1,
-      "complementos": [3, 7],
-      "observacao": "Sem cebola"
-    }
+    { "produtoId": 10, "quantidade": 1, "observacao": "Sem cebola" }
   ]
 }
 ```
 
-Response:
+Response (`201 Created`):
 
 ```json
 {
   "pedidoId": 1024,
   "numeroPedido": "A1024",
   "statusPedido": "CRIADO",
+  "tipoConsumo": "LOCAL",
+  "clienteNome": "Fabio",
   "valorTotal": 39.90,
   "itens": [
     {
@@ -35,17 +36,23 @@ Response:
       "nomeProduto": "Combo X-Burger",
       "quantidade": 1,
       "precoUnitario": 39.90,
-      "subtotal": 39.90
+      "subtotal": 39.90,
+      "observacao": "Sem cebola"
     }
-  ]
+  ],
+  "criadoEm": "2026-05-05T15:00:00"
 }
 ```
 
-## Iniciar pagamento
+### Consultar pedido
 
-`POST /api/totem/pedidos/1024/pagamento`
+`GET /api/totem/pedidos/{id}` — mesmo formato de response da criação (usado pelo Totem para acompanhamento manual/polling).
 
-Request:
+### Iniciar pagamento
+
+`POST /api/totem/pedidos/{id}/pagamento`
+
+Request — só `formaPagamento` (`PIX`, `CARTAO_CREDITO`, `CARTAO_DEBITO` ou `DINHEIRO`); o frontend nunca envia valor:
 
 ```json
 {
@@ -53,51 +60,175 @@ Request:
 }
 ```
 
-Response:
+Response (`201 Created`) — PIX/cartão retornam `statusPagamento=AUTORIZADO`/`statusPedido=PAGO`; dinheiro retorna `PENDENTE`/`AGUARDANDO_PAGAMENTO_DINHEIRO`:
 
 ```json
 {
+  "pedidoId": 1024,
+  "numeroPedido": "A1024",
+  "statusPedido": "PAGO",
   "pagamentoId": 9001,
-  "statusPagamento": "PENDENTE",
-  "qrCodePix": "000201...",
-  "expiraEm": "2026-05-05T15:30:00"
+  "formaPagamento": "PIX",
+  "statusPagamento": "AUTORIZADO",
+  "valor": 39.90,
+  "codigoAutorizacao": "FAKE-AUTH-123",
+  "referenciaExterna": null,
+  "mensagem": "Pagamento aprovado",
+  "criadoEm": "2026-05-05T15:05:00"
 }
 ```
 
-## Confirmar dinheiro
+## Caixa
 
-`POST /api/caixa/pedidos/1024/confirmar-pagamento`
+### Listar pendências
 
-Request:
+`GET /api/caixa/pedidos/pendentes` — retorna pedidos do restaurante do dispositivo em `AGUARDANDO_PAGAMENTO_DINHEIRO`, `PAGO` ou `PRONTO` (a partir da TASK-040), cada um com `acaoSugerida`:
+
+```json
+[
+  {
+    "pedidoId": 1024,
+    "numeroPedido": "A1024",
+    "statusPedido": "AGUARDANDO_PAGAMENTO_DINHEIRO",
+    "tipoConsumo": "LOCAL",
+    "clienteNome": "Fabio",
+    "valorTotal": 39.90,
+    "criadoEm": "2026-05-05T15:00:00",
+    "atualizadoEm": "2026-05-05T15:00:00",
+    "acaoSugerida": "CONFIRMAR_PAGAMENTO",
+    "itens": [
+      { "produtoId": 10, "nomeProduto": "Combo X-Burger", "quantidade": 1, "observacao": null, "subtotal": 39.90 }
+    ]
+  }
+]
+```
+
+Mapeamento de `acaoSugerida`: `AGUARDANDO_PAGAMENTO_DINHEIRO` → `CONFIRMAR_PAGAMENTO`; `PAGO` → `ENVIAR_PARA_COZINHA`; `PRONTO` → `MARCAR_RETIRADO`.
+
+### Confirmar dinheiro
+
+`POST /api/caixa/pedidos/{id}/confirmar-pagamento`
+
+Request — só `observacao`, opcional. O Caixa nunca envia `formaPagamento`, `valorRecebido` ou qualquer valor monetário:
 
 ```json
 {
-  "formaPagamento": "DINHEIRO",
-  "valorRecebido": 50.00,
   "observacao": "Pagamento recebido no caixa"
 }
 ```
 
-## Atualizar status na cozinha
+Response (`200 OK`):
 
-`PATCH /api/cozinha/pedidos/1024/status`
+```json
+{
+  "pedidoId": 1024,
+  "numeroPedido": "A1024",
+  "statusPedido": "PAGO",
+  "pagamentoId": 9001,
+  "formaPagamento": "DINHEIRO",
+  "statusPagamento": "AUTORIZADO",
+  "valor": 39.90,
+  "confirmadoEm": "2026-05-05T15:10:00"
+}
+```
+
+### Enviar para a cozinha
+
+`POST /api/caixa/pedidos/{id}/enviar-cozinha` — sem corpo de requisição. Exige pedido `PAGO`.
+
+```json
+{
+  "pedidoId": 1024,
+  "numeroPedido": "A1024",
+  "statusPedido": "ENVIADO_PARA_COZINHA",
+  "valorTotal": 39.90,
+  "enviadoParaCozinhaEm": "2026-05-05T15:12:00"
+}
+```
+
+### Marcar como retirado
+
+`POST /api/caixa/pedidos/{id}/retirar` — sem corpo de requisição. Exige pedido `PRONTO`.
+
+```json
+{
+  "pedidoId": 1024,
+  "numeroPedido": "A1024",
+  "statusAnterior": "PRONTO",
+  "statusAtual": "RETIRADO",
+  "atualizadoEm": "2026-05-05T15:40:00"
+}
+```
+
+### Cancelar pedido
+
+`POST /api/caixa/pedidos/{id}/cancelar` — permitido apenas em `CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO` ou `PAGO`.
+
+Request — só `motivo`, obrigatório (3 a 500 caracteres):
+
+```json
+{
+  "motivo": "Cliente desistiu do pedido"
+}
+```
+
+Response (`200 OK`):
+
+```json
+{
+  "pedidoId": 1024,
+  "numeroPedido": "A1024",
+  "statusAnterior": "CRIADO",
+  "statusAtual": "CANCELADO",
+  "motivo": "Cliente desistiu do pedido",
+  "atualizadoEm": "2026-05-05T15:02:00"
+}
+```
+
+## Cozinha
+
+### Listar pedidos
+
+`GET /api/cozinha/pedidos` — retorna pedidos `ENVIADO_PARA_COZINHA`/`EM_PREPARO` do restaurante, sem nenhum campo financeiro (sem `valorTotal`/`precoUnitario`/`subtotal`).
+
+### Atualizar status na cozinha
+
+`PATCH /api/cozinha/pedidos/{id}/status` — transições permitidas: `ENVIADO_PARA_COZINHA → EM_PREPARO` e `EM_PREPARO → PRONTO` (nenhuma outra, inclusive não permite pular etapa nem regredir).
 
 Request:
 
 ```json
 {
-  "statusPedido": "EM_PREPARO"
+  "statusPedido": "EM_PREPARO",
+  "observacao": "Preparo iniciado"
+}
+```
+
+Response (`200 OK`):
+
+```json
+{
+  "pedidoId": 1024,
+  "numeroPedido": "A1024",
+  "statusAnterior": "ENVIADO_PARA_COZINHA",
+  "statusAtual": "EM_PREPARO",
+  "atualizadoEm": "2026-05-05T15:15:00"
 }
 ```
 
 ## Erro padrão
 
+Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:
+
 ```json
 {
-  "codigo": "PEDIDO_NAO_PAGO",
-  "mensagem": "Pedido não pode ser enviado para a cozinha antes da confirmação do pagamento.",
-  "campo": "statusPedido",
   "timestamp": "2026-05-05T15:10:22",
-  "path": "/api/cozinha/pedidos/1024/status"
+  "status": 400,
+  "error": "Requisição inválida",
+  "message": "Pedido não está pago e não pode ser enviado para a cozinha. Status atual: CRIADO",
+  "path": "/api/caixa/pedidos/1024/enviar-cozinha",
+  "errors": null
 }
 ```
+
+`errors` só é preenchido em erros de validação de campo (`400` por `@Valid`/Bean Validation), como uma lista de `{"campo": "...", "mensagem": "..."}` — um item por campo inválido.
