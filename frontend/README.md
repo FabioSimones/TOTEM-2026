@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem.
 
 ## Stack
 
@@ -88,12 +88,25 @@ Requer backend rodando e um dispositivo **TOTEM** já ativado (ver seção anter
 
 1. Sem token salvo, abrir `http://localhost:5173/totem` diretamente redireciona para `/ativar-dispositivo` — a tela nunca chega a chamar o backend sem sessão.
 2. Após ativar um dispositivo TOTEM, `/totem` chama `GET /api/totem/cardapio` automaticamente ao montar (`totemService.buscarCardapio`), mostrando "Carregando cardápio..." enquanto aguarda.
-3. Sucesso: categorias e produtos disponíveis aparecem em grid (1 coluna no mobile, 2–3 no desktop), com nome, descrição, preço formatado em R$, imagem (ou um emoji placeholder se `imagemUrl` for nulo) e selos "Destaque"/"Recomendado" quando aplicável. O botão "Adicionar" é só um placeholder desabilitado — carrinho é uma task futura.
+3. Sucesso: categorias e produtos disponíveis aparecem em grid (1 coluna no mobile, 2–3 no desktop), com nome, descrição, preço formatado em R$, imagem (ou um emoji placeholder se `imagemUrl` for nulo) e selos "Destaque"/"Recomendado" quando aplicável. O botão "Adicionar" adiciona o produto ao carrinho local (ver seção abaixo).
 4. Marcar um produto como `disponivel=false` ou uma categoria como `ativa=false` no admin (`PATCH /api/admin/produtos/{id}/disponibilidade`, `PUT /api/admin/categorias/{id}`) e recarregar a tela: o item some — a filtragem já é feita pelo backend, o frontend só renderiza o que a API retorna.
 5. Sem nenhuma categoria/produto disponível: mensagem "Nenhum produto disponível no momento."
 6. Token inválido/expirado (edite `totem.accessToken` no DevTools para um valor qualquer): a tela mostra "Sessão expirada..." e limpa a sessão local, com botão para voltar à ativação.
 7. Token de outro tipo de dispositivo (ex.: ative um CAIXA e depois visite `/totem` manualmente sem reativar): mostra "Este dispositivo não tem permissão..." sem apagar a sessão (o token continua válido para `/caixa`).
 8. Alterne o tema (💡) e confirme que cards, selos e botões se adaptam a dark/light sem cor fora do lugar.
+
+## Como testar o carrinho do Totem
+
+Carrinho local, em memória (`useCart`, `src/hooks/useCart.ts`) — não persiste em `localStorage` e ainda não chama o backend. Nenhum pedido é criado nesta task.
+
+1. Com o cardápio carregado em `/totem`, clique em "Adicionar" em um produto: ele aparece no carrinho (coluna lateral no desktop, abaixo do cardápio no mobile) com quantidade 1 e subtotal calculado.
+2. Clique em "Adicionar" no mesmo produto novamente: a linha não duplica, a quantidade incrementa.
+3. Use os botões **+**/**−** no carrinho para ajustar a quantidade; subtotal do item e "Total estimado" atualizam a cada mudança.
+4. Diminua a quantidade até zero (ou clique em "Remover"): o item some da lista.
+5. Digite algo no campo "Observação" de um item (ex.: "Sem cebola") — fica associado ao item, mas não é enviado a lugar nenhum ainda.
+6. Clique em "Limpar carrinho": todos os itens somem e aparece a mensagem "Seu carrinho está vazio.".
+7. O botão "Finalizar pedido" é um placeholder desabilitado — a criação real do pedido (`POST /api/totem/pedidos`) é uma task futura.
+8. Alterne o tema (💡) com itens no carrinho e confirme que cores/bordas continuam consistentes com o resto da tela.
 
 ## Cliente HTTP e sessão
 
@@ -130,8 +143,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Carrinho: seleção de produtos do cardápio, quantidade, observação — botão "Adicionar" em `ProdutoCard` está desabilitado à espera desta task.
-2. Criação de pedido (`POST /api/totem/pedidos`) e pagamento (`POST /api/totem/pedidos/{id}/pagamento`) a partir do carrinho.
-3. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
-4. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
-5. Service worker / instalabilidade PWA completa.
+1. Criação de pedido (`POST /api/totem/pedidos`) e pagamento (`POST /api/totem/pedidos/{id}/pagamento`) a partir do carrinho — botão "Finalizar pedido" em `CartSummary` está desabilitado à espera desta task.
+2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
+3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
+4. Service worker / instalabilidade PWA completa.

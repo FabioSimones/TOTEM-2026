@@ -4,9 +4,10 @@ import { Button } from "../ui/Button";
 
 interface ProdutoCardProps {
   produto: ProdutoCardapioResponse;
+  onAdd?: (produto: ProdutoCardapioResponse) => void;
 }
 
-export function ProdutoCard({ produto }: ProdutoCardProps) {
+export function ProdutoCard({ produto, onAdd }: ProdutoCardProps) {
   return (
     <article className="produto-card">
       {produto.imagemUrl ? (
@@ -32,12 +33,7 @@ export function ProdutoCard({ produto }: ProdutoCardProps) {
 
         <div className="produto-card__rodape">
           <span className="produto-card__preco">{formatCurrencyBRL(produto.preco)}</span>
-          <Button
-            type="button"
-            className="produto-card__botao"
-            disabled
-            title="Carrinho será implementado em uma próxima task"
-          >
+          <Button type="button" className="produto-card__botao" onClick={() => onAdd?.(produto)}>
             Adicionar
           </Button>
         </div>

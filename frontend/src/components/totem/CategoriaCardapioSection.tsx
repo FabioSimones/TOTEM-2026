@@ -1,11 +1,12 @@
-import type { CategoriaCardapioResponse } from "../../types/totem";
+import type { CategoriaCardapioResponse, ProdutoCardapioResponse } from "../../types/totem";
 import { ProdutoCard } from "./ProdutoCard";
 
 interface CategoriaCardapioSectionProps {
   categoria: CategoriaCardapioResponse;
+  onAddProduct?: (produto: ProdutoCardapioResponse) => void;
 }
 
-export function CategoriaCardapioSection({ categoria }: CategoriaCardapioSectionProps) {
+export function CategoriaCardapioSection({ categoria, onAddProduct }: CategoriaCardapioSectionProps) {
   return (
     <section className="categoria-section">
       <div className="categoria-section__cabecalho">
@@ -15,7 +16,7 @@ export function CategoriaCardapioSection({ categoria }: CategoriaCardapioSection
 
       <div className="categoria-section__grid">
         {categoria.produtos.map((produto) => (
-          <ProdutoCard key={produto.id} produto={produto} />
+          <ProdutoCard key={produto.id} produto={produto} onAdd={onAddProduct} />
         ))}
       </div>
     </section>

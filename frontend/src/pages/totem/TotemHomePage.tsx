@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
+import { CartSummary } from "../../components/totem/CartSummary";
 import { CategoriaCardapioSection } from "../../components/totem/CategoriaCardapioSection";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { useCart } from "../../hooks/useCart";
 import { buscarCardapio } from "../../services/totemService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
@@ -11,6 +13,7 @@ import type { CardapioTotemResponse } from "../../types/totem";
 
 export function TotemHomePage() {
   const navigate = useNavigate();
+  const cart = useCart();
   const [cardapio, setCardapio] = useState<CardapioTotemResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -81,9 +84,25 @@ export function TotemHomePage() {
         <p className="totem-estado">Nenhum produto disponível no momento.</p>
       )}
 
-      {!loading &&
-        !erro &&
-        categorias.map((categoria) => <CategoriaCardapioSection key={categoria.id} categoria={categoria} />)}
+      {!loading && !erro && categorias.length > 0 && (
+        <div className="totem-layout">
+          <div className="totem-layout__cardapio">
+            {categorias.map((categoria) => (
+              <CategoriaCardapioSection key={categoria.id} categoria={categoria} onAddProduct={cart.addItem} />
+            ))}
+          </div>
+
+          <CartSummary
+            itens={cart.itens}
+            totalEstimado={cart.totalEstimado}
+            onIncrement={cart.increment}
+            onDecrement={cart.decrement}
+            onRemove={cart.removeItem}
+            onChangeObservacao={cart.setObservacao}
+            onClear={cart.clearCart}
+          />
+        </div>
+      )}
     </AppLayout>
   );
 }
