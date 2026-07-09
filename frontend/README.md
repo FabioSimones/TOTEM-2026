@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha.
 
 ## Stack
 
@@ -66,12 +66,12 @@ src/
 | `/` | `HomePage` | Ponto de entrada |
 | `/ativar-dispositivo` | `AtivarDispositivoPage` | **Real** — ativação de dispositivo (Totem/Caixa/Cozinha) |
 | `/totem` | `TotemHomePage` | **Real** — cardápio, carrinho, pedido, pagamento e acompanhamento do dispositivo TOTEM |
-| `/caixa` | `CaixaHomePage` | **Real** — lista de pendências do dispositivo CAIXA (ações ainda placeholder) |
+| `/caixa` | `CaixaHomePage` | **Real** — lista de pendências e ações de confirmar dinheiro/enviar à cozinha do dispositivo CAIXA (retirada/cancelamento ainda pendentes) |
 | `/cozinha` | `CozinhaHomePage` | Cozinha (placeholder) |
 | `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
 | `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
 
-`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035) e `/caixa` (TASK-036) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035) e `/caixa` (TASK-036 e TASK-037) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
 
 ## Como testar a ativação de dispositivo
 
@@ -160,21 +160,38 @@ Como o Totem não envia pedido para a cozinha nem confirma pagamento em dinheiro
 
 ## Como testar a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`)
 
-A partir da TASK-036, `/caixa` lista os pedidos que exigem ação do operador de caixa — confirmação de pagamento em dinheiro ou envio para a cozinha. **Os botões de ação (`Confirmar dinheiro`/`Enviar para cozinha`) ainda são placeholders desabilitados nesta task** — a execução real dessas ações fica para a próxima task.
+A partir da TASK-036, `/caixa` lista os pedidos que exigem ação do operador de caixa — confirmação de pagamento em dinheiro ou envio para a cozinha. A partir da TASK-037 os botões de ação (`Confirmar dinheiro`/`Enviar para cozinha`) executam de verdade contra o backend — ver a seção seguinte.
 
 Requer um dispositivo **CAIXA** ativado (ver seção "Como testar a ativação de dispositivo"; use `tipoDispositivo: "CAIXA"` ao cadastrar o dispositivo).
 
 1. Sem token salvo, abrir `http://localhost:5173/caixa` diretamente redireciona para `/ativar-dispositivo` — a tela nunca chega a chamar o backend sem sessão.
 2. Ative um dispositivo CAIXA e confirme o redirecionamento automático para `/caixa`.
 3. Sem nenhum pedido pendente no restaurante, a tela mostra "Nenhum pedido pendente no momento.".
-4. Gere uma pendência de dinheiro: ative um dispositivo TOTEM (em outra aba/sessão, já que o token é único por `localStorage`), crie um pedido e pague com **Dinheiro**. Volte para `/caixa` (reative o dispositivo CAIXA se o token tiver sido sobrescrito) e clique em "Atualizar lista": o pedido aparece com status "Aguardando pagamento no caixa", a orientação "Cliente escolheu pagar em dinheiro. Confirme o recebimento no caixa." e o botão "Confirmar dinheiro" desabilitado.
-5. Gere uma pendência de envio à cozinha: crie outro pedido pelo Totem e pague com **Pix** ou **cartão**. Atualize a lista do Caixa: o pedido aparece com status "Pagamento confirmado", a orientação "Pagamento confirmado. Envie o pedido para a cozinha." e o botão "Enviar para cozinha" desabilitado.
+4. Gere uma pendência de dinheiro: ative um dispositivo TOTEM (em outra aba/sessão, já que o token é único por `localStorage`), crie um pedido e pague com **Dinheiro**. Volte para `/caixa` (reative o dispositivo CAIXA se o token tiver sido sobrescrito) e clique em "Atualizar lista": o pedido aparece com status "Aguardando pagamento no caixa", a orientação "Cliente escolheu pagar em dinheiro. Confirme o recebimento no caixa." e o botão "Confirmar dinheiro" ativo.
+5. Gere uma pendência de envio à cozinha: crie outro pedido pelo Totem e pague com **Pix** ou **cartão**. Atualize a lista do Caixa: o pedido aparece com status "Pagamento confirmado", a orientação "Pagamento confirmado. Envie o pedido para a cozinha." e o botão "Enviar para cozinha" ativo.
 6. Confira que cada card mostra número do pedido, cliente, tipo de consumo, datas de criação/atualização, itens (com observação quando houver) e o total formatado em R$.
 7. Clique em "Atualizar lista" a qualquer momento: o botão mostra "Aguarde..." durante a chamada e a lista é recarregada com `GET /api/caixa/pedidos/pendentes`.
 8. Para simular erro de permissão, acesse `/caixa` com um token de TOTEM ou COZINHA (ative um desses dispositivos e edite a rota manualmente): aparece "Este dispositivo não tem permissão para acessar o Caixa.", sem apagar a sessão salva (o token continua válido para o módulo original).
 9. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Atualizar lista": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
 10. Alterne o tema (💡) com a lista de pendências visível — cards, badges de status e botões devem seguir os tokens do Design System nos dois temas.
 11. Pedidos em `CRIADO`/`AGUARDANDO_PAGAMENTO` (aguardando o cliente no Totem) ou a partir de `ENVIADO_PARA_COZINHA` (responsabilidade da Cozinha) não aparecem nesta lista — isso é filtrado pelo próprio backend, não pelo frontend.
+
+## Como testar as ações do Caixa (confirmar dinheiro e enviar para cozinha)
+
+A partir da TASK-037, os botões de ação de cada card em `/caixa` executam de verdade. **Retirada e cancelamento continuam fora do escopo** — ficam para uma task futura.
+
+1. Gere um pedido em dinheiro pelo Totem (ver seção anterior) e abra `/caixa`: o card aparece com o botão "Confirmar dinheiro" e um campo opcional "Observação".
+2. Clique em "Confirmar dinheiro": aparece um `window.confirm` pedindo confirmação (ex.: "Confirmar pagamento em dinheiro do pedido A1?"). Cancelar a confirmação não dispara nenhuma chamada.
+3. Confirme. O botão mostra "Aguarde..." durante a chamada a `POST /api/caixa/pedidos/{id}/confirmar-pagamento` (corpo: apenas `{"observacao": "..."}` ou `{}` se o campo ficou vazio). Ao terminar, a lista é recarregada automaticamente e aparece a mensagem "Pagamento em dinheiro do pedido A1 confirmado." acima da lista.
+4. O mesmo pedido continua na lista, agora com status "Pagamento confirmado" e o botão "Enviar para cozinha" (o backend passou `acaoSugerida` de `CONFIRMAR_PAGAMENTO` para `ENVIAR_PARA_COZINHA`).
+5. Em outra aba com um dispositivo TOTEM ativado, abra o acompanhamento desse mesmo pedido (`/totem`, tela pós-pagamento) e clique em "Atualizar status": o status passa a `PAGO`, refletindo a confirmação feita no Caixa.
+6. De volta ao Caixa, clique em "Enviar para cozinha": aparece um `window.confirm` (ex.: "Enviar o pedido A1 para a cozinha?"). Confirme — o botão mostra "Aguarde..." durante `POST /api/caixa/pedidos/{id}/enviar-cozinha` (sem corpo). Ao terminar, a lista recarrega e o pedido **sai** da lista de pendências, com a mensagem "Pedido A1 enviado para a cozinha.".
+7. No Totem, atualize o acompanhamento do mesmo pedido: o status passa a `ENVIADO_PARA_COZINHA`.
+8. Gere um novo pedido pelo Totem e pague com **Pix** ou **cartão**: ele já aparece direto no Caixa com `acaoSugerida=ENVIAR_PARA_COZINHA` (sem passar por "Confirmar dinheiro"); confirme que "Enviar para cozinha" funciona normalmente para ele também.
+9. Para simular erro 400, tente reenviar o mesmo pedido para a cozinha depois que ele já saiu da lista (ex.: chame `POST /api/caixa/pedidos/{id}/enviar-cozinha` de novo pelo `docs/http` com o mesmo `pedidoId`, já `ENVIADO_PARA_COZINHA`) — se reproduzir a ação pela UI de outra forma, a mensagem de erro do backend aparece dentro do card correspondente, sem travar o restante da lista.
+10. Para simular erro de permissão, acesse `/caixa` com um token de TOTEM ou COZINHA: a lista sequer chega a ser exibida (erro de acesso já tratado no carregamento — ver seção anterior).
+11. Para simular sessão expirada durante uma ação, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Confirmar dinheiro" ou "Enviar para cozinha": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo", substituindo a lista.
+12. Alterne o tema (💡) com um card em estado de carregamento (`Aguarde...`) e com a mensagem de sucesso visível — cores e bordas devem seguir os tokens do Design System nos dois temas.
 
 ## Cliente HTTP e sessão
 
@@ -211,7 +228,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Ações do Caixa: confirmar pagamento em dinheiro (`POST /api/caixa/pedidos/{id}/confirmar-pagamento`), enviar para cozinha (`POST /api/caixa/pedidos/{id}/enviar-cozinha`), marcar retirada (`POST /api/caixa/pedidos/{id}/retirar`) e cancelar (`POST /api/caixa/pedidos/{id}/cancelar`) — os botões em `PedidoPendenteCard` já existem, só desabilitados à espera desta task.
+1. Marcar retirada (`POST /api/caixa/pedidos/{id}/retirar`) e cancelar (`POST /api/caixa/pedidos/{id}/cancelar`) no Caixa — confirmar dinheiro e enviar à cozinha já foram implementados na TASK-037; retirada/cancelamento ficam para uma task futura (retirada só faz sentido depois que a Cozinha marcar `PRONTO`).
 2. Frontend da Cozinha (`/cozinha`): listar pedidos e atualizar status (`EM_PREPARO`/`PRONTO`).
 3. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
 4. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.

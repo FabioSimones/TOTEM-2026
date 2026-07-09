@@ -1134,3 +1134,31 @@ h6 {
 .pedido-pendente-card__acao {
   width: 100%;
 }
+
+.pedido-pendente-card__observacao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.pedido-pendente-card__observacao input {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pedido-pendente-card__observacao input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.pedido-pendente-card__observacao input:disabled {
+  opacity: 0.6;
+}

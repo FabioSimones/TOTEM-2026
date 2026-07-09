@@ -40,6 +40,15 @@ export interface ConfirmarPagamentoDinheiroResponse {
   confirmadoEm: string;
 }
 
+/** POST /api/caixa/pedidos/{id}/enviar-cozinha — sem corpo de requisição. */
+export interface EnviarPedidoCozinhaResponse {
+  pedidoId: number;
+  numeroPedido: string;
+  statusPedido: StatusPedido;
+  valorTotal: number;
+  enviadoParaCozinhaEm: string;
+}
+
 /** POST /api/caixa/pedidos/{id}/cancelar */
 export interface CancelarPedidoRequest {
   motivo: string;

@@ -1,12 +1,18 @@
+import { useState } from "react";
 import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
 import { getAcaoCaixaDescription, getAcaoCaixaLabel } from "../../utils/caixaStatus";
 import { formatCurrencyBRL, formatDateTimeBRL } from "../../utils/formatters";
 import { getPedidoStatusLabel } from "../../utils/pedidoStatus";
 import { Button } from "../ui/Button";
+import { ErrorMessage } from "../ui/ErrorMessage";
 import { ItemPedidoCaixaRow } from "./ItemPedidoCaixaRow";
 
 interface PedidoPendenteCardProps {
   pedido: PedidoPendenteCaixaResponse;
+  executando: boolean;
+  erro: string | null;
+  onConfirmarPagamento: (pedidoId: number, observacao?: string) => void;
+  onEnviarCozinha: (pedidoId: number) => void;
 }
 
 const ROTULO_TIPO_CONSUMO: Record<PedidoPendenteCaixaResponse["tipoConsumo"], string> = {
@@ -14,7 +20,29 @@ const ROTULO_TIPO_CONSUMO: Record<PedidoPendenteCaixaResponse["tipoConsumo"], st
   VIAGEM: "Para viagem",
 };
 
-export function PedidoPendenteCard({ pedido }: PedidoPendenteCardProps) {
+export function PedidoPendenteCard({
+  pedido,
+  executando,
+  erro,
+  onConfirmarPagamento,
+  onEnviarCozinha,
+}: PedidoPendenteCardProps) {
+  const [observacao, setObservacao] = useState("");
+
+  function handleClicarAcao() {
+    if (pedido.acaoSugerida === "CONFIRMAR_PAGAMENTO") {
+      if (!window.confirm(`Confirmar pagamento em dinheiro do pedido ${pedido.numeroPedido}?`)) {
+        return;
+      }
+      onConfirmarPagamento(pedido.pedidoId, observacao.trim() || undefined);
+    } else {
+      if (!window.confirm(`Enviar o pedido ${pedido.numeroPedido} para a cozinha?`)) {
+        return;
+      }
+      onEnviarCozinha(pedido.pedidoId);
+    }
+  }
+
   return (
     <article className="pedido-pendente-card">
       <div className="pedido-pendente-card__cabecalho">
@@ -56,12 +84,22 @@ export function PedidoPendenteCard({ pedido }: PedidoPendenteCardProps) {
         <strong>{formatCurrencyBRL(pedido.valorTotal)}</strong>
       </div>
 
-      <Button
-        type="button"
-        className="pedido-pendente-card__acao"
-        disabled
-        title="Esta ação será implementada em uma próxima task"
-      >
+      {pedido.acaoSugerida === "CONFIRMAR_PAGAMENTO" && (
+        <label className="pedido-pendente-card__observacao">
+          Observação (opcional)
+          <input
+            type="text"
+            value={observacao}
+            onChange={(event) => setObservacao(event.target.value)}
+            placeholder="Ex.: Cliente pagou com nota de R$ 100"
+            disabled={executando}
+          />
+        </label>
+      )}
+
+      <ErrorMessage message={erro} />
+
+      <Button type="button" className="pedido-pendente-card__acao" loading={executando} onClick={handleClicarAcao}>
         {getAcaoCaixaLabel(pedido.acaoSugerida)}
       </Button>
     </article>

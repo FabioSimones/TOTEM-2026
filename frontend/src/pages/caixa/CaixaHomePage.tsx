@@ -4,7 +4,7 @@ import { AppLayout } from "../../components/layout/AppLayout";
 import { PedidoPendenteCard } from "../../components/caixa/PedidoPendenteCard";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
-import { listarPendencias } from "../../services/caixaService";
+import { confirmarPagamentoDinheiro, enviarPedidoParaCozinha, listarPendencias } from "../../services/caixaService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
 import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
@@ -15,11 +15,16 @@ export function CaixaHomePage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
+  const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+
+  const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
+  const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
 
   const carregarPendencias = useCallback(async () => {
     setLoading(true);
     setErro(null);
     setSemAutorizacao(false);
+    setMensagemSucesso(null);
 
     try {
       const response = await listarPendencias();
@@ -56,6 +61,75 @@ export function CaixaHomePage() {
     void carregarPendencias();
   }, [navigate, carregarPendencias]);
 
+  const marcarAcaoEmAndamento = useCallback((pedidoId: number, emAndamento: boolean) => {
+    setAcoesEmAndamento((atual) => {
+      const proximo = new Set(atual);
+      if (emAndamento) {
+        proximo.add(pedidoId);
+      } else {
+        proximo.delete(pedidoId);
+      }
+      return proximo;
+    });
+  }, []);
+
+  const tratarErroAcao = useCallback(
+    (pedidoId: number, error: unknown, mensagemPadrao: string) => {
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        setSemAutorizacao(true);
+        setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+      } else if (error instanceof ApiError && error.status === 403) {
+        setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Este dispositivo não tem permissão para executar esta ação." }));
+      } else if (error instanceof ApiError && error.status === 404) {
+        setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Pedido não encontrado." }));
+      } else if (error instanceof ApiError && error.status === 400) {
+        setErrosAcao((atual) => ({ ...atual, [pedidoId]: error.message || mensagemPadrao }));
+      } else if (error instanceof ApiError) {
+        setErrosAcao((atual) => ({ ...atual, [pedidoId]: error.message }));
+      } else {
+        setErrosAcao((atual) => ({ ...atual, [pedidoId]: mensagemPadrao }));
+      }
+    },
+    [],
+  );
+
+  const handleConfirmarPagamento = useCallback(
+    async (pedidoId: number, observacao?: string) => {
+      setErrosAcao((atual) => ({ ...atual, [pedidoId]: null }));
+      marcarAcaoEmAndamento(pedidoId, true);
+
+      try {
+        const response = await confirmarPagamentoDinheiro(pedidoId, { observacao });
+        await carregarPendencias();
+        setMensagemSucesso(`Pagamento em dinheiro do pedido ${response.numeroPedido} confirmado.`);
+      } catch (error) {
+        tratarErroAcao(pedidoId, error, "Não foi possível confirmar o pagamento. Tente novamente.");
+      } finally {
+        marcarAcaoEmAndamento(pedidoId, false);
+      }
+    },
+    [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
+  );
+
+  const handleEnviarCozinha = useCallback(
+    async (pedidoId: number) => {
+      setErrosAcao((atual) => ({ ...atual, [pedidoId]: null }));
+      marcarAcaoEmAndamento(pedidoId, true);
+
+      try {
+        const response = await enviarPedidoParaCozinha(pedidoId);
+        await carregarPendencias();
+        setMensagemSucesso(`Pedido ${response.numeroPedido} enviado para a cozinha.`);
+      } catch (error) {
+        tratarErroAcao(pedidoId, error, "Não foi possível enviar o pedido para a cozinha. Tente novamente.");
+      } finally {
+        marcarAcaoEmAndamento(pedidoId, false);
+      }
+    },
+    [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
+  );
+
   return (
     <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro e envio à cozinha.">
       <div className="caixa-toolbar">
@@ -63,6 +137,12 @@ export function CaixaHomePage() {
           Atualizar lista
         </Button>
       </div>
+
+      {!loading && !erro && mensagemSucesso && (
+        <p className="ui-success-message" role="status">
+          {mensagemSucesso}
+        </p>
+      )}
 
       {loading && <p className="totem-estado">Carregando pendências...</p>}
 
@@ -88,7 +168,14 @@ export function CaixaHomePage() {
       {!loading && !erro && pendencias.length > 0 && (
         <div className="caixa-lista">
           {pendencias.map((pedido) => (
-            <PedidoPendenteCard key={pedido.pedidoId} pedido={pedido} />
+            <PedidoPendenteCard
+              key={pedido.pedidoId}
+              pedido={pedido}
+              executando={acoesEmAndamento.has(pedido.pedidoId)}
+              erro={errosAcao[pedido.pedidoId] ?? null}
+              onConfirmarPagamento={handleConfirmarPagamento}
+              onEnviarCozinha={handleEnviarCozinha}
+            />
           ))}
         </div>
       )}
