@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`).
 
 ## Stack
 
@@ -67,11 +67,11 @@ src/
 | `/ativar-dispositivo` | `AtivarDispositivoPage` | **Real** — ativação de dispositivo (Totem/Caixa/Cozinha) |
 | `/totem` | `TotemHomePage` | **Real** — cardápio, carrinho, pedido, pagamento e acompanhamento do dispositivo TOTEM |
 | `/caixa` | `CaixaHomePage` | **Real** — lista de pendências e ações de confirmar dinheiro/enviar à cozinha do dispositivo CAIXA (retirada/cancelamento ainda pendentes) |
-| `/cozinha` | `CozinhaHomePage` | Cozinha (placeholder) |
+| `/cozinha` | `CozinhaHomePage` | **Real** — lista de pedidos e avanço de status (`ENVIADO_PARA_COZINHA`→`EM_PREPARO`→`PRONTO`) do dispositivo COZINHA |
 | `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
 | `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
 
-`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035) e `/caixa` (TASK-036 e TASK-037) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036 e TASK-037) e `/cozinha` (TASK-038) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
 
 ## Como testar a ativação de dispositivo
 
@@ -193,6 +193,24 @@ A partir da TASK-037, os botões de ação de cada card em `/caixa` executam de 
 11. Para simular sessão expirada durante uma ação, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Confirmar dinheiro" ou "Enviar para cozinha": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo", substituindo a lista.
 12. Alterne o tema (💡) com um card em estado de carregamento (`Aguarde...`) e com a mensagem de sucesso visível — cores e bordas devem seguir os tokens do Design System nos dois temas.
 
+## Como testar a Cozinha (`GET /api/cozinha/pedidos` e `PATCH /api/cozinha/pedidos/{id}/status`)
+
+Requer um dispositivo **COZINHA** ativado (`tipoDispositivo: "COZINHA"` ao cadastrar). A lista da Cozinha reaproveita o mesmo layout de card do Caixa (`pedido-pendente-card` em `global.css`) — visualmente os módulos são consistentes entre si.
+
+1. Sem token salvo, abrir `http://localhost:5173/cozinha` diretamente redireciona para `/ativar-dispositivo`.
+2. Ative um dispositivo COZINHA e confirme o redirecionamento automático para `/cozinha`.
+3. Sem nenhum pedido enviado à cozinha, a tela mostra "Nenhum pedido para preparar no momento.".
+4. Gere um pedido pelo Totem, pague (Pix/cartão ou dinheiro confirmado no Caixa) e envie para a cozinha pelo Caixa (`/caixa`, botão "Enviar para cozinha" — ver seção anterior). Abra `/cozinha` e clique em "Atualizar lista": o pedido aparece com status "Enviado para a cozinha", os itens (com observação quando houver) e o botão "Iniciar preparo".
+5. Clique em "Iniciar preparo": aparece um `window.confirm` (ex.: "Iniciar preparo do pedido A1?"). Confirme — o botão mostra "Aguarde..." durante `PATCH /api/cozinha/pedidos/{id}/status` com corpo `{"statusPedido":"EM_PREPARO"}`. Ao terminar, a lista recarrega, o pedido continua nela com status "Em preparo" e o botão muda para "Marcar como pronto".
+6. Em outra aba com um dispositivo TOTEM ativado, atualize o acompanhamento desse pedido (`/totem`): o status passa a `EM_PREPARO`.
+7. De volta à Cozinha, clique em "Marcar como pronto": confirme o `window.confirm`, aguarde `PATCH .../status` com `{"statusPedido":"PRONTO"}`. Ao terminar, o pedido **sai** da lista da Cozinha (o backend só lista `ENVIADO_PARA_COZINHA`/`EM_PREPARO`).
+8. No Totem, atualize o acompanhamento: o status passa a `PRONTO`, com a orientação "Seu pedido está pronto para retirada.".
+9. Para simular erro de transição inválida (400), tente pular etapa ou regredir status diretamente pelo `docs/http` (ex.: `PATCH .../status` de `EM_PREPARO` direto para `PRONTO` já feito, tentando `EM_PREPARO` de novo) — a mensagem de erro do backend aparece dentro do card, sem travar os demais pedidos da lista.
+10. Para simular erro de permissão, acesse `/cozinha` com um token de TOTEM ou CAIXA: aparece "Este dispositivo não tem permissão para acessar a Cozinha.", sem apagar a sessão salva.
+11. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Iniciar preparo" ou "Atualizar lista": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
+12. Alterne o tema (💡) com pedidos em diferentes status na lista — cores, bordas e botões devem seguir os tokens do Design System nos dois temas.
+13. Retirada (`POST /api/caixa/pedidos/{id}/retirar`) e cancelamento não fazem parte desta task — o pedido `PRONTO` só pode ser acompanhado (Totem) ou consultado via `docs/http` por enquanto.
+
 ## Cliente HTTP e sessão
 
 - `src/services/api.ts` — `apiFetch<T>(path, options)`: wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente (via `tokenStorage`) quando há um token salvo e `withAuth` não é `false`, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`). `api.get/post/put/patch/delete` são atalhos por verbo HTTP.
@@ -228,8 +246,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Marcar retirada (`POST /api/caixa/pedidos/{id}/retirar`) e cancelar (`POST /api/caixa/pedidos/{id}/cancelar`) no Caixa — confirmar dinheiro e enviar à cozinha já foram implementados na TASK-037; retirada/cancelamento ficam para uma task futura (retirada só faz sentido depois que a Cozinha marcar `PRONTO`).
-2. Frontend da Cozinha (`/cozinha`): listar pedidos e atualizar status (`EM_PREPARO`/`PRONTO`).
-3. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
-4. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
-5. Service worker / instalabilidade PWA completa.
+1. Marcar retirada (`POST /api/caixa/pedidos/{id}/retirar`) e cancelar (`POST /api/caixa/pedidos/{id}/cancelar`) no Caixa — agora que a Cozinha (TASK-038) já marca pedidos como `PRONTO`, a retirada fecha o ciclo completo do fluxo operacional.
+2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
+3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
+4. Service worker / instalabilidade PWA completa.

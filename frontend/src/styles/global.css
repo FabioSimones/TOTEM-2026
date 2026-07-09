@@ -1102,7 +1102,8 @@ h6 {
   gap: var(--spacing-xs);
 }
 
-.item-pedido-caixa-row {
+.item-pedido-caixa-row,
+.item-pedido-cozinha-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -1111,7 +1112,8 @@ h6 {
   font-size: var(--font-size-sm);
 }
 
-.item-pedido-caixa-row__observacao {
+.item-pedido-caixa-row__observacao,
+.item-pedido-cozinha-row__observacao {
   color: var(--color-text-muted);
 }
 
