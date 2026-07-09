@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`).
 
 ## Stack
 
@@ -116,11 +116,27 @@ Requer backend rodando, restaurante com categoria ativa e produto disponível, e
 3. Clique em "Criar pedido" com o nome vazio: nenhuma chamada é feita ao backend, aparece a mensagem "Informe seu nome para continuar.".
 4. Preencha o nome, escolha o tipo de consumo e clique em "Criar pedido": o botão mostra "Aguarde..." durante a chamada a `totemService.criarPedido` (`POST /api/totem/pedidos`).
 5. Confira no DevTools → Network o corpo da requisição: contém apenas `tipoConsumo`, `clienteNome` e `itens[].{produtoId, quantidade, observacao}` — nenhum campo de preço, subtotal, valorTotal ou restauranteId é enviado.
-6. Sucesso esperado: o carrinho é limpo e a tela passa a mostrar o resumo do pedido — número do pedido, status (`CRIADO`), cliente, tipo de consumo, itens com subtotal e total confirmados pelo backend. O botão "Ir para pagamento" aparece desabilitado (implementação é uma task futura).
+6. Sucesso esperado: o carrinho é limpo e a tela passa a mostrar o resumo do pedido — número do pedido, status (`CRIADO`), cliente, tipo de consumo, itens com subtotal e total confirmados pelo backend. A partir da TASK-034 o botão "Ir para pagamento" está habilitado (ver seção seguinte).
 7. Clique em "Fazer novo pedido" para voltar ao cardápio e montar um novo carrinho.
 8. Para simular erro de produto indisponível, marque o produto do carrinho como indisponível no admin (`PATCH /api/admin/produtos/{id}/disponibilidade`) antes de clicar em "Criar pedido": o backend responde com erro e a tela mostra uma mensagem amigável, sem perder os dados do formulário.
 9. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido antes de criar o pedido: aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
 10. Alterne o tema (💡) com o formulário aberto e com o resumo do pedido visível — cores e bordas devem seguir os tokens do Design System nos dois temas.
+
+## Como testar o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`)
+
+O provedor de pagamento do backend é um `FakePaymentProvider` (ver `docs/10-pagamentos.md`) — não há integração real com Pix, cartão ou gateway nenhum, apenas simulação determinística por forma de pagamento.
+
+Formas de pagamento disponíveis: **Pix**, **Cartão de crédito**, **Cartão de débito** e **Dinheiro**.
+
+1. Com backend e frontend rodando e um pedido já criado (ver seção anterior), clique em "Ir para pagamento" no resumo do pedido: aparece a tela `PagamentoPedido` com o valor a pagar (confirmado pelo backend) e as quatro opções de forma de pagamento (Pix pré-selecionado).
+2. Escolha **Pix** e clique em "Confirmar pagamento". Confira no DevTools → Network que o corpo da requisição é só `{"formaPagamento":"PIX"}` — sem `valor`, `statusPagamento`, `statusPedido` ou `restauranteId`.
+3. Resultado esperado: tela de sucesso (`PagamentoResultado`) com destaque verde, título "Pagamento aprovado!", `statusPagamento = AUTORIZADO`, `statusPedido = PAGO` e a orientação "Pagamento aprovado. Aguarde o envio para a cozinha.".
+4. Clique em "Fazer novo pedido", monte um novo carrinho e repita o pagamento escolhendo **Cartão de crédito** e, em outro pedido, **Cartão de débito**: ambos devem resultar em `AUTORIZADO`/`PAGO`, com a mesma tela de sucesso.
+5. Em um novo pedido, escolha **Dinheiro**: o resultado mostra destaque neutro, título "Pagamento pendente", `statusPagamento = PENDENTE`, `statusPedido = AGUARDANDO_PAGAMENTO_DINHEIRO` e a orientação "Pagamento em dinheiro aguardando confirmação no caixa. Dirija-se ao caixa para concluir o pagamento.".
+6. Se o backend permitir repetir a chamada de pagamento sobre um pedido já `PAGO`, o erro retornado (400) aparece como mensagem amigável na própria tela de pagamento, sem travar a interface.
+7. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido antes de confirmar o pagamento: aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
+8. Alterne o tema (💡) na tela de seleção de pagamento e na tela de resultado (aprovado e pendente) — cores e bordas devem seguir os tokens do Design System nos dois temas.
+9. Consulta/polling de status do pedido e envio para a cozinha **não** fazem parte desta task — ficam para uma task futura.
 
 ## Cliente HTTP e sessão
 
@@ -157,7 +173,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Pagamento (`POST /api/totem/pedidos/{id}/pagamento`) a partir do pedido criado — botão "Ir para pagamento" em `PedidoCriadoResumo` está desabilitado à espera desta task.
+1. Consulta/polling do pedido (`GET /api/totem/pedidos/{id}`) para acompanhar a evolução de status (ex.: confirmação do pagamento em dinheiro pelo caixa, envio para a cozinha) — hoje a tela de resultado do pagamento é estática, sem atualização automática.
 2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
 3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
 4. Service worker / instalabilidade PWA completa.

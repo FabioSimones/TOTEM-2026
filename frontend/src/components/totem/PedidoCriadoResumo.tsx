@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 interface PedidoCriadoResumoProps {
   pedido: PedidoTotemResponse;
   onNovoPedido: () => void;
+  onGoToPayment: () => void;
 }
 
 const ROTULO_TIPO_CONSUMO: Record<PedidoTotemResponse["tipoConsumo"], string> = {
@@ -12,7 +13,7 @@ const ROTULO_TIPO_CONSUMO: Record<PedidoTotemResponse["tipoConsumo"], string> = 
   VIAGEM: "Para viagem",
 };
 
-export function PedidoCriadoResumo({ pedido, onNovoPedido }: PedidoCriadoResumoProps) {
+export function PedidoCriadoResumo({ pedido, onNovoPedido, onGoToPayment }: PedidoCriadoResumoProps) {
   return (
     <section className="pedido-resumo">
       <h2 className="pedido-resumo__titulo">Pedido criado com sucesso!</h2>
@@ -55,12 +56,7 @@ export function PedidoCriadoResumo({ pedido, onNovoPedido }: PedidoCriadoResumoP
         <strong>{formatCurrencyBRL(pedido.valorTotal)}</strong>
       </div>
 
-      <Button
-        type="button"
-        className="pedido-resumo__pagamento"
-        disabled
-        title="O pagamento será implementado em uma próxima task"
-      >
+      <Button type="button" className="pedido-resumo__pagamento" onClick={onGoToPayment}>
         Ir para pagamento
       </Button>
 

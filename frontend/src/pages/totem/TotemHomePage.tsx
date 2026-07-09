@@ -3,14 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { CartSummary } from "../../components/totem/CartSummary";
 import { CategoriaCardapioSection } from "../../components/totem/CategoriaCardapioSection";
+import { PagamentoPedido } from "../../components/totem/PagamentoPedido";
+import { PagamentoResultado } from "../../components/totem/PagamentoResultado";
 import { PedidoCriadoResumo } from "../../components/totem/PedidoCriadoResumo";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { useCart } from "../../hooks/useCart";
-import { buscarCardapio, criarPedido } from "../../services/totemService";
+import { buscarCardapio, criarPedido, iniciarPagamento } from "../../services/totemService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { CardapioTotemResponse, CriarPedidoTotemRequest, PedidoTotemResponse, TipoConsumo } from "../../types/totem";
+import type {
+  CardapioTotemResponse,
+  CriarPedidoTotemRequest,
+  FormaPagamento,
+  IniciarPagamentoTotemRequest,
+  PagamentoTotemResponse,
+  PedidoTotemResponse,
+  TipoConsumo,
+} from "../../types/totem";
 
 export function TotemHomePage() {
   const navigate = useNavigate();
@@ -24,6 +34,12 @@ export function TotemHomePage() {
   const [criandoPedido, setCriandoPedido] = useState(false);
   const [erroPedido, setErroPedido] = useState<string | null>(null);
   const [pedidoSemAutorizacao, setPedidoSemAutorizacao] = useState(false);
+
+  const [mostrarPagamento, setMostrarPagamento] = useState(false);
+  const [pagandoPedido, setPagandoPedido] = useState(false);
+  const [erroPagamento, setErroPagamento] = useState<string | null>(null);
+  const [pagamentoSemAutorizacao, setPagamentoSemAutorizacao] = useState(false);
+  const [pagamentoResultado, setPagamentoResultado] = useState<PagamentoTotemResponse | null>(null);
 
   const carregarCardapio = useCallback(async () => {
     setLoading(true);
@@ -108,9 +124,56 @@ export function TotemHomePage() {
     [cart],
   );
 
+  const handleGoToPayment = useCallback(() => {
+    setErroPagamento(null);
+    setPagamentoSemAutorizacao(false);
+    setMostrarPagamento(true);
+  }, []);
+
+  const handlePay = useCallback(
+    async (formaPagamento: FormaPagamento) => {
+      if (!pedidoCriado) {
+        return;
+      }
+      setPagandoPedido(true);
+      setErroPagamento(null);
+      setPagamentoSemAutorizacao(false);
+
+      const request: IniciarPagamentoTotemRequest = { formaPagamento };
+
+      try {
+        const response = await iniciarPagamento(pedidoCriado.pedidoId, request);
+        setPagamentoResultado(response);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          clearSession();
+          setPagamentoSemAutorizacao(true);
+          setErroPagamento("Sessão expirada. Ative o dispositivo novamente para continuar.");
+        } else if (error instanceof ApiError && error.status === 403) {
+          setErroPagamento("Este dispositivo não tem permissão para processar pagamentos.");
+        } else if (error instanceof ApiError && error.status === 404) {
+          setErroPagamento("Pedido não encontrado. Faça um novo pedido e tente novamente.");
+        } else if (error instanceof ApiError && error.status === 400) {
+          setErroPagamento(error.message || "Não foi possível processar o pagamento. O pedido pode já estar pago.");
+        } else if (error instanceof ApiError) {
+          setErroPagamento(error.message);
+        } else {
+          setErroPagamento("Não foi possível processar o pagamento. Tente novamente.");
+        }
+      } finally {
+        setPagandoPedido(false);
+      }
+    },
+    [pedidoCriado],
+  );
+
   const handleNovoPedido = useCallback(() => {
     setPedidoCriado(null);
     setErroPedido(null);
+    setMostrarPagamento(false);
+    setErroPagamento(null);
+    setPagamentoSemAutorizacao(false);
+    setPagamentoResultado(null);
   }, []);
 
   const categorias = cardapio?.categorias ?? [];
@@ -134,15 +197,35 @@ export function TotemHomePage() {
         </div>
       )}
 
-      {!loading && !erro && pedidoCriado && (
-        <PedidoCriadoResumo pedido={pedidoCriado} onNovoPedido={handleNovoPedido} />
+      {!loading && !erro && pagamentoResultado && (
+        <PagamentoResultado resultado={pagamentoResultado} onNovoPedido={handleNovoPedido} />
       )}
 
-      {!loading && !erro && !pedidoCriado && categorias.length === 0 && (
+      {!loading && !erro && !pagamentoResultado && pedidoCriado && mostrarPagamento && (
+        <>
+          <PagamentoPedido
+            pedido={pedidoCriado}
+            onPay={handlePay}
+            pagando={pagandoPedido}
+            erro={erroPagamento}
+          />
+          {pagamentoSemAutorizacao && (
+            <Button type="button" onClick={() => navigate("/ativar-dispositivo")}>
+              Ir para ativação de dispositivo
+            </Button>
+          )}
+        </>
+      )}
+
+      {!loading && !erro && !pagamentoResultado && pedidoCriado && !mostrarPagamento && (
+        <PedidoCriadoResumo pedido={pedidoCriado} onNovoPedido={handleNovoPedido} onGoToPayment={handleGoToPayment} />
+      )}
+
+      {!loading && !erro && !pagamentoResultado && !pedidoCriado && categorias.length === 0 && (
         <p className="totem-estado">Nenhum produto disponível no momento.</p>
       )}
 
-      {!loading && !erro && !pedidoCriado && categorias.length > 0 && (
+      {!loading && !erro && !pagamentoResultado && !pedidoCriado && categorias.length > 0 && (
         <div className="totem-layout">
           <div className="totem-layout__cardapio">
             {categorias.map((categoria) => (
