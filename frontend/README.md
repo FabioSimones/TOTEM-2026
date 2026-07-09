@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`). A TASK-039 implementou o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`). A TASK-040 ampliou `GET /api/caixa/pedidos/pendentes` (backend) para incluir pedidos `PRONTO` (`acaoSugerida=MARCAR_RETIRADO`) e ligou a retirada (`POST /api/caixa/pedidos/{id}/retirar`) na UI, fechando o ciclo operacional completo Totem → Caixa → Cozinha → Caixa.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`). A TASK-039 implementou o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`). A TASK-040 ampliou `GET /api/caixa/pedidos/pendentes` (backend) para incluir pedidos `PRONTO` (`acaoSugerida=MARCAR_RETIRADO`) e ligou a retirada (`POST /api/caixa/pedidos/{id}/retirar`) na UI, fechando o ciclo operacional completo Totem → Caixa → Cozinha → Caixa. A TASK-041 foi uma revisão ponta a ponta (sem mudanças de código no frontend). A TASK-042 implementou o login administrativo real (`POST /api/auth/login`) e um painel `/admin` mínimo, autenticando usuário humano (não dispositivo).
 
 ## Stack
 
@@ -68,10 +68,10 @@ src/
 | `/totem` | `TotemHomePage` | **Real** — cardápio, carrinho, pedido, pagamento e acompanhamento do dispositivo TOTEM |
 | `/caixa` | `CaixaHomePage` | **Real** — lista de pendências, confirmar dinheiro, enviar à cozinha, cancelar e marcar retirada do dispositivo CAIXA (ciclo completo) |
 | `/cozinha` | `CozinhaHomePage` | **Real** — lista de pedidos e avanço de status (`ENVIADO_PARA_COZINHA`→`EM_PREPARO`→`PRONTO`) do dispositivo COZINHA |
-| `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
-| `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
+| `/admin/login` | `AdminLoginPage` | **Real** — login de usuário humano (`POST /api/auth/login`) |
+| `/admin` | `AdminHomePage` | **Real** — dados do usuário autenticado, logout, cards placeholder (sem CRUD ainda) |
 
-`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036, TASK-037, TASK-039 e TASK-040) e `/cozinha` (TASK-038) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036, TASK-037, TASK-039 e TASK-040), `/cozinha` (TASK-038) e `/admin`+`/admin/login` (TASK-042) têm lógica real. `HomePage` (`/`) continua sendo apenas o ponto de entrada, sem lógica própria.
 
 ## Como testar a ativação de dispositivo
 
@@ -241,11 +241,32 @@ Fluxo completo para testar (fecha o ciclo Totem → Caixa → Cozinha → Caixa)
 9. Para simular erro 400, tente marcar como retirado um pedido que não está `PRONTO` (ex.: chame `POST /retirar` pelo `docs/http` num `pedidoId` ainda `PAGO`) — a mensagem de erro do backend aparece dentro do card correspondente.
 10. Alterne o tema (💡) com o pedido `PRONTO` na lista — botão e card seguem os mesmos tokens já usados pelas demais ações.
 
+## Como testar o login administrativo (`POST /api/auth/login`)
+
+A partir da TASK-042, `/admin/login` autentica um **usuário humano** (diferente da ativação de dispositivo — ver seção acima) e `/admin` exibe um painel administrativo mínimo. Nenhum CRUD (restaurante/categoria/produto/dispositivo/usuário) foi implementado ainda — os cards em `/admin` são só placeholders "Em breve".
+
+Usuário seed disponível desde a migration inicial do backend:
+
+- E-mail: `admin@totem.local`
+- Senha: `Admin@2026!`
+- Perfil: `SUPER_ADMIN`
+
+1. Abra `http://localhost:5173/admin/login` (ou acesse `http://localhost:5173/admin` sem sessão — redireciona automaticamente para o login).
+2. Clique em "Entrar" com os campos vazios: nenhuma chamada é feita ao backend, aparece a mensagem "Informe e-mail e senha.".
+3. Preencha um e-mail/senha inválidos e envie: o botão mostra "Aguarde..." durante `POST /api/auth/login`; o backend retorna 401 e a tela exibe uma mensagem amigável (sem revelar se foi o e-mail ou a senha que falhou — mensagem genérica vinda do backend).
+4. Preencha `admin@totem.local` / `Admin@2026!` e envie. Confira no DevTools → Network que o corpo da requisição é só `{"email":"...","senha":"..."}` — nenhum outro campo.
+5. Sucesso esperado: redireciona para `/admin`, mostrando nome, e-mail e perfil (“Super administrador”) do usuário autenticado, além da grade de áreas futuras (Restaurantes, Dispositivos, Categorias, Produtos, Usuários).
+6. Recarregue a página em `/admin` (F5): a sessão persiste (token e usuário salvos em `localStorage`), a tela continua mostrando os dados do usuário sem pedir login de novo.
+7. Clique em "Sair": a sessão é limpa (`totem.accessToken`, `totem.usuario`) e a tela volta para `/admin/login`.
+8. Acesse `/admin` diretamente numa aba sem sessão (ou após "Sair"): redireciona para `/admin/login`.
+9. Alterne o tema (💡) na tela de login e no painel — formulário, card de usuário e cards de áreas futuras seguem os tokens do Design System nos dois temas.
+10. **Atenção ao token compartilhado**: `totem.accessToken` é o mesmo `localStorage` usado pela ativação de dispositivo (Totem/Caixa/Cozinha). Fazer login administrativo numa aba sobrescreve o token de dispositivo ativado nela (e vice-versa) — para testar os dois ao mesmo tempo, use abas/perfis de navegador diferentes, como já orientado nas seções de Totem/Caixa/Cozinha.
+
 ## Cliente HTTP e sessão
 
 - `src/services/api.ts` — `apiFetch<T>(path, options)`: wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente (via `tokenStorage`) quando há um token salvo e `withAuth` não é `false`, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`). `api.get/post/put/patch/delete` são atalhos por verbo HTTP.
-- `src/services/tokenStorage.ts` — único lugar que lê/escreve `localStorage` (chaves `totem.accessToken`, `totem.dispositivo`). **Não é um fluxo de autenticação completo**: sem refresh token, sem expiração tratada, sem contexto de sessão React — aceitável para este estágio do MVP, deve ser revisado se o projeto migrar para um fluxo mais robusto (ex.: cookies httpOnly).
-- `src/services/authService.ts` — funções que chamam os endpoints de autenticação (hoje: `ativarDispositivo`). Páginas nunca chamam `api.ts`/`fetch` diretamente, sempre por um `*Service.ts`.
+- `src/services/tokenStorage.ts` — único lugar que lê/escreve `localStorage` (chaves `totem.accessToken`, `totem.dispositivo`, `totem.usuario`). **Não é um fluxo de autenticação completo**: sem refresh token, sem expiração tratada, sem contexto de sessão React — aceitável para este estágio do MVP, deve ser revisado se o projeto migrar para um fluxo mais robusto (ex.: cookies httpOnly). `totem.dispositivo` e `totem.usuario` representam os dois tipos de sessão possíveis (dispositivo operacional vs. usuário humano administrativo) — só um deve estar preenchido por vez.
+- `src/services/authService.ts` — funções que chamam os endpoints de autenticação (`ativarDispositivo`, `login`). Páginas nunca chamam `api.ts`/`fetch` diretamente, sempre por um `*Service.ts`.
 
 ## Design System e temas
 
@@ -276,7 +297,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Com o ciclo operacional completo fechado (Totem → Caixa → Cozinha → Caixa), próximo passo natural é o **frontend administrativo** (`/admin`): CRUD de restaurante/categorias/produtos/dispositivos, hoje só possível via `docs/http`.
-2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
-3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
+1. CRUD administrativo (restaurante/categorias/produtos/dispositivos) dentro de `/admin` — os cards "Em breve" em `AdminHomePage` já indicam onde cada área vai entrar; login e sessão de usuário (TASK-042) já estão prontos para suportar essas telas.
+2. Proteção de rotas mais robusta (ex.: componente `ProtectedRoute` reutilizável, checagem de `perfil` por rota) — hoje cada página (`TotemHomePage`, `CaixaHomePage`, `CozinhaHomePage`, `AdminHomePage`) repete a mesma checagem de sessão individualmente.
+3. Refresh token / expiração de sessão tratada — hoje nem dispositivo nem usuário têm renovação automática; o token expira e a próxima chamada falha com 401.
 4. Service worker / instalabilidade PWA completa.
