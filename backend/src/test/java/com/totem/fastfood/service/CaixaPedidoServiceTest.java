@@ -173,11 +173,12 @@ class CaixaPedidoServiceTest {
     // ---------- listarPendentes ----------
 
     @Test
-    void listarPendentes_buscaApenasStatusAguardandoDinheiroEPago_semAlterarPedido() {
+    void listarPendentes_buscaApenasStatusAguardandoDinheiroPagoEPronto_semAlterarPedido() {
         Pedido pedidoDinheiro = pedidoComStatus(StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO);
         Pedido pedidoPago = pedidoComStatus(StatusPedido.PAGO);
+        Pedido pedidoPronto = pedidoComStatus(StatusPedido.PRONTO);
         when(pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(eq(RESTAURANTE_ID), any()))
-                .thenReturn(List.of(pedidoDinheiro, pedidoPago));
+                .thenReturn(List.of(pedidoDinheiro, pedidoPago, pedidoPronto));
         when(itemPedidoRepository.findByPedidoIdIn(anyList())).thenReturn(List.of());
 
         caixaPedidoService.listarPendentes(dispositivoCaixa());
@@ -185,7 +186,9 @@ class CaixaPedidoServiceTest {
         ArgumentCaptor<Set<StatusPedido>> statusCaptor = ArgumentCaptor.forClass(Set.class);
         verify(pedidoRepository).findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(
                 eq(RESTAURANTE_ID), statusCaptor.capture());
-        assertEquals(Set.of(StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO, StatusPedido.PAGO), statusCaptor.getValue());
+        assertEquals(
+                Set.of(StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO, StatusPedido.PAGO, StatusPedido.PRONTO),
+                statusCaptor.getValue());
 
         verify(pedidoRepository, never()).save(any());
         verify(historicoStatusPedidoRepository, never()).save(any());
@@ -213,6 +216,18 @@ class CaixaPedidoServiceTest {
         caixaPedidoService.listarPendentes(dispositivoCaixa());
 
         verify(caixaPedidoMapper).toPendenteResponse(pedido, List.of(), AcaoCaixa.ENVIAR_PARA_COZINHA);
+    }
+
+    @Test
+    void listarPendentes_pedidoPronto_sugereMarcarRetirado() {
+        Pedido pedido = pedidoComStatus(StatusPedido.PRONTO);
+        when(pedidoRepository.findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(eq(RESTAURANTE_ID), any()))
+                .thenReturn(List.of(pedido));
+        when(itemPedidoRepository.findByPedidoIdIn(anyList())).thenReturn(List.of());
+
+        caixaPedidoService.listarPendentes(dispositivoCaixa());
+
+        verify(caixaPedidoMapper).toPendenteResponse(pedido, List.of(), AcaoCaixa.MARCAR_RETIRADO);
     }
 
     @Test

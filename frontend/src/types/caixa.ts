@@ -1,6 +1,6 @@
 import type { FormaPagamento, StatusPagamento, StatusPedido, TipoConsumo } from "./totem";
 
-export type AcaoCaixa = "CONFIRMAR_PAGAMENTO" | "ENVIAR_PARA_COZINHA";
+export type AcaoCaixa = "CONFIRMAR_PAGAMENTO" | "ENVIAR_PARA_COZINHA" | "MARCAR_RETIRADO";
 
 /** GET /api/caixa/pedidos/pendentes */
 export interface ItemPedidoPendenteCaixaResponse {
@@ -51,11 +51,9 @@ export interface EnviarPedidoCozinhaResponse {
 
 /**
  * POST /api/caixa/pedidos/{id}/retirar — sem corpo de requisição.
- * Só é aceito pelo backend para pedido em status PRONTO. Hoje não há forma
- * de listar/acessar pedidos PRONTO no Caixa (GET /pedidos/pendentes só
- * retorna AGUARDANDO_PAGAMENTO_DINHEIRO/PAGO), então esta função existe
- * pronta para uso, mas ainda não está ligada a nenhum botão na UI — ver
- * "Próximas tasks sugeridas" no README.
+ * Só é aceito pelo backend para pedido em status PRONTO. A partir da
+ * TASK-040, GET /pedidos/pendentes também retorna pedidos PRONTO
+ * (acaoSugerida=MARCAR_RETIRADO), então este tipo já é usado pela UI.
  */
 export interface RetirarPedidoResponse {
   pedidoId: number;

@@ -88,11 +88,12 @@ mvn spring-boot:run
 | POST | `/api/caixa/pedidos/{id}/retirar` |
 | POST | `/api/caixa/pedidos/{id}/cancelar` |
 
-`GET /api/caixa/pedidos/pendentes` (TASK-027) retorna pedidos do restaurante do dispositivo que exigem ação do Caixa:
+`GET /api/caixa/pedidos/pendentes` (TASK-027, ampliado na TASK-040) retorna pedidos do restaurante do dispositivo que exigem ação do Caixa:
 - `AGUARDANDO_PAGAMENTO_DINHEIRO` → `acaoSugerida=CONFIRMAR_PAGAMENTO`
 - `PAGO` → `acaoSugerida=ENVIAR_PARA_COZINHA`
+- `PRONTO` → `acaoSugerida=MARCAR_RETIRADO`
 
-Pedidos `CRIADO`/`AGUARDANDO_PAGAMENTO` (aguardando o cliente no Totem) e qualquer status a partir de `ENVIADO_PARA_COZINHA` (responsabilidade da Cozinha) não aparecem. Ao contrário da listagem da Cozinha, esta expõe `valorTotal`/`subtotal`, já que o Caixa lida com pagamento.
+Pedidos `CRIADO`/`AGUARDANDO_PAGAMENTO` (aguardando o cliente no Totem) e `ENVIADO_PARA_COZINHA`/`EM_PREPARO` (responsabilidade da Cozinha) não aparecem, nem status terminais (`RETIRADO`/`CANCELADO`/`EXPIRADO`). Ao contrário da listagem da Cozinha, esta expõe `valorTotal`/`subtotal`, já que o Caixa lida com pagamento.
 
 ### Cozinha (`DEVICE_COZINHA`)
 
@@ -261,11 +262,18 @@ curl.exe -X PATCH "http://localhost:8080/api/cozinha/pedidos/PEDIDO_ID/status" ^
 Esperado: `200 OK` em cada chamada, `statusAtual` evoluindo `EM_PREPARO` → `PRONTO`.
 
 ```bash
+curl.exe "http://localhost:8080/api/caixa/pedidos/pendentes" ^
+  -H "Authorization: Bearer TOKEN_CAIXA"
+```
+
+Esperado (TASK-040): `200 OK`, `PEDIDO_ID` aparece com `statusPedido=PRONTO` e `acaoSugerida=MARCAR_RETIRADO`.
+
+```bash
 curl.exe -X POST "http://localhost:8080/api/caixa/pedidos/PEDIDO_ID/retirar" ^
   -H "Authorization: Bearer TOKEN_CAIXA"
 ```
 
-Esperado: `200 OK`, `statusAtual=RETIRADO`. Fim do ciclo de vida deste pedido.
+Esperado: `200 OK`, `statusAtual=RETIRADO`. Fim do ciclo de vida deste pedido. Uma nova chamada a `GET /api/caixa/pedidos/pendentes` não deve mais listar `PEDIDO_ID`.
 
 ### 5.7 Fluxo B — pagamento em dinheiro (pendência no caixa)
 
@@ -356,7 +364,7 @@ mvn test
 | `BCryptValidationTest` | Hash do SUPER_ADMIN aplicado pela migration V5 corresponde à senha documentada |
 | `GerarSenhaUtilTest` | Utilitário de geração de hash de senha |
 | `payment/FakePaymentProviderTest` | PIX/cartão → `AUTORIZADO`; dinheiro → `PENDENTE` |
-| `service/CaixaPedidoServiceTest` (TASK-026, ampliado na TASK-027) | `enviarParaCozinha`, `marcarComoRetirado`, `cancelarPedido`: transições válidas e bloqueio de todas as transições inválidas (parametrizado por `StatusPedido`), 404 para pedido inexistente/outro restaurante; `listarPendentes`: busca apenas `AGUARDANDO_PAGAMENTO_DINHEIRO`/`PAGO`, `acaoSugerida` correta por status, lista vazia não chama `ItemPedidoRepository`, nunca altera o pedido |
+| `service/CaixaPedidoServiceTest` (TASK-026, ampliado na TASK-027 e TASK-040) | `enviarParaCozinha`, `marcarComoRetirado`, `cancelarPedido`: transições válidas e bloqueio de todas as transições inválidas (parametrizado por `StatusPedido`), 404 para pedido inexistente/outro restaurante; `listarPendentes`: busca apenas `AGUARDANDO_PAGAMENTO_DINHEIRO`/`PAGO`/`PRONTO`, `acaoSugerida` correta por status (incluindo `PRONTO`→`MARCAR_RETIRADO`), lista vazia não chama `ItemPedidoRepository`, nunca altera o pedido |
 | `service/CozinhaPedidoServiceTest` (novo, TASK-026) | `atualizarStatus`: `ENVIADO_PARA_COZINHA→EM_PREPARO`, `EM_PREPARO→PRONTO`, bloqueio de salto e de regressão, bloqueio para pedidos fora do fluxo da cozinha |
 
 Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — validam apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo (autenticação, serialização, banco real).

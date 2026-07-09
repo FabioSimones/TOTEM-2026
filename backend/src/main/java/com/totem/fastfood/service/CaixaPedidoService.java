@@ -48,13 +48,16 @@ public class CaixaPedidoService {
             StatusPedido.PAGO);
 
     /**
-     * Status que exigem ação do Caixa: dinheiro aguardando confirmação, ou
-     * pedido já pago aguardando ser enviado à cozinha. Pedidos CRIADO/
-     * AGUARDANDO_PAGAMENTO dependem do cliente no Totem, não do Caixa.
+     * Status que exigem ação do Caixa: dinheiro aguardando confirmação,
+     * pedido já pago aguardando ser enviado à cozinha, ou pedido pronto
+     * aguardando retirada pelo cliente. Pedidos CRIADO/AGUARDANDO_PAGAMENTO
+     * dependem do cliente no Totem, e ENVIADO_PARA_COZINHA/EM_PREPARO são
+     * responsabilidade da Cozinha — nenhum dos dois aparece aqui.
      */
     private static final Set<StatusPedido> STATUS_PENDENTES_CAIXA = EnumSet.of(
             StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO,
-            StatusPedido.PAGO);
+            StatusPedido.PAGO,
+            StatusPedido.PRONTO);
 
     private final PedidoRepository pedidoRepository;
     private final ItemPedidoRepository itemPedidoRepository;
@@ -180,8 +183,12 @@ public class CaixaPedidoService {
     }
 
     private AcaoCaixa acaoSugeridaPara(StatusPedido statusPedido) {
-        return statusPedido == StatusPedido.AGUARDANDO_PAGAMENTO_DINHEIRO
-                ? AcaoCaixa.CONFIRMAR_PAGAMENTO
-                : AcaoCaixa.ENVIAR_PARA_COZINHA;
+        return switch (statusPedido) {
+            case AGUARDANDO_PAGAMENTO_DINHEIRO -> AcaoCaixa.CONFIRMAR_PAGAMENTO;
+            case PAGO -> AcaoCaixa.ENVIAR_PARA_COZINHA;
+            case PRONTO -> AcaoCaixa.MARCAR_RETIRADO;
+            default -> throw new IllegalStateException(
+                    "Status sem ação sugerida definida para o Caixa: " + statusPedido);
+        };
     }
 }

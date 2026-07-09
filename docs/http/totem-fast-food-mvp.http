@@ -243,8 +243,18 @@ Authorization: Bearer {{tokenCozinha}}
 }
 
 
+### 19b. Listar pendentes do Caixa (TASK-040) — pedido aparece com statusPedido=PRONTO e acaoSugerida=MARCAR_RETIRADO
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
+Authorization: Bearer {{tokenCaixa}}
+
+
 ### 20. Caixa: marcar como retirado — exige pedido PRONTO
 POST {{baseUrl}}/api/caixa/pedidos/{{pedidoId}}/retirar
+Authorization: Bearer {{tokenCaixa}}
+
+
+### 20b. Listar pendentes do Caixa novamente — pedido não deve mais aparecer (RETIRADO)
+GET {{baseUrl}}/api/caixa/pedidos/pendentes
 Authorization: Bearer {{tokenCaixa}}
 
 

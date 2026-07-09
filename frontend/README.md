@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`). A TASK-039 implementou o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`); a retirada (`POST /api/caixa/pedidos/{id}/retirar`) ainda não tem UI por falta de uma listagem de pedidos `PRONTO` no backend (ver seção própria no README).
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações. A TASK-037 implementou as ações de confirmar pagamento em dinheiro e enviar pedido para a cozinha. A TASK-038 implementou a tela da Cozinha (`GET /api/cozinha/pedidos`), com avanço de status (`PATCH /api/cozinha/pedidos/{id}/status`). A TASK-039 implementou o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`). A TASK-040 ampliou `GET /api/caixa/pedidos/pendentes` (backend) para incluir pedidos `PRONTO` (`acaoSugerida=MARCAR_RETIRADO`) e ligou a retirada (`POST /api/caixa/pedidos/{id}/retirar`) na UI, fechando o ciclo operacional completo Totem → Caixa → Cozinha → Caixa.
 
 ## Stack
 
@@ -66,12 +66,12 @@ src/
 | `/` | `HomePage` | Ponto de entrada |
 | `/ativar-dispositivo` | `AtivarDispositivoPage` | **Real** — ativação de dispositivo (Totem/Caixa/Cozinha) |
 | `/totem` | `TotemHomePage` | **Real** — cardápio, carrinho, pedido, pagamento e acompanhamento do dispositivo TOTEM |
-| `/caixa` | `CaixaHomePage` | **Real** — lista de pendências, confirmar dinheiro, enviar à cozinha e cancelar pedido do dispositivo CAIXA (retirada ainda sem UI — ver README) |
+| `/caixa` | `CaixaHomePage` | **Real** — lista de pendências, confirmar dinheiro, enviar à cozinha, cancelar e marcar retirada do dispositivo CAIXA (ciclo completo) |
 | `/cozinha` | `CozinhaHomePage` | **Real** — lista de pedidos e avanço de status (`ENVIADO_PARA_COZINHA`→`EM_PREPARO`→`PRONTO`) do dispositivo COZINHA |
 | `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
 | `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
 
-`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036, TASK-037 e TASK-039) e `/cozinha` (TASK-038) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035), `/caixa` (TASK-036, TASK-037, TASK-039 e TASK-040) e `/cozinha` (TASK-038) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
 
 ## Como testar a ativação de dispositivo
 
@@ -178,7 +178,7 @@ Requer um dispositivo **CAIXA** ativado (ver seção "Como testar a ativação d
 
 ## Como testar as ações do Caixa (confirmar dinheiro e enviar para cozinha)
 
-A partir da TASK-037, os botões de ação de cada card em `/caixa` executam de verdade. **Cancelamento foi adicionado na TASK-039** (ver seção própria abaixo). **Retirada ainda não está disponível na UI** — ver "Por que a retirada não está disponível ainda" mais abaixo.
+A partir da TASK-037, os botões de ação de cada card em `/caixa` executam de verdade. **Cancelamento foi adicionado na TASK-039** e **retirada na TASK-040** (ver seções próprias abaixo).
 
 1. Gere um pedido em dinheiro pelo Totem (ver seção anterior) e abra `/caixa`: o card aparece com o botão "Confirmar dinheiro" e um campo opcional "Observação".
 2. Clique em "Confirmar dinheiro": aparece um `window.confirm` pedindo confirmação (ex.: "Confirmar pagamento em dinheiro do pedido A1?"). Cancelar a confirmação não dispara nenhuma chamada.
@@ -209,7 +209,7 @@ Requer um dispositivo **COZINHA** ativado (`tipoDispositivo: "COZINHA"` ao cadas
 10. Para simular erro de permissão, acesse `/cozinha` com um token de TOTEM ou CAIXA: aparece "Este dispositivo não tem permissão para acessar a Cozinha.", sem apagar a sessão salva.
 11. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Iniciar preparo" ou "Atualizar lista": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
 12. Alterne o tema (💡) com pedidos em diferentes status na lista — cores, bordas e botões devem seguir os tokens do Design System nos dois temas.
-13. O pedido `PRONTO` só pode ser acompanhado pelo Totem ou consultado via `docs/http` — retirada pelo Caixa ainda não está disponível na UI (ver seção abaixo).
+13. Assim que a Cozinha marca `PRONTO`, o pedido some daqui e passa a aparecer no Caixa (`/caixa`) com o botão "Marcar como retirado" — ver seção seguinte.
 
 ## Como testar o cancelamento de pedido no Caixa (`POST /api/caixa/pedidos/{id}/cancelar`)
 
@@ -224,15 +224,22 @@ A partir da TASK-039, todo card em `/caixa` (tanto `CONFIRMAR_PAGAMENTO` quanto 
 7. Para simular erro 400 de transição inválida, envie um pedido para a cozinha e tente cancelá-lo diretamente pelo `docs/http` (`POST /cancelar` com `pedidoId` já `ENVIADO_PARA_COZINHA`) — o backend responde 400; se reproduzido pela UI de alguma forma, a mensagem aparece dentro do card correspondente.
 8. Alterne o tema (💡) com o campo de motivo preenchido e com o botão em hover — a borda/texto do botão "Cancelar pedido" usa `--color-error` no hover, os demais elementos seguem os tokens já usados no restante do card.
 
-## Por que a retirada não está disponível ainda
+## Como testar a retirada de pedido no Caixa (`POST /api/caixa/pedidos/{id}/retirar`)
 
-`POST /api/caixa/pedidos/{id}/retirar` só é aceito pelo backend para pedido em status `PRONTO` — mas **`GET /api/caixa/pedidos/pendentes` nunca retorna pedidos `PRONTO`**: o service do backend (`CaixaPedidoService.STATUS_PENDENTES_CAIXA`) filtra explicitamente só `AGUARDANDO_PAGAMENTO_DINHEIRO` e `PAGO`, e não existe nenhum outro endpoint de listagem no módulo Caixa.
+A TASK-039 havia identificado que `GET /api/caixa/pedidos/pendentes` nunca retornava pedidos `PRONTO`, então não havia como o Caixa descobrir quais `pedidoId` estavam prontos para retirada. A **TASK-040 resolveu isso no backend**: `CaixaPedidoService.STATUS_PENDENTES_CAIXA` agora inclui `PRONTO`, com `acaoSugerida=MARCAR_RETIRADO` — nenhum endpoint novo foi criado, o mesmo `GET /pendentes` já usado desde a TASK-036 passou a cobrir também esse status. `ENVIADO_PARA_COZINHA` e `EM_PREPARO` continuam de fora (responsabilidade da Cozinha), assim como os status terminais (`RETIRADO`/`CANCELADO`/`EXPIRADO`).
 
-Isso significa que, hoje, não há forma legítima de o Caixa descobrir *quais* `pedidoId` estão `PRONTO` sem recorrer a gambiarras fora de escopo (busca manual por ID, endpoint inventado, etc.) — por isso esta task **não adiciona nenhum botão de retirada na UI**, conforme a Opção B do enunciado da TASK-039.
+Fluxo completo para testar (fecha o ciclo Totem → Caixa → Cozinha → Caixa):
 
-`caixaService.marcarPedidoComoRetirado(pedidoId)` já existe (`frontend/src/services/caixaService.ts`), pronta para uso — só falta a próxima task de backend/frontend expor uma listagem de pedidos `PRONTO` ao Caixa (ex.: ampliar `GET /pendentes` para incluir também `PRONTO` com uma nova `acaoSugerida=MARCAR_RETIRADO`, ou um endpoint novo dedicado) para então ligar um botão "Marcar como retirado" a essa função.
-
-Enquanto isso, é possível verificar que um pedido chegou a `PRONTO` pelo acompanhamento no Totem (`/totem`) ou consultando diretamente via `docs/http`/backend.
+1. Ative TOTEM, CAIXA e COZINHA (em abas/sessões diferentes, já que o token é único por `localStorage`).
+2. No Totem, crie um pedido e pague (Pix/cartão, ou dinheiro + confirmação no Caixa).
+3. No Caixa, envie o pedido para a cozinha ("Enviar para cozinha").
+4. Na Cozinha, avance o pedido: "Iniciar preparo" e depois "Marcar como pronto" (ver seção "Como testar a Cozinha").
+5. Volte ao Caixa e clique em "Atualizar lista": o pedido reaparece na lista com status "Pronto para retirada" e o botão "Marcar como retirado" — **sem** o bloco de cancelamento (pedido `PRONTO` não está entre os status canceláveis pelo Caixa).
+6. Clique em "Marcar como retirado": aparece um `window.confirm` (ex.: "Marcar o pedido A1 como retirado?"). Confirme — o botão mostra "Aguarde..." durante `POST /api/caixa/pedidos/{id}/retirar` (sem corpo). Confira no DevTools → Network que a requisição não tem body.
+7. Ao terminar, a lista recarrega, o pedido **sai** da lista (chegou a um status terminal) e aparece a mensagem "Pedido A1 marcado como retirado.".
+8. No Totem, atualize o acompanhamento desse pedido: o status passa a `RETIRADO`, com a orientação "Pedido retirado. Obrigado!" — fim do ciclo operacional completo.
+9. Para simular erro 400, tente marcar como retirado um pedido que não está `PRONTO` (ex.: chame `POST /retirar` pelo `docs/http` num `pedidoId` ainda `PAGO`) — a mensagem de erro do backend aparece dentro do card correspondente.
+10. Alterne o tema (💡) com o pedido `PRONTO` na lista — botão e card seguem os mesmos tokens já usados pelas demais ações.
 
 ## Cliente HTTP e sessão
 
@@ -269,7 +276,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Expor pedidos `PRONTO` ao Caixa para viabilizar a retirada — hoje `GET /api/caixa/pedidos/pendentes` só retorna `AGUARDANDO_PAGAMENTO_DINHEIRO`/`PAGO` (ver "Por que a retirada não está disponível ainda" acima). Precisa de decisão de backend: ampliar `/pendentes` (nova `acaoSugerida=MARCAR_RETIRADO`) ou criar endpoint dedicado — depois disso, ligar um botão "Marcar como retirado" a `caixaService.marcarPedidoComoRetirado`, que já existe pronta.
+1. Com o ciclo operacional completo fechado (Totem → Caixa → Cozinha → Caixa), próximo passo natural é o **frontend administrativo** (`/admin`): CRUD de restaurante/categorias/produtos/dispositivos, hoje só possível via `docs/http`.
 2. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
 3. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
 4. Service worker / instalabilidade PWA completa.

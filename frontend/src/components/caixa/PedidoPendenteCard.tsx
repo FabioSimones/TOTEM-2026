@@ -13,8 +13,12 @@ interface PedidoPendenteCardProps {
   erro: string | null;
   onConfirmarPagamento: (pedidoId: number, observacao?: string) => void;
   onEnviarCozinha: (pedidoId: number) => void;
+  onRetirarPedido: (pedidoId: number) => void;
   onCancelarPedido: (pedidoId: number, motivo: string) => void;
 }
+
+/** PRONTO (acaoSugerida=MARCAR_RETIRADO) não está entre os status canceláveis pelo Caixa. */
+const ACOES_SEM_CANCELAMENTO = new Set<PedidoPendenteCaixaResponse["acaoSugerida"]>(["MARCAR_RETIRADO"]);
 
 const ROTULO_TIPO_CONSUMO: Record<PedidoPendenteCaixaResponse["tipoConsumo"], string> = {
   LOCAL: "Comer no local",
@@ -27,23 +31,35 @@ export function PedidoPendenteCard({
   erro,
   onConfirmarPagamento,
   onEnviarCozinha,
+  onRetirarPedido,
   onCancelarPedido,
 }: PedidoPendenteCardProps) {
   const [observacao, setObservacao] = useState("");
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [erroValidacaoCancelamento, setErroValidacaoCancelamento] = useState<string | null>(null);
 
+  const podeCancelar = !ACOES_SEM_CANCELAMENTO.has(pedido.acaoSugerida);
+
   function handleClicarAcao() {
-    if (pedido.acaoSugerida === "CONFIRMAR_PAGAMENTO") {
-      if (!window.confirm(`Confirmar pagamento em dinheiro do pedido ${pedido.numeroPedido}?`)) {
+    switch (pedido.acaoSugerida) {
+      case "CONFIRMAR_PAGAMENTO":
+        if (!window.confirm(`Confirmar pagamento em dinheiro do pedido ${pedido.numeroPedido}?`)) {
+          return;
+        }
+        onConfirmarPagamento(pedido.pedidoId, observacao.trim() || undefined);
         return;
-      }
-      onConfirmarPagamento(pedido.pedidoId, observacao.trim() || undefined);
-    } else {
-      if (!window.confirm(`Enviar o pedido ${pedido.numeroPedido} para a cozinha?`)) {
+      case "ENVIAR_PARA_COZINHA":
+        if (!window.confirm(`Enviar o pedido ${pedido.numeroPedido} para a cozinha?`)) {
+          return;
+        }
+        onEnviarCozinha(pedido.pedidoId);
         return;
-      }
-      onEnviarCozinha(pedido.pedidoId);
+      case "MARCAR_RETIRADO":
+        if (!window.confirm(`Marcar o pedido ${pedido.numeroPedido} como retirado?`)) {
+          return;
+        }
+        onRetirarPedido(pedido.pedidoId);
+        return;
     }
   }
 
@@ -120,29 +136,31 @@ export function PedidoPendenteCard({
         {getAcaoCaixaLabel(pedido.acaoSugerida)}
       </Button>
 
-      <div className="pedido-pendente-card__cancelamento">
-        <label className="pedido-pendente-card__observacao">
-          Motivo do cancelamento
-          <input
-            type="text"
-            value={motivoCancelamento}
-            onChange={(event) => setMotivoCancelamento(event.target.value)}
-            placeholder="Ex.: Cliente desistiu do pedido"
+      {podeCancelar && (
+        <div className="pedido-pendente-card__cancelamento">
+          <label className="pedido-pendente-card__observacao">
+            Motivo do cancelamento
+            <input
+              type="text"
+              value={motivoCancelamento}
+              onChange={(event) => setMotivoCancelamento(event.target.value)}
+              placeholder="Ex.: Cliente desistiu do pedido"
+              disabled={executando}
+            />
+          </label>
+
+          <ErrorMessage message={erroValidacaoCancelamento} />
+
+          <button
+            type="button"
+            className="pedido-pendente-card__cancelar"
             disabled={executando}
-          />
-        </label>
-
-        <ErrorMessage message={erroValidacaoCancelamento} />
-
-        <button
-          type="button"
-          className="pedido-pendente-card__cancelar"
-          disabled={executando}
-          onClick={handleClicarCancelar}
-        >
-          Cancelar pedido
-        </button>
-      </div>
+            onClick={handleClicarCancelar}
+          >
+            Cancelar pedido
+          </button>
+        </div>
+      )}
     </article>
   );
 }

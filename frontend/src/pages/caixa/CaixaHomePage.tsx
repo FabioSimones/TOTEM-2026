@@ -9,6 +9,7 @@ import {
   confirmarPagamentoDinheiro,
   enviarPedidoParaCozinha,
   listarPendencias,
+  marcarPedidoComoRetirado,
 } from "../../services/caixaService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
@@ -135,6 +136,24 @@ export function CaixaHomePage() {
     [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  const handleRetirarPedido = useCallback(
+    async (pedidoId: number) => {
+      setErrosAcao((atual) => ({ ...atual, [pedidoId]: null }));
+      marcarAcaoEmAndamento(pedidoId, true);
+
+      try {
+        const response = await marcarPedidoComoRetirado(pedidoId);
+        await carregarPendencias();
+        setMensagemSucesso(`Pedido ${response.numeroPedido} marcado como retirado.`);
+      } catch (error) {
+        tratarErroAcao(pedidoId, error, "Não foi possível marcar o pedido como retirado. Tente novamente.");
+      } finally {
+        marcarAcaoEmAndamento(pedidoId, false);
+      }
+    },
+    [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
+  );
+
   const handleCancelarPedido = useCallback(
     async (pedidoId: number, motivo: string) => {
       setErrosAcao((atual) => ({ ...atual, [pedidoId]: null }));
@@ -154,7 +173,7 @@ export function CaixaHomePage() {
   );
 
   return (
-    <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro e envio à cozinha.">
+    <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro, envio à cozinha e retirada.">
       <div className="caixa-toolbar">
         <Button type="button" onClick={() => void carregarPendencias()} loading={loading}>
           Atualizar lista
@@ -198,6 +217,7 @@ export function CaixaHomePage() {
               erro={errosAcao[pedido.pedidoId] ?? null}
               onConfirmarPagamento={handleConfirmarPagamento}
               onEnviarCozinha={handleEnviarCozinha}
+              onRetirarPedido={handleRetirarPedido}
               onCancelarPedido={handleCancelarPedido}
             />
           ))}

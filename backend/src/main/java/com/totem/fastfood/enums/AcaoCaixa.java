@@ -11,5 +11,8 @@ public enum AcaoCaixa {
     CONFIRMAR_PAGAMENTO,
 
     /** Pedido já pago: enviar via POST /api/caixa/pedidos/{id}/enviar-cozinha. */
-    ENVIAR_PARA_COZINHA
+    ENVIAR_PARA_COZINHA,
+
+    /** Pedido pronto: marcar retirada via POST /api/caixa/pedidos/{id}/retirar. */
+    MARCAR_RETIRADO
 }
