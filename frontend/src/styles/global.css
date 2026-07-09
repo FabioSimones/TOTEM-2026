@@ -1013,3 +1013,124 @@ h6 {
 .acompanhamento-pedido__atualizar {
   width: 100%;
 }
+
+/* ===== Caixa — lista de pendências ===== */
+.caixa-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-lg);
+}
+
+.caixa-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.pedido-pendente-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.pedido-pendente-card__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.pedido-pendente-card__numero {
+  font-size: var(--font-size-lg);
+}
+
+.pedido-pendente-card__status {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.pedido-pendente-card__orientacao {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.pedido-pendente-card__detalhes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
+}
+
+.pedido-pendente-card__detalhes dt {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.pedido-pendente-card__detalhes dd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.pedido-pendente-card__itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.item-pedido-caixa-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.item-pedido-caixa-row__observacao {
+  color: var(--color-text-muted);
+}
+
+.pedido-pendente-card__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+}
+
+.pedido-pendente-card__total strong {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-primary);
+}
+
+.pedido-pendente-card__acao {
+  width: 100%;
+}

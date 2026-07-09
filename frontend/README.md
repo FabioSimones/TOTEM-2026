@@ -1,6 +1,6 @@
 # Totem Fast Food — Frontend
 
-Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve.
+Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para Fast Food. Criado na TASK-028 (setup inicial). A TASK-029 implementou a ativação de dispositivo. A TASK-030 implementou o Design System (temas dark/light, tokens CSS, tipografia). A TASK-031 implementou a tela de cardápio do Totem. A TASK-032 implementou o carrinho local do Totem. A TASK-033 implementou a criação real de pedido (`POST /api/totem/pedidos`) a partir do carrinho. A TASK-034 implementou o pagamento do pedido (`POST /api/totem/pedidos/{id}/pagamento`). A TASK-035 implementou o acompanhamento do pedido (`GET /api/totem/pedidos/{id}`), com atualização manual e polling leve. A TASK-036 implementou a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`), ainda sem executar ações.
 
 ## Stack
 
@@ -59,19 +59,19 @@ src/
 
 `hooks/` e `contexts/` foram criadas na TASK-030 para o tema (`ThemeContext`/`useTheme`) — antes disso não existiam por não terem uso real ainda. `utils/` continua propositalmente ausente pelo mesmo motivo; será criada quando houver a primeira função utilitária real.
 
-## Rotas atuais (todas placeholder)
+## Rotas atuais
 
 | Rota | Página | Módulo |
 |---|---|---|
 | `/` | `HomePage` | Ponto de entrada |
 | `/ativar-dispositivo` | `AtivarDispositivoPage` | **Real** — ativação de dispositivo (Totem/Caixa/Cozinha) |
-| `/totem` | `TotemHomePage` | **Real** — cardápio do restaurante do dispositivo TOTEM |
-| `/caixa` | `CaixaHomePage` | Caixa (placeholder) |
+| `/totem` | `TotemHomePage` | **Real** — cardápio, carrinho, pedido, pagamento e acompanhamento do dispositivo TOTEM |
+| `/caixa` | `CaixaHomePage` | **Real** — lista de pendências do dispositivo CAIXA (ações ainda placeholder) |
 | `/cozinha` | `CozinhaHomePage` | Cozinha (placeholder) |
 | `/admin/login` | `AdminLoginPage` | Login administrativo (placeholder) |
 | `/admin` | `AdminHomePage` | Painel administrativo (placeholder) |
 
-`/ativar-dispositivo` (TASK-029) e `/totem` (TASK-031) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
+`/ativar-dispositivo` (TASK-029), `/totem` (TASK-031 a 035) e `/caixa` (TASK-036) têm lógica real. As demais renderizam apenas título e descrição via `AppLayout`.
 
 ## Como testar a ativação de dispositivo
 
@@ -158,6 +158,24 @@ Como o Totem não envia pedido para a cozinha nem confirma pagamento em dinheiro
 12. Abra o DevTools → Network e confirme que cada atualização (manual ou automática) é um `GET /api/totem/pedidos/{id}` sem corpo.
 13. Alterne o tema (💡) com o acompanhamento visível em diferentes status — cores e bordas devem seguir os tokens do Design System nos dois temas.
 
+## Como testar a lista de pendências do Caixa (`GET /api/caixa/pedidos/pendentes`)
+
+A partir da TASK-036, `/caixa` lista os pedidos que exigem ação do operador de caixa — confirmação de pagamento em dinheiro ou envio para a cozinha. **Os botões de ação (`Confirmar dinheiro`/`Enviar para cozinha`) ainda são placeholders desabilitados nesta task** — a execução real dessas ações fica para a próxima task.
+
+Requer um dispositivo **CAIXA** ativado (ver seção "Como testar a ativação de dispositivo"; use `tipoDispositivo: "CAIXA"` ao cadastrar o dispositivo).
+
+1. Sem token salvo, abrir `http://localhost:5173/caixa` diretamente redireciona para `/ativar-dispositivo` — a tela nunca chega a chamar o backend sem sessão.
+2. Ative um dispositivo CAIXA e confirme o redirecionamento automático para `/caixa`.
+3. Sem nenhum pedido pendente no restaurante, a tela mostra "Nenhum pedido pendente no momento.".
+4. Gere uma pendência de dinheiro: ative um dispositivo TOTEM (em outra aba/sessão, já que o token é único por `localStorage`), crie um pedido e pague com **Dinheiro**. Volte para `/caixa` (reative o dispositivo CAIXA se o token tiver sido sobrescrito) e clique em "Atualizar lista": o pedido aparece com status "Aguardando pagamento no caixa", a orientação "Cliente escolheu pagar em dinheiro. Confirme o recebimento no caixa." e o botão "Confirmar dinheiro" desabilitado.
+5. Gere uma pendência de envio à cozinha: crie outro pedido pelo Totem e pague com **Pix** ou **cartão**. Atualize a lista do Caixa: o pedido aparece com status "Pagamento confirmado", a orientação "Pagamento confirmado. Envie o pedido para a cozinha." e o botão "Enviar para cozinha" desabilitado.
+6. Confira que cada card mostra número do pedido, cliente, tipo de consumo, datas de criação/atualização, itens (com observação quando houver) e o total formatado em R$.
+7. Clique em "Atualizar lista" a qualquer momento: o botão mostra "Aguarde..." durante a chamada e a lista é recarregada com `GET /api/caixa/pedidos/pendentes`.
+8. Para simular erro de permissão, acesse `/caixa` com um token de TOTEM ou COZINHA (ative um desses dispositivos e edite a rota manualmente): aparece "Este dispositivo não tem permissão para acessar o Caixa.", sem apagar a sessão salva (o token continua válido para o módulo original).
+9. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e clique em "Atualizar lista": aparece mensagem de sessão expirada e o botão "Ir para ativação de dispositivo".
+10. Alterne o tema (💡) com a lista de pendências visível — cards, badges de status e botões devem seguir os tokens do Design System nos dois temas.
+11. Pedidos em `CRIADO`/`AGUARDANDO_PAGAMENTO` (aguardando o cliente no Totem) ou a partir de `ENVIADO_PARA_COZINHA` (responsabilidade da Cozinha) não aparecem nesta lista — isso é filtrado pelo próprio backend, não pelo frontend.
+
 ## Cliente HTTP e sessão
 
 - `src/services/api.ts` — `apiFetch<T>(path, options)`: wrapper sobre `fetch`, monta a URL com `VITE_API_BASE_URL`, serializa o `body` como JSON, anexa `Authorization: Bearer <token>` automaticamente (via `tokenStorage`) quando há um token salvo e `withAuth` não é `false`, e lança `ApiError` (ver `src/types/api.ts`) em respostas não-2xx com o corpo de erro padrão do backend (`ApiErrorResponse`: `status`, `error`, `message`, `errors`). `api.get/post/put/patch/delete` são atalhos por verbo HTTP.
@@ -193,7 +211,7 @@ São tipos básicos o suficiente para as próximas tasks usarem — não incluem
 
 ## Próximas tasks sugeridas
 
-1. Frontend do Caixa (`/caixa`): listar pendências, confirmar pagamento em dinheiro, enviar para cozinha, marcar retirada — hoje esses passos só podem ser feitos via `docs/http/totem-fast-food-mvp.http`, o Totem apenas consulta o status já refletido.
+1. Ações do Caixa: confirmar pagamento em dinheiro (`POST /api/caixa/pedidos/{id}/confirmar-pagamento`), enviar para cozinha (`POST /api/caixa/pedidos/{id}/enviar-cozinha`), marcar retirada (`POST /api/caixa/pedidos/{id}/retirar`) e cancelar (`POST /api/caixa/pedidos/{id}/cancelar`) — os botões em `PedidoPendenteCard` já existem, só desabilitados à espera desta task.
 2. Frontend da Cozinha (`/cozinha`): listar pedidos e atualizar status (`EM_PREPARO`/`PRONTO`).
 3. Login administrativo real (`POST /api/auth/login`), reaproveitando `Button`/`Input`/`ErrorMessage` e o padrão de `authService.ts`.
 4. Proteção de rotas (redirecionar para `/ativar-dispositivo` ou `/admin/login` quando não há sessão válida) — hoje qualquer rota é acessível sem token.
