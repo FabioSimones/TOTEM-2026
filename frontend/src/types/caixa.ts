@@ -49,6 +49,22 @@ export interface EnviarPedidoCozinhaResponse {
   enviadoParaCozinhaEm: string;
 }
 
+/**
+ * POST /api/caixa/pedidos/{id}/retirar — sem corpo de requisição.
+ * Só é aceito pelo backend para pedido em status PRONTO. Hoje não há forma
+ * de listar/acessar pedidos PRONTO no Caixa (GET /pedidos/pendentes só
+ * retorna AGUARDANDO_PAGAMENTO_DINHEIRO/PAGO), então esta função existe
+ * pronta para uso, mas ainda não está ligada a nenhum botão na UI — ver
+ * "Próximas tasks sugeridas" no README.
+ */
+export interface RetirarPedidoResponse {
+  pedidoId: number;
+  numeroPedido: string;
+  statusAnterior: StatusPedido;
+  statusAtual: StatusPedido;
+  atualizadoEm: string;
+}
+
 /** POST /api/caixa/pedidos/{id}/cancelar */
 export interface CancelarPedidoRequest {
   motivo: string;

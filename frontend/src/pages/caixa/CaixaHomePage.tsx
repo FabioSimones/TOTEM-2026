@@ -4,7 +4,12 @@ import { AppLayout } from "../../components/layout/AppLayout";
 import { PedidoPendenteCard } from "../../components/caixa/PedidoPendenteCard";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
-import { confirmarPagamentoDinheiro, enviarPedidoParaCozinha, listarPendencias } from "../../services/caixaService";
+import {
+  cancelarPedido,
+  confirmarPagamentoDinheiro,
+  enviarPedidoParaCozinha,
+  listarPendencias,
+} from "../../services/caixaService";
 import { clearSession, getAccessToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
 import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
@@ -130,6 +135,24 @@ export function CaixaHomePage() {
     [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  const handleCancelarPedido = useCallback(
+    async (pedidoId: number, motivo: string) => {
+      setErrosAcao((atual) => ({ ...atual, [pedidoId]: null }));
+      marcarAcaoEmAndamento(pedidoId, true);
+
+      try {
+        const response = await cancelarPedido(pedidoId, { motivo });
+        await carregarPendencias();
+        setMensagemSucesso(`Pedido ${response.numeroPedido} cancelado.`);
+      } catch (error) {
+        tratarErroAcao(pedidoId, error, "Não foi possível cancelar o pedido. Tente novamente.");
+      } finally {
+        marcarAcaoEmAndamento(pedidoId, false);
+      }
+    },
+    [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
+  );
+
   return (
     <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro e envio à cozinha.">
       <div className="caixa-toolbar">
@@ -175,6 +198,7 @@ export function CaixaHomePage() {
               erro={errosAcao[pedido.pedidoId] ?? null}
               onConfirmarPagamento={handleConfirmarPagamento}
               onEnviarCozinha={handleEnviarCozinha}
+              onCancelarPedido={handleCancelarPedido}
             />
           ))}
         </div>

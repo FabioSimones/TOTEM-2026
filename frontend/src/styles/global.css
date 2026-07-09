@@ -1164,3 +1164,36 @@ h6 {
 .pedido-pendente-card__observacao input:disabled {
   opacity: 0.6;
 }
+
+.pedido-pendente-card__cancelamento {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding-top: var(--spacing-sm);
+  border-top: 1px dashed var(--color-border);
+}
+
+.pedido-pendente-card__cancelar {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.pedido-pendente-card__cancelar:hover:not(:disabled) {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.pedido-pendente-card__cancelar:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

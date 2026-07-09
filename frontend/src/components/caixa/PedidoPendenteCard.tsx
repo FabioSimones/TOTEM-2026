@@ -13,6 +13,7 @@ interface PedidoPendenteCardProps {
   erro: string | null;
   onConfirmarPagamento: (pedidoId: number, observacao?: string) => void;
   onEnviarCozinha: (pedidoId: number) => void;
+  onCancelarPedido: (pedidoId: number, motivo: string) => void;
 }
 
 const ROTULO_TIPO_CONSUMO: Record<PedidoPendenteCaixaResponse["tipoConsumo"], string> = {
@@ -26,8 +27,11 @@ export function PedidoPendenteCard({
   erro,
   onConfirmarPagamento,
   onEnviarCozinha,
+  onCancelarPedido,
 }: PedidoPendenteCardProps) {
   const [observacao, setObservacao] = useState("");
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
+  const [erroValidacaoCancelamento, setErroValidacaoCancelamento] = useState<string | null>(null);
 
   function handleClicarAcao() {
     if (pedido.acaoSugerida === "CONFIRMAR_PAGAMENTO") {
@@ -41,6 +45,19 @@ export function PedidoPendenteCard({
       }
       onEnviarCozinha(pedido.pedidoId);
     }
+  }
+
+  function handleClicarCancelar() {
+    const motivo = motivoCancelamento.trim();
+    if (motivo.length < 3) {
+      setErroValidacaoCancelamento("Informe o motivo do cancelamento (mínimo 3 caracteres).");
+      return;
+    }
+    if (!window.confirm(`Cancelar o pedido ${pedido.numeroPedido}? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    setErroValidacaoCancelamento(null);
+    onCancelarPedido(pedido.pedidoId, motivo);
   }
 
   return (
@@ -102,6 +119,30 @@ export function PedidoPendenteCard({
       <Button type="button" className="pedido-pendente-card__acao" loading={executando} onClick={handleClicarAcao}>
         {getAcaoCaixaLabel(pedido.acaoSugerida)}
       </Button>
+
+      <div className="pedido-pendente-card__cancelamento">
+        <label className="pedido-pendente-card__observacao">
+          Motivo do cancelamento
+          <input
+            type="text"
+            value={motivoCancelamento}
+            onChange={(event) => setMotivoCancelamento(event.target.value)}
+            placeholder="Ex.: Cliente desistiu do pedido"
+            disabled={executando}
+          />
+        </label>
+
+        <ErrorMessage message={erroValidacaoCancelamento} />
+
+        <button
+          type="button"
+          className="pedido-pendente-card__cancelar"
+          disabled={executando}
+          onClick={handleClicarCancelar}
+        >
+          Cancelar pedido
+        </button>
+      </div>
     </article>
   );
 }
