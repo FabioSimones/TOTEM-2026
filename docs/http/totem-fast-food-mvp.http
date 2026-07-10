@@ -499,3 +499,17 @@ Content-Type: image/png
 
 < ./caminho/para/imagem-de-teste.png
 --totemBoundary--
+
+
+### 46. Admin — Upload com Content-Type spoofado (TASK-054): arquivo .txt renomeado/enviado como image/png -> 400
+# O backend valida a assinatura binária (magic bytes) do conteúdo real, não confia só no Content-Type/extensão declarados.
+POST {{baseUrl}}/api/admin/uploads/produtos/imagem
+Authorization: Bearer {{tokenSuperAdmin}}
+Content-Type: multipart/form-data; boundary=totemBoundary
+
+--totemBoundary
+Content-Disposition: form-data; name="file"; filename="produto.png"
+Content-Type: image/png
+
+< ./caminho/para/arquivo-de-teste.txt
+--totemBoundary--

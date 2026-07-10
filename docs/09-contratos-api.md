@@ -346,6 +346,7 @@ Request — `multipart/form-data`, campo `file`:
 - Tipos aceitos: `image/jpeg`, `image/png`, `image/webp`.
 - Tamanho máximo: **5MB**.
 - O nome do arquivo original **não é usado** — o backend gera um nome próprio (`UUID` + extensão derivada do content-type).
+- **O backend não confia apenas no `Content-Type` declarado pelo cliente** (implementado na TASK-054): o conteúdo do arquivo é lido e comparado à assinatura binária (magic bytes) esperada para o tipo informado — JPEG começa com `FF D8 FF`, PNG com `89 50 4E 47 0D 0A 1A 0A`, e WEBP tem o contêiner RIFF (`RIFF` no offset 0, `WEBP` no offset 8). Um arquivo com `Content-Type: image/png` mas conteúdo binário de outro formato (ou não-imagem) é rejeitado com `400`, mesmo que a extensão/Content-Type pareçam válidos.
 
 Response (`201 Created`):
 
@@ -360,7 +361,9 @@ Response (`201 Created`):
 
 A `url` retornada é o valor a preencher em `imagemUrl` ao criar/atualizar um produto — **o contrato de `POST`/`PUT /api/admin/produtos` não muda**, continua recebendo `imagemUrl` como string opcional.
 
-Erros (`400`): arquivo ausente/vazio, tipo de arquivo não permitido, ou arquivo acima de 5MB — todos seguem o formato padrão de erro abaixo.
+Erros (`400`): arquivo ausente/vazio, tipo de arquivo não permitido, conteúdo binário incompatível com o `Content-Type` declarado (spoofing), ou arquivo acima de 5MB — todos seguem o formato padrão de erro abaixo, sem expor caminho de disco/detalhe interno (a mensagem é sempre genérica; o caminho completo só aparece em log de servidor, nunca na resposta HTTP).
+
+**Nota de segurança (TASK-054)**: o armazenamento local em disco é uma decisão de MVP — os arquivos ficam publicamente acessíveis em `/uploads/**` sem autenticação (apenas o upload em si exige login admin) e sem qualquer verificação de malware. Em produção, isso deve ser substituído por um storage externo (S3, Cloudinary ou equivalente) e, se o risco justificar, complementado por um scan de antivírus antes de disponibilizar o arquivo publicamente — nenhum dos dois foi implementado nesta task.
 
 ## Erro padrão
 

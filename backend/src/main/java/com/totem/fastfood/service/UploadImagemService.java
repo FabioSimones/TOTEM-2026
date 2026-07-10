@@ -10,8 +10,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 @Slf4j
 @Service
@@ -23,6 +25,18 @@ public class UploadImagemService {
             "image/jpeg", ".jpg",
             "image/png", ".png",
             "image/webp", ".webp"
+    );
+
+    /**
+     * Assinatura binária (magic bytes) esperada para cada Content-Type permitido — a defesa real
+     * contra spoofing, já que o Content-Type declarado pelo cliente não é confiável por si só.
+     * JPEG/PNG são checados por prefixo fixo; WEBP tem um formato de contêiner RIFF, então a
+     * verificação combina o cabeçalho "RIFF" (offset 0) com a marca "WEBP" (offset 8).
+     */
+    private static final Map<String, Predicate<byte[]>> ASSINATURAS_PERMITIDAS = Map.of(
+            "image/jpeg", bytes -> comecaCom(bytes, 0xFF, 0xD8, 0xFF),
+            "image/png", bytes -> comecaCom(bytes, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A),
+            "image/webp", bytes -> comecaCom(bytes, 'R', 'I', 'F', 'F') && contemWebpMarker(bytes)
     );
 
     private final Path diretorioProdutos;
@@ -51,18 +65,65 @@ public class UploadImagemService {
             throw new IllegalArgumentException("Arquivo excede o tamanho máximo permitido de 5MB");
         }
 
-        String filename = UUID.randomUUID() + extensao;
+        byte[] conteudo = lerBytes(file);
+
+        // Nunca confiar apenas no Content-Type declarado pelo cliente: o conteúdo real
+        // precisa começar com a assinatura binária esperada para o tipo informado.
+        if (!ASSINATURAS_PERMITIDAS.get(contentType).test(conteudo)) {
+            throw new IllegalArgumentException(
+                    "O conteúdo do arquivo não corresponde a uma imagem JPEG, PNG ou WEBP válida");
+        }
+
+        String filename = null;
 
         try {
             Files.createDirectories(diretorioProdutos);
-            Path destino = diretorioProdutos.resolve(filename);
-            file.transferTo(destino);
-            log.info("Imagem de produto salva: filename={}, size={}", filename, file.getSize());
+            filename = gerarNomeUnico(extensao);
+            Files.write(diretorioProdutos.resolve(filename), conteudo);
+            log.info("Imagem de produto salva: filename={}, size={}", filename, conteudo.length);
         } catch (IOException e) {
+            log.error("Falha ao salvar imagem de produto: filename={}", filename, e);
             throw new UncheckedIOException("Falha ao salvar o arquivo de imagem", e);
         }
 
         String url = publicPath + "/produtos/" + filename;
-        return new UploadImagemResponse(filename, url, contentType, file.getSize());
+        return new UploadImagemResponse(filename, url, contentType, conteudo.length);
+    }
+
+    private byte[] lerBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Falha ao ler o arquivo enviado", e);
+        }
+    }
+
+    /**
+     * O nome é sempre UUID + extensão derivada do Content-Type validado — nunca o nome original
+     * do arquivo. A checagem de colisão é defesa em profundidade (UUID já torna isso improvável).
+     */
+    private String gerarNomeUnico(String extensao) {
+        String filename;
+        do {
+            filename = UUID.randomUUID() + extensao;
+        } while (Files.exists(diretorioProdutos.resolve(filename)));
+        return filename;
+    }
+
+    private static boolean comecaCom(byte[] conteudo, int... assinatura) {
+        if (conteudo.length < assinatura.length) {
+            return false;
+        }
+        for (int i = 0; i < assinatura.length; i++) {
+            if ((conteudo[i] & 0xFF) != assinatura[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean contemWebpMarker(byte[] conteudo) {
+        byte[] marker = {'W', 'E', 'B', 'P'};
+        return conteudo.length >= 12 && Arrays.equals(conteudo, 8, 12, marker, 0, 4);
     }
 }

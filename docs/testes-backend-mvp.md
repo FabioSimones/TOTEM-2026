@@ -70,11 +70,13 @@ mvn spring-boot:run
 | PATCH | `/api/admin/produtos/{id}/disponibilidade` |
 | PATCH | `/api/admin/produtos/{id}/destaque` |
 
-### Admin — Upload (`SUPER_ADMIN`, `ADMIN_RESTAURANTE`, implementado na TASK-053)
+### Admin — Upload (`SUPER_ADMIN`, `ADMIN_RESTAURANTE`, implementado na TASK-053, revisão de segurança na TASK-054)
 
 | Método | Rota |
 |---|---|
 | POST | `/api/admin/uploads/produtos/imagem` (`multipart/form-data`, campo `file`; JPEG/PNG/WEBP até 5MB; retorna `url` para usar em `imagemUrl`) |
+
+A TASK-054 endureceu a validação: além do `Content-Type` declarado e do tamanho, o backend agora lê o conteúdo do arquivo e confere a assinatura binária (magic bytes) esperada para o tipo informado, rejeitando com `400` qualquer arquivo cujo conteúdo real não corresponda (ex.: um `.txt` renomeado/enviado como `image/png`). Mensagens de erro continuam genéricas — nenhuma resposta HTTP expõe o caminho de disco onde os arquivos são gravados.
 
 ### Admin — Usuário (`SUPER_ADMIN`, implementado na TASK-048)
 
@@ -386,7 +388,7 @@ mvn test
 | `service/CozinhaPedidoServiceTest` (novo, TASK-026) | `atualizarStatus`: `ENVIADO_PARA_COZINHA→EM_PREPARO`, `EM_PREPARO→PRONTO`, bloqueio de salto e de regressão, bloqueio para pedidos fora do fluxo da cozinha |
 | `service/UsuarioServiceTest` (TASK-048, ampliado na TASK-049) | `criar`: `restauranteId` obrigatório/proibido conforme perfil, 404 para restaurante inexistente, e-mail duplicado, senha codificada via `PasswordEncoder`; `atualizar`: e-mail duplicado bloqueado; `desativar`: bloqueio de autodesativação, permitido para outro usuário; `alterarSenha`: hash atualizado via `PasswordEncoder`, 404 para usuário inexistente (sem chamar `encode`/`save`), response sem campo de senha |
 | `service/DispositivoServiceTest` (novo, TASK-051) | `atualizar`: campos permitidos (`nome`/`codigoIdentificacao`/`tipoDispositivo`) atualizados via mapper, 404 para dispositivo inexistente, 400 para código de identificação duplicado (excluindo o próprio registro) |
-| `service/UploadImagemServiceTest` (novo, TASK-053) | `salvarImagemProduto`: rejeita arquivo vazio e content-type não permitido, aceita JPEG/PNG/WEBP, nome gerado nunca reaproveita o nome original do arquivo |
+| `service/UploadImagemServiceTest` (TASK-053, endurecido na TASK-054) | `salvarImagemProduto`: rejeita arquivo vazio e content-type não permitido; aceita JPEG/PNG/WEBP com assinatura binária real válida; rejeita content-type válido com bytes que não correspondem à assinatura esperada (incluindo o caso de spoofing: `Content-Type: image/png` com bytes de JPEG); rejeita arquivo pequeno demais para conter uma assinatura válida; nome gerado nunca reaproveita o nome original do arquivo, inclusive quando o nome original contém tentativa de path traversal (`../../../etc/passwd.png`) |
 
 Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — validam apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo (autenticação, serialização, banco real).
 
