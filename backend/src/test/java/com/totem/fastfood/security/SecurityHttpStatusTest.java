@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -46,7 +48,14 @@ class SecurityHttpStatusTest {
     @Test
     void semToken_deveRetornar401() throws Exception {
         mockMvc.perform(get("/api/admin/usuarios"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                // UTF-8 explícito (TASK-062): sem isso, HttpServletResponse.getWriter() usa o
+                // encoding padrão do servlet container (ISO-8859-1), corrompendo os acentos da
+                // mensagem exibida ao usuário no frontend.
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(content().encoding("UTF-8"))
+                .andExpect(jsonPath("$.error").value("Não autenticado"))
+                .andExpect(jsonPath("$.message").value("Autenticação necessária ou token inválido"));
     }
 
     @Test

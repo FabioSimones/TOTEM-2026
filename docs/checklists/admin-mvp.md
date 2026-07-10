@@ -81,7 +81,7 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 ## 9. Erros esperados (401/403/404/400)
 
-- [ ] Editar `totem.accessToken` no DevTools para um valor inválido e tentar qualquer ação → sessão expirada, botão "Ir para login", sessão limpa (**este cenário só passa de verdade a partir da TASK-061** — antes, o backend retornava `403` para token inválido, então a tela mostrava "sem permissão" em vez de "sessão expirada")
+- [x] Editar `totem.accessToken` no DevTools para um valor inválido e tentar qualquer ação → sessão expirada, botão "Ir para login", sessão limpa — **confirmado via curl na TASK-062** (backend real responde `401` para token inválido); comportamento do código do frontend (`clearSession()` + `error.status === 401`) revisado e idêntico nas 5 páginas administrativas
 - [ ] Acessar qualquer subtela do Admin com token de dispositivo (Totem/Caixa/Cozinha) → 403 amigável, sessão preservada
 - [ ] CNPJ duplicado, nome de categoria duplicado no mesmo restaurante, `codigoIdentificacao` de dispositivo duplicado → 400 amigável no formulário
 - [ ] Restaurante/categoria/dispositivo/usuário com ID inexistente → 404 amigável
@@ -112,9 +112,22 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 - [x] (por revisão de código) `/admin/categorias`: `carregarRestaurantes` retorna cedo sem chamar a API quando `adminRestaurante`; sem seletor "Filtrar por restaurante"; formulário mostra "Restaurante" fixo como "Restaurante vinculado à sua conta"; `carregarCategorias(restauranteIdEscopo)` já filtra a lista
 - [x] (por revisão de código) Cadastrar categoria: `onCriar` usa `restauranteFixo?.id ?? restauranteId`, sempre o do usuário — nenhum estado local permite outro valor
 - [x] (por revisão de código) Repetido para `/admin/produtos` (formulário fixo, `categoriasDoRestaurante` filtradas por `restauranteFixo.id`) e `/admin/dispositivos` (formulário fixo)
-- [ ] Acessar `/admin/usuarios` digitando a URL diretamente → mensagem "Você não tem permissão para acessar usuários." (403), sessão preservada, sem redirecionar para login — **pendente de confirmação visual manual** (lógica idêntica às outras 3 páginas, já revisada, mas não clicada)
+- [x] Acessar `/admin/usuarios` digitando a URL diretamente → mensagem "Você não tem permissão para acessar usuários." (403), sessão preservada, sem redirecionar para login — **backend confirmado via curl na TASK-062** (`ADMIN_RESTAURANTE` → `403` em `/api/admin/usuarios`); código do frontend revisado e idêntico às outras páginas. Clique real na UI ainda não realizado (sem automação de navegador disponível).
 - [x] (por revisão de código) Login como `SUPER_ADMIN` → todos os 5 cards aparecem em `/admin`; as 3 páginas mantêm seletor de restaurante completo (branch `restauranteFixo` não ativa)
-- [x] ~~Token inválido/expirado retornava `403`, não `401`~~ **corrigido de verdade na TASK-061** (`RestAuthenticationEntryPoint`) — validado por `security/SecurityHttpStatusTest` (MockMvc). O branch de "sessão expirada" das páginas administrativas (`error.status === 401`) agora é acionado corretamente para token ausente/inválido/expirado; `403` continua reservado a autenticado-sem-permissão. Backend recompilado após a TASK-061 ainda precisa de confirmação manual (`curl` sem token → 401) antes de considerar 100% fechado — ver seção 9 abaixo.
+- [x] ~~Token inválido/expirado retornava `403`, não `401`~~ **corrigido de verdade na TASK-061, confirmado com backend real na TASK-062** (`RestAuthenticationEntryPoint`) — validado por `security/SecurityHttpStatusTest` (MockMvc) e por `curl` direto (ver seção 9d). O branch de "sessão expirada" das páginas administrativas (`error.status === 401`) agora é acionado corretamente para token ausente/inválido/expirado; `403` continua reservado a autenticado-sem-permissão.
+
+## 9d. Validação do fluxo 401/403 com backend e frontend reais (TASK-062)
+
+**Validado via `curl` contra o backend real** (2026-07-10), após recompilar com as correções da TASK-061/062:
+
+- [x] `GET /api/admin/usuarios` sem token → `401`, `{"error":"Não autenticado","message":"Autenticação necessária ou token inválido",...}`
+- [x] `GET /api/admin/usuarios` com `Authorization: Bearer invalido` → `401`, mesmo corpo
+- [x] `GET /api/admin/usuarios` com token válido de `ADMIN_RESTAURANTE` → `403`, `{"error":"Acesso negado","message":"Você não tem permissão para executar esta ação",...}`
+- [x] `GET /api/health` → `200`
+- [x] `GET /uploads/produtos/arquivo-inexistente.png` → `404` (nunca `401`/`403`/`500`)
+- [x] **Bug encontrado e corrigido nesta task**: a resposta `401` saía com `charset=ISO-8859-1` (acentos corrompidos: "Não autenticado" virava bytes inválidos), enquanto o `403` (via `GlobalExceptionHandler`/Spring MVC) já saía em UTF-8 corretamente. Corrigido com `response.setCharacterEncoding("UTF-8")` em `RestAuthenticationEntryPoint`; teste automatizado ganhou asserção de `Content-Type`/encoding/corpo para não regredir.
+
+**Validação do frontend**: sem ferramenta de automação de navegador disponível neste ambiente, não cliquei de fato na UI. Em vez disso, confirmei que o código das 5 páginas administrativas (`AdminRestaurantesPage`, `AdminCategoriasPage`, `AdminProdutosPage`, `AdminDispositivosPage`, `AdminUsuariosPage`) já trata `error.status === 401` (limpa sessão, "Sessão expirada...") e `error.status === 403` (preserva sessão, "Você não tem permissão...") de forma idêntica e correta — o `apiFetch` de `services/api.ts` propaga o `status` HTTP real da resposta, então, com o backend agora corrigido, o comportamento visual deve seguir exatamente esse padrão. Uma conferência manual rápida no navegador (login → editar `totem.accessToken` no DevTools → clicar "Atualizar lista") ainda é recomendada para fechar 100%.
 
 ## 10. Consistência visual
 
