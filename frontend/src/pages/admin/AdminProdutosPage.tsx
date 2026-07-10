@@ -20,15 +20,20 @@ import { ApiError } from "../../types/api";
 import type { CategoriaAdminResponse } from "../../types/categoria";
 import type { AtualizarProdutoRequest, CriarProdutoRequest, ProdutoAdminResponse } from "../../types/produto";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
+import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
 
 export function AdminProdutosPage() {
   const navigate = useNavigate();
+  const usuario = getStoredUsuario();
+  const adminRestaurante = isAdminRestaurante(usuario);
+  const restauranteIdEscopo = getRestauranteIdEscopo(usuario);
+
   const [restaurantes, setRestaurantes] = useState<RestauranteAdminResponse[]>([]);
   const [categorias, setCategorias] = useState<CategoriaAdminResponse[]>([]);
   const [erroApoio, setErroApoio] = useState<string | null>(null);
 
   const [produtos, setProdutos] = useState<ProdutoAdminResponse[]>([]);
-  const [filtroRestauranteId, setFiltroRestauranteId] = useState<number | null>(null);
+  const [filtroRestauranteId, setFiltroRestauranteId] = useState<number | null>(restauranteIdEscopo);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
@@ -44,6 +49,14 @@ export function AdminProdutosPage() {
   const carregarApoio = useCallback(async () => {
     setErroApoio(null);
     try {
+      if (adminRestaurante) {
+        // GET /api/admin/restaurantes é SUPER_ADMIN apenas — ADMIN_RESTAURANTE sempre recebe
+        // 403; nem chamamos (o formulário usa restauranteFixo). Categorias já vêm filtradas
+        // explicitamente pelo restauranteId do usuário.
+        const categoriasResponse = await listarCategorias(restauranteIdEscopo ?? undefined);
+        setCategorias(categoriasResponse);
+        return;
+      }
       const [restaurantesResponse, categoriasResponse] = await Promise.all([
         listarRestaurantes(),
         listarCategorias(),
@@ -55,7 +68,7 @@ export function AdminProdutosPage() {
       // indisponível, mas a listagem/edição/ações de produtos segue normalmente.
       setErroApoio("Não foi possível carregar restaurantes/categorias.");
     }
-  }, []);
+  }, [adminRestaurante, restauranteIdEscopo]);
 
   const carregarProdutos = useCallback(async (restauranteId: number | null) => {
     setLoading(true);
@@ -95,8 +108,8 @@ export function AdminProdutosPage() {
       return;
     }
     void carregarApoio();
-    void carregarProdutos(null);
-  }, [navigate, carregarApoio, carregarProdutos]);
+    void carregarProdutos(restauranteIdEscopo);
+  }, [navigate, carregarApoio, carregarProdutos, restauranteIdEscopo]);
 
   function handleFiltrar(restauranteId: number | null) {
     setFiltroRestauranteId(restauranteId);
@@ -262,39 +275,49 @@ export function AdminProdutosPage() {
         </Button>
       </div>
 
-      {restaurantes.length > 0 && (
-        <div className="dispositivo-form__tipo admin-filtro-restaurante">
-          <span className="dispositivo-form__tipo-rotulo">Filtrar por restaurante</span>
-          <div className="dispositivo-form__tipo-opcoes">
-            <button
-              type="button"
-              className={
-                "dispositivo-form__tipo-botao" + (filtroRestauranteId === null ? " dispositivo-form__tipo-botao--ativo" : "")
-              }
-              aria-pressed={filtroRestauranteId === null}
-              onClick={() => handleFiltrar(null)}
-            >
-              Todos
-            </button>
-            {restaurantes.map((restaurante) => (
+      {adminRestaurante ? (
+        <p className="totem-estado admin-filtro-restaurante">
+          Você está operando apenas no restaurante vinculado à sua conta.
+        </p>
+      ) : (
+        restaurantes.length > 0 && (
+          <div className="dispositivo-form__tipo admin-filtro-restaurante">
+            <span className="dispositivo-form__tipo-rotulo">Filtrar por restaurante</span>
+            <div className="dispositivo-form__tipo-opcoes">
               <button
-                key={restaurante.id}
                 type="button"
                 className={
-                  "dispositivo-form__tipo-botao" +
-                  (filtroRestauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
+                  "dispositivo-form__tipo-botao" + (filtroRestauranteId === null ? " dispositivo-form__tipo-botao--ativo" : "")
                 }
-                aria-pressed={filtroRestauranteId === restaurante.id}
-                onClick={() => handleFiltrar(restaurante.id)}
+                aria-pressed={filtroRestauranteId === null}
+                onClick={() => handleFiltrar(null)}
               >
-                {restaurante.nome}
+                Todos
               </button>
-            ))}
+              {restaurantes.map((restaurante) => (
+                <button
+                  key={restaurante.id}
+                  type="button"
+                  className={
+                    "dispositivo-form__tipo-botao" +
+                    (filtroRestauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
+                  }
+                  aria-pressed={filtroRestauranteId === restaurante.id}
+                  onClick={() => handleFiltrar(restaurante.id)}
+                >
+                  {restaurante.nome}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )
       )}
 
-      {erroApoio && <ErrorMessage message={erroApoio} />}
+      {!adminRestaurante && erroApoio && <ErrorMessage message={erroApoio} />}
+
+      {adminRestaurante && restauranteIdEscopo == null && (
+        <ErrorMessage message="Seu usuário não possui restaurante vinculado. Contate um SUPER_ADMIN." />
+      )}
 
       {!erro && mensagemSucesso && (
         <p className="ui-success-message" role="status">
@@ -317,13 +340,18 @@ export function AdminProdutosPage() {
         </div>
       )}
 
-      {!semAutorizacao && (
+      {!semAutorizacao && (!adminRestaurante || restauranteIdEscopo != null) && (
         <>
           <ProdutoForm
             produtoEmEdicao={produtoEmEdicao}
             restaurantes={restaurantes}
             categorias={categorias}
             restauranteSelecionadoPadrao={filtroRestauranteId}
+            restauranteFixo={
+              adminRestaurante && restauranteIdEscopo != null
+                ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
+                : null
+            }
             onCriar={handleCriar}
             onAtualizar={handleAtualizar}
             onCancelarEdicao={handleCancelarEdicao}

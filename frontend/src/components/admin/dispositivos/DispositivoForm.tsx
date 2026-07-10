@@ -10,6 +10,11 @@ import { Input } from "../../ui/Input";
 interface DispositivoFormProps {
   dispositivoEmEdicao: DispositivoAdminResponse | null;
   restaurantes: RestauranteAdminResponse[];
+  /**
+   * Presente quando o usuário autenticado é ADMIN_RESTAURANTE (TASK-059): trava o formulário
+   * no restaurante do usuário, sem seletor — o backend já rejeitaria qualquer outro (403).
+   */
+  restauranteFixo?: { id: number; rotulo: string } | null;
   onCriar: (request: CriarDispositivoRequest) => void;
   onAtualizar: (id: number, request: AtualizarDispositivoRequest) => void;
   onCancelarEdicao: () => void;
@@ -27,6 +32,7 @@ const OPCOES_TIPO: { valor: TipoDispositivo; rotulo: string }[] = [
 export function DispositivoForm({
   dispositivoEmEdicao,
   restaurantes,
+  restauranteFixo,
   onCriar,
   onAtualizar,
   onCancelarEdicao,
@@ -46,18 +52,20 @@ export function DispositivoForm({
       setCodigoIdentificacao(dispositivoEmEdicao.codigoIdentificacao);
       setTipoDispositivo(dispositivoEmEdicao.tipoDispositivo);
     } else {
-      setRestauranteId(restaurantes[0]?.id ?? null);
+      setRestauranteId(restauranteFixo?.id ?? restaurantes[0]?.id ?? null);
       setNome("");
       setCodigoIdentificacao("");
       setTipoDispositivo("TOTEM");
     }
     setErroValidacao(null);
-  }, [dispositivoEmEdicao, restaurantes]);
+  }, [dispositivoEmEdicao, restauranteFixo, restaurantes]);
+
+  const restauranteIdEfetivo = restauranteFixo?.id ?? restauranteId;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!dispositivoEmEdicao && !restauranteId) {
+    if (!restauranteFixo && !dispositivoEmEdicao && !restauranteId) {
       setErroValidacao("Selecione um restaurante.");
       return;
     }
@@ -80,7 +88,7 @@ export function DispositivoForm({
       });
     } else {
       onCriar({
-        restauranteId: restauranteId as number,
+        restauranteId: restauranteIdEfetivo as number,
         nome: nome.trim(),
         codigoIdentificacao: codigoIdentificacao.trim(),
         tipoDispositivo,
@@ -88,7 +96,7 @@ export function DispositivoForm({
     }
   }
 
-  if (!dispositivoEmEdicao && restaurantes.length === 0) {
+  if (!restauranteFixo && !dispositivoEmEdicao && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
         <h2 className="dispositivo-form__titulo">Cadastrar dispositivo</h2>
@@ -108,7 +116,9 @@ export function DispositivoForm({
 
       <div className="dispositivo-form__tipo">
         <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
-        {dispositivoEmEdicao ? (
+        {restauranteFixo ? (
+          <p className="dispositivo-form__restaurante-fixo">{restauranteFixo.rotulo}</p>
+        ) : dispositivoEmEdicao ? (
           <p className="dispositivo-form__restaurante-fixo">
             {restaurantes.find((r) => r.id === dispositivoEmEdicao.restauranteId)?.nome ??
               `#${dispositivoEmEdicao.restauranteId}`}{" "}

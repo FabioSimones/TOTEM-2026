@@ -19,6 +19,11 @@ interface ProdutoFormProps {
   restaurantes: RestauranteAdminResponse[];
   categorias: CategoriaAdminResponse[];
   restauranteSelecionadoPadrao: number | null;
+  /**
+   * Presente quando o usuário autenticado é ADMIN_RESTAURANTE (TASK-059): trava o formulário
+   * no restaurante do usuário, sem seletor — o backend já rejeitaria qualquer outro (403).
+   */
+  restauranteFixo?: { id: number; rotulo: string } | null;
   onCriar: (request: CriarProdutoRequest) => void;
   onAtualizar: (id: number, request: AtualizarProdutoRequest) => void;
   onCancelarEdicao: () => void;
@@ -69,6 +74,7 @@ export function ProdutoForm({
   restaurantes,
   categorias,
   restauranteSelecionadoPadrao,
+  restauranteFixo,
   onCriar,
   onAtualizar,
   onCancelarEdicao,
@@ -103,7 +109,7 @@ export function ProdutoForm({
       setOrdemExibicao(produtoEmEdicao.ordemExibicao != null ? String(produtoEmEdicao.ordemExibicao) : "");
       setRecomendado(produtoEmEdicao.recomendado);
     } else {
-      const restauranteInicial = restauranteSelecionadoPadrao ?? restaurantes[0]?.id ?? null;
+      const restauranteInicial = restauranteFixo?.id ?? restauranteSelecionadoPadrao ?? restaurantes[0]?.id ?? null;
       setRestauranteId(restauranteInicial);
       setCategoriaId(categorias.find((c) => c.restauranteId === restauranteInicial)?.id ?? null);
       setNome("");
@@ -118,7 +124,7 @@ export function ProdutoForm({
     setErroValidacao(null);
     setArquivoSelecionado(null);
     setErroUpload(null);
-  }, [produtoEmEdicao, restauranteSelecionadoPadrao, restaurantes, categorias]);
+  }, [produtoEmEdicao, restauranteSelecionadoPadrao, restauranteFixo, restaurantes, categorias]);
 
   useEffect(() => {
     setImagemFalhouAoCarregar(false);
@@ -171,7 +177,7 @@ export function ProdutoForm({
     }
   }
 
-  if (!produtoEmEdicao && restaurantes.length === 0) {
+  if (!restauranteFixo && !produtoEmEdicao && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
         <h2 className="dispositivo-form__titulo">Cadastrar produto</h2>
@@ -183,7 +189,8 @@ export function ProdutoForm({
     );
   }
 
-  const categoriasDoRestaurante = categorias.filter((categoria) => categoria.restauranteId === restauranteId);
+  const restauranteIdEfetivo = restauranteFixo?.id ?? restauranteId;
+  const categoriasDoRestaurante = categorias.filter((categoria) => categoria.restauranteId === restauranteIdEfetivo);
   const imagemUrlTrimmed = imagemUrl.trim();
   const imagemUrlEhValida = isValidHttpUrl(imagemUrlTrimmed);
 
@@ -195,7 +202,7 @@ export function ProdutoForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!produtoEmEdicao && !restauranteId) {
+    if (!restauranteFixo && !produtoEmEdicao && !restauranteId) {
       setErroValidacao("Selecione um restaurante.");
       return;
     }
@@ -245,7 +252,7 @@ export function ProdutoForm({
     if (produtoEmEdicao) {
       onAtualizar(produtoEmEdicao.id, camposComuns);
     } else {
-      onCriar({ restauranteId: restauranteId as number, disponivel, destaque, ...camposComuns });
+      onCriar({ restauranteId: restauranteIdEfetivo as number, disponivel, destaque, ...camposComuns });
     }
   }
 
@@ -257,7 +264,9 @@ export function ProdutoForm({
 
       <div className="dispositivo-form__tipo">
         <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
-        {produtoEmEdicao ? (
+        {restauranteFixo ? (
+          <p className="dispositivo-form__restaurante-fixo">{restauranteFixo.rotulo}</p>
+        ) : produtoEmEdicao ? (
           <p className="dispositivo-form__restaurante-fixo">
             {restaurantes.find((r) => r.id === produtoEmEdicao.restauranteId)?.nome ??
               `#${produtoEmEdicao.restauranteId}`}{" "}

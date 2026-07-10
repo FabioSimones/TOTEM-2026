@@ -417,6 +417,8 @@ Implementado na TASK-058, cobrindo Categorias, Produtos e Dispositivos (`/api/ad
 
 **Fora do escopo desta task**: `/api/admin/usuarios` continua exclusivo de `SUPER_ADMIN` (não recebeu escopo por restaurante — gestão de usuários é mais sensível). Upload de imagem (`/api/admin/uploads/produtos/imagem`) continua liberado a qualquer `ADMIN_RESTAURANTE` sem checagem de restaurante (o arquivo em si não pertence a um restaurante até ser referenciado por um produto); a limpeza de órfãos (`/limpar-orfas`) continua `SUPER_ADMIN` apenas.
 
+**Frontend (TASK-059)**: o painel administrativo (`frontend/`) passou a refletir essa regra visualmente — `ADMIN_RESTAURANTE` não vê seletor de restaurante em Categorias/Produtos/Dispositivos (o campo aparece fixo, sem depender de `GET /api/admin/restaurantes`, que é `SUPER_ADMIN` apenas) e o painel `/admin` esconde os cards "Restaurantes"/"Usuários" para quem não é `SUPER_ADMIN`. Isso é só uma melhoria de UX — o contrato da API e a validação de escopo continuam inteiramente no backend, exatamente como documentado acima.
+
 ## Erro padrão
 
 Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:

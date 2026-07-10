@@ -18,9 +18,14 @@ import { clearSession, getAccessToken, getStoredUsuario } from "../../services/t
 import { ApiError } from "../../types/api";
 import type { AtualizarDispositivoRequest, CriarDispositivoRequest, DispositivoAdminResponse } from "../../types/dispositivo";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
+import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
 
 export function AdminDispositivosPage() {
   const navigate = useNavigate();
+  const usuario = getStoredUsuario();
+  const adminRestaurante = isAdminRestaurante(usuario);
+  const restauranteIdEscopo = getRestauranteIdEscopo(usuario);
+
   const [restaurantes, setRestaurantes] = useState<RestauranteAdminResponse[]>([]);
   const [erroRestaurantes, setErroRestaurantes] = useState<string | null>(null);
 
@@ -38,6 +43,11 @@ export function AdminDispositivosPage() {
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
 
   const carregarRestaurantes = useCallback(async () => {
+    if (adminRestaurante) {
+      // GET /api/admin/restaurantes é SUPER_ADMIN apenas — ADMIN_RESTAURANTE sempre recebe 403.
+      // Nem chamamos: o formulário usa restauranteFixo (ver abaixo) em vez de uma lista.
+      return;
+    }
     setErroRestaurantes(null);
     try {
       const response = await listarRestaurantes();
@@ -47,7 +57,7 @@ export function AdminDispositivosPage() {
       // indisponível, mas a listagem/revogação/reativação de dispositivos segue normalmente.
       setErroRestaurantes("Não foi possível carregar a lista de restaurantes.");
     }
-  }, []);
+  }, [adminRestaurante]);
 
   const carregarDispositivos = useCallback(async () => {
     setLoading(true);
@@ -251,7 +261,17 @@ export function AdminDispositivosPage() {
         </Button>
       </div>
 
-      {erroRestaurantes && <ErrorMessage message={erroRestaurantes} />}
+      {adminRestaurante ? (
+        <p className="totem-estado admin-filtro-restaurante">
+          Você está operando apenas no restaurante vinculado à sua conta.
+        </p>
+      ) : (
+        erroRestaurantes && <ErrorMessage message={erroRestaurantes} />
+      )}
+
+      {adminRestaurante && restauranteIdEscopo == null && (
+        <ErrorMessage message="Seu usuário não possui restaurante vinculado. Contate um SUPER_ADMIN." />
+      )}
 
       {!erro && mensagemSucesso && (
         <p className="ui-success-message" role="status">
@@ -274,11 +294,16 @@ export function AdminDispositivosPage() {
         </div>
       )}
 
-      {!semAutorizacao && (
+      {!semAutorizacao && (!adminRestaurante || restauranteIdEscopo != null) && (
         <>
           <DispositivoForm
             dispositivoEmEdicao={dispositivoEmEdicao}
             restaurantes={restaurantes}
+            restauranteFixo={
+              adminRestaurante && restauranteIdEscopo != null
+                ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
+                : null
+            }
             onCriar={handleCriarDispositivo}
             onAtualizar={handleAtualizarDispositivo}
             onCancelarEdicao={handleCancelarEdicao}

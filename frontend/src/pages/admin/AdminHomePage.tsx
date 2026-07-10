@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
 import type { UsuarioAutenticadoResponse } from "../../types/auth";
+import { isSuperAdmin } from "../../utils/adminScope";
 
 const ROTULO_PERFIL: Record<UsuarioAutenticadoResponse["perfil"], string> = {
   SUPER_ADMIN: "Super administrador",
@@ -14,14 +15,16 @@ const ROTULO_PERFIL: Record<UsuarioAutenticadoResponse["perfil"], string> = {
 interface AreaAdmin {
   nome: string;
   rota?: string;
+  /** true = exige SUPER_ADMIN (backend bloqueia os demais perfis com 403). */
+  apenasSuperAdmin?: boolean;
 }
 
 const AREAS_ADMIN: AreaAdmin[] = [
-  { nome: "Restaurantes", rota: "/admin/restaurantes" },
+  { nome: "Restaurantes", rota: "/admin/restaurantes", apenasSuperAdmin: true },
   { nome: "Dispositivos", rota: "/admin/dispositivos" },
   { nome: "Categorias", rota: "/admin/categorias" },
   { nome: "Produtos", rota: "/admin/produtos" },
-  { nome: "Usuários", rota: "/admin/usuarios" },
+  { nome: "Usuários", rota: "/admin/usuarios", apenasSuperAdmin: true },
 ];
 
 export function AdminHomePage() {
@@ -46,6 +49,9 @@ export function AdminHomePage() {
     return null;
   }
 
+  const superAdmin = isSuperAdmin(usuario);
+  const areasVisiveis = AREAS_ADMIN.filter((area) => superAdmin || !area.apenasSuperAdmin);
+
   return (
     <AppLayout title="Painel Administrativo" description="Gestão de restaurantes, dispositivos, categorias, produtos e usuários.">
       <section className="admin-dashboard">
@@ -60,8 +66,12 @@ export function AdminHomePage() {
           </button>
         </div>
 
+        {!superAdmin && (
+          <p className="totem-estado">Você está operando apenas no restaurante vinculado à sua conta.</p>
+        )}
+
         <div className="admin-dashboard__areas">
-          {AREAS_ADMIN.map((area) =>
+          {areasVisiveis.map((area) =>
             area.rota ? (
               <Link key={area.nome} to={area.rota} className="admin-dashboard__area-card admin-dashboard__area-card--link">
                 <span>{area.nome}</span>

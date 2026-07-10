@@ -87,9 +87,9 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Restaurante/categoria/dispositivo/usuário com ID inexistente → 404 amigável
 - [ ] Email de usuário duplicado → 400 amigável no formulário
 
-## 9b. Escopo por restaurante para ADMIN_RESTAURANTE (TASK-058)
+## 9b. Escopo por restaurante para ADMIN_RESTAURANTE (TASK-058, backend)
 
-Requer um usuário `ADMIN_RESTAURANTE` cadastrado (via `/admin/usuarios`, exige `SUPER_ADMIN`) vinculado a um restaurante (ex.: restaurante A), e pelo menos dois restaurantes cadastrados (A e B) com categoria/produto/dispositivo próprios em cada um. Como o frontend ainda não filtra por perfil, use `docs/http/totem-fast-food-mvp.http` ou o Swagger para os testes com token de `ADMIN_RESTAURANTE`.
+Requer um usuário `ADMIN_RESTAURANTE` cadastrado (via `/admin/usuarios`, exige `SUPER_ADMIN`) vinculado a um restaurante (ex.: restaurante A), e pelo menos dois restaurantes cadastrados (A e B) com categoria/produto/dispositivo próprios em cada um. Use `docs/http/totem-fast-food-mvp.http` ou o Swagger para os testes de API pura com token de `ADMIN_RESTAURANTE` (a TASK-059, abaixo, cobre a experiência via UI).
 
 - [ ] Login como `ADMIN_RESTAURANTE` do restaurante A, `GET /api/admin/categorias` sem `restauranteId` → retorna só categorias do restaurante A (nunca todas)
 - [ ] `GET /api/admin/categorias?restauranteId=<B>` → `403`
@@ -100,6 +100,18 @@ Requer um usuário `ADMIN_RESTAURANTE` cadastrado (via `/admin/usuarios`, exige 
 - [ ] `SUPER_ADMIN` continua acessando/alterando livremente categorias/produtos/dispositivos de A e B
 - [ ] `/api/admin/usuarios` continua bloqueado para `ADMIN_RESTAURANTE` (403), sem exceção — não recebeu escopo por restaurante, permanece exclusivo de `SUPER_ADMIN`
 - [ ] Upload de imagem (`POST /api/admin/uploads/produtos/imagem`) continua funcionando para `ADMIN_RESTAURANTE` normalmente (sem checagem de restaurante)
+
+## 9c. Escopo por restaurante — experiência visual no frontend (TASK-059)
+
+Continuação do bloco 9b, agora testando pela UI (`http://localhost:5173/admin`) em vez de chamadas diretas.
+
+- [ ] Login como `ADMIN_RESTAURANTE` do restaurante A → em `/admin`, cards "Restaurantes" e "Usuários" **não aparecem**; aviso "Você está operando apenas no restaurante vinculado à sua conta." visível
+- [ ] `/admin/categorias`: sem seletor "Filtrar por restaurante"; formulário mostra "Restaurante" fixo como "Restaurante vinculado à sua conta" (não o nome real); lista já vem só com categorias do restaurante A
+- [ ] Cadastrar categoria: `POST` no Network mostra `restauranteId` do restaurante A, sem nenhuma forma de escolher B
+- [ ] Repetir para `/admin/produtos` (formulário fixo, categorias do seletor já filtradas para A) e `/admin/dispositivos` (formulário fixo)
+- [ ] Acessar `/admin/usuarios` digitando a URL diretamente → mensagem "Você não tem permissão para acessar usuários." (403), sessão preservada, sem redirecionar para login
+- [ ] Login como `SUPER_ADMIN` → todos os 5 cards aparecem em `/admin`; `/admin/categorias`, `/admin/produtos` e `/admin/dispositivos` continuam com seletor de restaurante completo, sem aviso de restrição
+- [ ] Editar `totem.accessToken` para um valor inválido (qualquer perfil) → 401 continua limpando a sessão normalmente (TASK-059 não mudou esse comportamento)
 
 ## 10. Consistência visual
 

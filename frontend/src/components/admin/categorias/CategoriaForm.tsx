@@ -10,6 +10,11 @@ interface CategoriaFormProps {
   categoriaEmEdicao: CategoriaAdminResponse | null;
   restaurantes: RestauranteAdminResponse[];
   restauranteSelecionadoPadrao: number | null;
+  /**
+   * Presente quando o usuário autenticado é ADMIN_RESTAURANTE (TASK-059): trava o formulário
+   * no restaurante do usuário, sem seletor — o backend já rejeitaria qualquer outro (403).
+   */
+  restauranteFixo?: { id: number; rotulo: string } | null;
   onCriar: (request: CriarCategoriaRequest) => void;
   onAtualizar: (id: number, request: AtualizarCategoriaRequest) => void;
   onCancelarEdicao: () => void;
@@ -21,6 +26,7 @@ export function CategoriaForm({
   categoriaEmEdicao,
   restaurantes,
   restauranteSelecionadoPadrao,
+  restauranteFixo,
   onCriar,
   onAtualizar,
   onCancelarEdicao,
@@ -48,7 +54,7 @@ export function CategoriaForm({
     setErroValidacao(null);
   }, [categoriaEmEdicao, restauranteSelecionadoPadrao, restaurantes]);
 
-  if (!categoriaEmEdicao && restaurantes.length === 0) {
+  if (!restauranteFixo && !categoriaEmEdicao && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
         <h2 className="dispositivo-form__titulo">Cadastrar categoria</h2>
@@ -63,7 +69,7 @@ export function CategoriaForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!categoriaEmEdicao && !restauranteId) {
+    if (!restauranteFixo && !categoriaEmEdicao && !restauranteId) {
       setErroValidacao("Selecione um restaurante.");
       return;
     }
@@ -93,7 +99,7 @@ export function CategoriaForm({
     if (categoriaEmEdicao) {
       onAtualizar(categoriaEmEdicao.id, camposComuns);
     } else {
-      onCriar({ restauranteId: restauranteId as number, ...camposComuns });
+      onCriar({ restauranteId: (restauranteFixo?.id ?? restauranteId) as number, ...camposComuns });
     }
   }
 
@@ -105,7 +111,9 @@ export function CategoriaForm({
 
       <div className="dispositivo-form__tipo">
         <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
-        {categoriaEmEdicao ? (
+        {restauranteFixo ? (
+          <p className="dispositivo-form__restaurante-fixo">{restauranteFixo.rotulo}</p>
+        ) : categoriaEmEdicao ? (
           <p className="dispositivo-form__restaurante-fixo">
             {restaurantes.find((r) => r.id === categoriaEmEdicao.restauranteId)?.nome ??
               `#${categoriaEmEdicao.restauranteId}`}{" "}
