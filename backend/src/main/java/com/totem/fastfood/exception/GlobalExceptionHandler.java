@@ -10,6 +10,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -115,6 +116,26 @@ public class GlobalExceptionHandler {
                 .build();
 
         log.debug("Argumento inválido em {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    /**
+     * Arquivo de upload maior que o limite configurado em
+     * spring.servlet.multipart.max-file-size/max-request-size.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Requisição inválida")
+                .message("Arquivo excede o tamanho máximo permitido de 5MB")
+                .path(request.getRequestURI())
+                .build();
+
+        log.debug("Upload acima do limite em {}: {}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity.badRequest().body(error);
     }
 

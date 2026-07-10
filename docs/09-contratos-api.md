@@ -333,6 +333,35 @@ Response (`200 OK`) — mesmo formato de `UsuarioAdminResponse`, nunca inclui `s
 
 `novaSenha` segue a mesma validação de `senha` no cadastro (`@NotBlank`, 8 a 100 caracteres). Não força logout do usuário alterado nem invalida tokens já emitidos (sem infraestrutura de revogação de token para usuários humanos — mesma limitação já documentada em `docs/testes-backend-mvp.md`).
 
+## Admin — Uploads
+
+Implementado na TASK-053. Armazenamento local em disco (`app.uploads.dir`, padrão `uploads/`, configurável por variável de ambiente `UPLOAD_DIR`) — **em produção deve ser substituído por storage externo** (S3, Cloudinary ou equivalente). Os arquivos salvos ficam acessíveis publicamente sob `app.uploads.public-path` (padrão `/uploads`), ex.: `http://localhost:8080/uploads/produtos/<uuid>.png`.
+
+### Enviar imagem de produto
+
+`POST /api/admin/uploads/produtos/imagem` — exige perfil `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`.
+
+Request — `multipart/form-data`, campo `file`:
+
+- Tipos aceitos: `image/jpeg`, `image/png`, `image/webp`.
+- Tamanho máximo: **5MB**.
+- O nome do arquivo original **não é usado** — o backend gera um nome próprio (`UUID` + extensão derivada do content-type).
+
+Response (`201 Created`):
+
+```json
+{
+  "filename": "1b2c3d4e-...-uuid.webp",
+  "url": "/uploads/produtos/1b2c3d4e-...-uuid.webp",
+  "contentType": "image/webp",
+  "size": 45210
+}
+```
+
+A `url` retornada é o valor a preencher em `imagemUrl` ao criar/atualizar um produto — **o contrato de `POST`/`PUT /api/admin/produtos` não muda**, continua recebendo `imagemUrl` como string opcional.
+
+Erros (`400`): arquivo ausente/vazio, tipo de arquivo não permitido, ou arquivo acima de 5MB — todos seguem o formato padrão de erro abaixo.
+
 ## Erro padrão
 
 Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:

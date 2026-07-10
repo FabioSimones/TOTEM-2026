@@ -93,6 +93,14 @@ Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senh
 | PATCH | `/api/admin/usuarios/{id}/desativar` | Desativar usuário (bloqueado para o próprio usuário autenticado) |
 | PATCH | `/api/admin/usuarios/{id}/senha` | Alterar senha do usuário (nunca retorna a senha/hash) |
 
+## Administração de uploads
+
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. Armazenamento local em disco — adequado para o MVP (ver `docs/09-contratos-api.md` para detalhes e limites).
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| POST | `/api/admin/uploads/produtos/imagem` | Enviar imagem de produto (`multipart/form-data`, campo `file`) e obter a URL pública para usar em `imagemUrl` |
+
 ## Webhooks futuros
 
 | Método | Rota | Objetivo |

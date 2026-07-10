@@ -1,12 +1,18 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { API_BASE_URL } from "../../../services/api";
+import { uploadImagemProduto } from "../../../services/adminUploadService";
 import type { CategoriaAdminResponse } from "../../../types/categoria";
+import { ApiError } from "../../../types/api";
 import type { AtualizarProdutoRequest, CriarProdutoRequest, ProdutoAdminResponse } from "../../../types/produto";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
 import { isValidHttpUrl } from "../../../utils/url";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
 import { Input } from "../../ui/Input";
+
+const TIPOS_IMAGEM_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
+const TAMANHO_MAXIMO_IMAGEM_BYTES = 5 * 1024 * 1024; // 5MB, mesmo limite do backend
 
 interface ProdutoFormProps {
   produtoEmEdicao: ProdutoAdminResponse | null;
@@ -81,6 +87,10 @@ export function ProdutoForm({
   const [recomendado, setRecomendado] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [imagemFalhouAoCarregar, setImagemFalhouAoCarregar] = useState(false);
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
+  const [previewLocalUrl, setPreviewLocalUrl] = useState<string | null>(null);
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const [erroUpload, setErroUpload] = useState<string | null>(null);
 
   useEffect(() => {
     if (produtoEmEdicao) {
@@ -106,11 +116,60 @@ export function ProdutoForm({
       setRecomendado(false);
     }
     setErroValidacao(null);
+    setArquivoSelecionado(null);
+    setErroUpload(null);
   }, [produtoEmEdicao, restauranteSelecionadoPadrao, restaurantes, categorias]);
 
   useEffect(() => {
     setImagemFalhouAoCarregar(false);
   }, [imagemUrl]);
+
+  // Revoga a URL local (URL.createObjectURL) ao trocar de arquivo ou desmontar, evitando vazamento de memória.
+  useEffect(() => {
+    if (!arquivoSelecionado) {
+      setPreviewLocalUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(arquivoSelecionado);
+    setPreviewLocalUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [arquivoSelecionado]);
+
+  function handleSelecionarArquivo(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    setErroUpload(null);
+
+    if (!file) {
+      return;
+    }
+    if (!TIPOS_IMAGEM_ACEITOS.includes(file.type)) {
+      setErroUpload("Envie uma imagem JPEG, PNG ou WEBP.");
+      return;
+    }
+    if (file.size > TAMANHO_MAXIMO_IMAGEM_BYTES) {
+      setErroUpload("A imagem deve ter no máximo 5MB.");
+      return;
+    }
+    setArquivoSelecionado(file);
+  }
+
+  async function handleEnviarImagem() {
+    if (!arquivoSelecionado) {
+      return;
+    }
+    setErroUpload(null);
+    setEnviandoImagem(true);
+    try {
+      const response = await uploadImagemProduto(arquivoSelecionado);
+      setImagemUrl(`${API_BASE_URL}${response.url}`);
+      setArquivoSelecionado(null);
+    } catch (error) {
+      setErroUpload(error instanceof ApiError ? error.message : "Não foi possível enviar a imagem.");
+    } finally {
+      setEnviandoImagem(false);
+    }
+  }
 
   if (!produtoEmEdicao && restaurantes.length === 0) {
     return (
@@ -284,6 +343,31 @@ export function ProdutoForm({
         disabled={salvando}
       />
 
+      <div className="produto-form__upload">
+        <span className="dispositivo-form__tipo-rotulo">Enviar imagem do produto (opcional)</span>
+        <input
+          id="arquivoImagemProduto"
+          className="produto-form__upload-input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleSelecionarArquivo}
+          disabled={salvando || enviandoImagem}
+        />
+        <p className="produto-form__imagem-ajuda">Formatos aceitos: JPEG, PNG ou WEBP. Tamanho máximo: 5MB.</p>
+
+        {previewLocalUrl && (
+          <img className="produto-form__imagem-preview" src={previewLocalUrl} alt="Prévia local do arquivo selecionado" />
+        )}
+
+        {arquivoSelecionado && (
+          <Button type="button" onClick={handleEnviarImagem} loading={enviandoImagem} disabled={salvando}>
+            Enviar imagem
+          </Button>
+        )}
+
+        <ErrorMessage message={erroUpload} />
+      </div>
+
       <Input
         id="imagemUrlProduto"
         label="URL da imagem (opcional)"
@@ -292,7 +376,10 @@ export function ProdutoForm({
         placeholder="https://exemplo.com/produto.png"
         disabled={salvando}
       />
-      <p className="produto-form__imagem-ajuda">Informe uma URL pública da imagem do produto.</p>
+      <p className="produto-form__imagem-ajuda">
+        Informe uma URL pública da imagem do produto, ou envie um arquivo acima — o campo é preenchido
+        automaticamente após o envio.
+      </p>
 
       {imagemUrlTrimmed && !imagemUrlEhValida && (
         <ErrorMessage message="URL inválida. Deve começar com http:// ou https://." />

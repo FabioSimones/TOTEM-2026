@@ -459,3 +459,43 @@ Authorization: Bearer {{tokenSuperAdmin}}
   "codigoIdentificacao": "TOTEM_01",
   "tipoDispositivo": "TOTEM"
 }
+
+
+### 43. Admin — Upload de imagem de produto (TASK-053) — ajuste o caminho do arquivo local
+POST {{baseUrl}}/api/admin/uploads/produtos/imagem
+Authorization: Bearer {{tokenSuperAdmin}}
+Content-Type: multipart/form-data; boundary=totemBoundary
+
+--totemBoundary
+Content-Disposition: form-data; name="file"; filename="produto.png"
+Content-Type: image/png
+
+< ./caminho/para/imagem-de-teste.png
+--totemBoundary--
+
+### -> copie url da resposta para usar em imagemUrl ao criar/atualizar produto
+
+
+### 44. Admin — Upload com tipo de arquivo inválido -> 400
+POST {{baseUrl}}/api/admin/uploads/produtos/imagem
+Authorization: Bearer {{tokenSuperAdmin}}
+Content-Type: multipart/form-data; boundary=totemBoundary
+
+--totemBoundary
+Content-Disposition: form-data; name="file"; filename="arquivo.txt"
+Content-Type: text/plain
+
+< ./caminho/para/arquivo-de-teste.txt
+--totemBoundary--
+
+
+### 45. Admin — Upload sem token -> 401
+POST {{baseUrl}}/api/admin/uploads/produtos/imagem
+Content-Type: multipart/form-data; boundary=totemBoundary
+
+--totemBoundary
+Content-Disposition: form-data; name="file"; filename="produto.png"
+Content-Type: image/png
+
+< ./caminho/para/imagem-de-teste.png
+--totemBoundary--

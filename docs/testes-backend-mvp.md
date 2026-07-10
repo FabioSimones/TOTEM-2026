@@ -70,6 +70,12 @@ mvn spring-boot:run
 | PATCH | `/api/admin/produtos/{id}/disponibilidade` |
 | PATCH | `/api/admin/produtos/{id}/destaque` |
 
+### Admin — Upload (`SUPER_ADMIN`, `ADMIN_RESTAURANTE`, implementado na TASK-053)
+
+| Método | Rota |
+|---|---|
+| POST | `/api/admin/uploads/produtos/imagem` (`multipart/form-data`, campo `file`; JPEG/PNG/WEBP até 5MB; retorna `url` para usar em `imagemUrl`) |
+
 ### Admin — Usuário (`SUPER_ADMIN`, implementado na TASK-048)
 
 | Método | Rota |
@@ -380,6 +386,7 @@ mvn test
 | `service/CozinhaPedidoServiceTest` (novo, TASK-026) | `atualizarStatus`: `ENVIADO_PARA_COZINHA→EM_PREPARO`, `EM_PREPARO→PRONTO`, bloqueio de salto e de regressão, bloqueio para pedidos fora do fluxo da cozinha |
 | `service/UsuarioServiceTest` (TASK-048, ampliado na TASK-049) | `criar`: `restauranteId` obrigatório/proibido conforme perfil, 404 para restaurante inexistente, e-mail duplicado, senha codificada via `PasswordEncoder`; `atualizar`: e-mail duplicado bloqueado; `desativar`: bloqueio de autodesativação, permitido para outro usuário; `alterarSenha`: hash atualizado via `PasswordEncoder`, 404 para usuário inexistente (sem chamar `encode`/`save`), response sem campo de senha |
 | `service/DispositivoServiceTest` (novo, TASK-051) | `atualizar`: campos permitidos (`nome`/`codigoIdentificacao`/`tipoDispositivo`) atualizados via mapper, 404 para dispositivo inexistente, 400 para código de identificação duplicado (excluindo o próprio registro) |
+| `service/UploadImagemServiceTest` (novo, TASK-053) | `salvarImagemProduto`: rejeita arquivo vazio e content-type não permitido, aceita JPEG/PNG/WEBP, nome gerado nunca reaproveita o nome original do arquivo |
 
 Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — validam apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo (autenticação, serialização, banco real).
 

@@ -28,6 +28,11 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 server:
   port: 8080
   error:
@@ -41,6 +46,11 @@ app:
       # nunca deve usar o valor padrão de desenvolvimento abaixo.
       secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+  uploads:
+    # Armazenamento local em disco — adequado para o MVP. Em produção,
+    # substituir por storage externo (S3, Cloudinary ou equivalente).
+    dir: ${UPLOAD_DIR:uploads}
+    public-path: /uploads
 
 springdoc:
   api-docs:

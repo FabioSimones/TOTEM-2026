@@ -1,7 +1,7 @@
 import { ApiError, type ApiErrorResponse } from "../types/api";
 import { getAccessToken } from "./tokenStorage";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 interface ApiFetchOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
@@ -19,8 +19,13 @@ export async function apiFetch<TResponse>(
 ): Promise<TResponse> {
   const { body, withAuth = true, headers, ...rest } = options;
 
+  const isFormData = body instanceof FormData;
+
   const requestHeaders = new Headers(headers);
-  requestHeaders.set("Content-Type", "application/json");
+  if (!isFormData) {
+    // Para FormData, o browser define Content-Type com o boundary correto sozinho.
+    requestHeaders.set("Content-Type", "application/json");
+  }
 
   if (withAuth) {
     const token = getAccessToken();
@@ -32,7 +37,7 @@ export async function apiFetch<TResponse>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
     headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (!response.ok) {

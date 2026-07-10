@@ -6,6 +6,7 @@ Agents são papéis que a IA pode assumir durante o desenvolvimento.
 
 - `backend-senior.md`
 - `frontend-senior.md`
+- `fullstack-senior.md`
 - `database-architect.md`
 - `security-reviewer.md`
 - `qa-tester.md`
