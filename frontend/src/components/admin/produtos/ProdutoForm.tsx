@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { CategoriaAdminResponse } from "../../../types/categoria";
 import type { AtualizarProdutoRequest, CriarProdutoRequest, ProdutoAdminResponse } from "../../../types/produto";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
+import { isValidHttpUrl } from "../../../utils/url";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
 import { Input } from "../../ui/Input";
@@ -79,6 +80,7 @@ export function ProdutoForm({
   const [destaque, setDestaque] = useState(false);
   const [recomendado, setRecomendado] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  const [imagemFalhouAoCarregar, setImagemFalhouAoCarregar] = useState(false);
 
   useEffect(() => {
     if (produtoEmEdicao) {
@@ -106,6 +108,10 @@ export function ProdutoForm({
     setErroValidacao(null);
   }, [produtoEmEdicao, restauranteSelecionadoPadrao, restaurantes, categorias]);
 
+  useEffect(() => {
+    setImagemFalhouAoCarregar(false);
+  }, [imagemUrl]);
+
   if (!produtoEmEdicao && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
@@ -119,6 +125,8 @@ export function ProdutoForm({
   }
 
   const categoriasDoRestaurante = categorias.filter((categoria) => categoria.restauranteId === restauranteId);
+  const imagemUrlTrimmed = imagemUrl.trim();
+  const imagemUrlEhValida = isValidHttpUrl(imagemUrlTrimmed);
 
   function handleSelecionarRestaurante(id: number) {
     setRestauranteId(id);
@@ -144,6 +152,12 @@ export function ProdutoForm({
     const precoNumero = Number(preco.replace(",", "."));
     if (!preco.trim() || Number.isNaN(precoNumero) || precoNumero <= 0) {
       setErroValidacao("Informe um preço válido maior que zero.");
+      return;
+    }
+
+    const imagemUrlTrimmed = imagemUrl.trim();
+    if (imagemUrlTrimmed && !isValidHttpUrl(imagemUrlTrimmed)) {
+      setErroValidacao("Informe uma URL válida, começando com http:// ou https://.");
       return;
     }
 
@@ -278,6 +292,25 @@ export function ProdutoForm({
         placeholder="https://exemplo.com/produto.png"
         disabled={salvando}
       />
+      <p className="produto-form__imagem-ajuda">Informe uma URL pública da imagem do produto.</p>
+
+      {imagemUrlTrimmed && !imagemUrlEhValida && (
+        <ErrorMessage message="URL inválida. Deve começar com http:// ou https://." />
+      )}
+
+      {imagemUrlTrimmed && imagemUrlEhValida && !imagemFalhouAoCarregar && (
+        <img
+          className="produto-form__imagem-preview"
+          src={imagemUrlTrimmed}
+          alt="Prévia da imagem do produto"
+          onError={() => setImagemFalhouAoCarregar(true)}
+          onLoad={() => setImagemFalhouAoCarregar(false)}
+        />
+      )}
+
+      {imagemUrlTrimmed && imagemUrlEhValida && imagemFalhouAoCarregar && (
+        <div className="produto-form__imagem-preview-fallback">Não foi possível carregar a prévia da imagem.</div>
+      )}
 
       <Input
         id="ordemExibicaoProduto"

@@ -366,6 +366,43 @@ a:hover {
   box-shadow: none;
 }
 
+/* ===== Admin — preview de imagem no formulário de produto (TASK-052) ===== */
+.produto-form__imagem-ajuda {
+  margin: calc(-1 * var(--spacing-sm)) 0 var(--spacing-md) 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.produto-form__imagem-preview {
+  width: 100%;
+  max-width: 16rem;
+  height: 10rem;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-elevated);
+  margin-bottom: var(--spacing-md);
+}
+
+.produto-form__imagem-preview-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 16rem;
+  height: 10rem;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
 /* ===== Layout cardápio + carrinho ===== */
 .totem-layout {
   display: flex;

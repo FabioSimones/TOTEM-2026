@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { CategoriaAdminResponse } from "../../../types/categoria";
 import type { ProdutoAdminResponse } from "../../../types/produto";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
@@ -29,10 +30,22 @@ export function ProdutoCard({
   const nomeRestaurante = restaurantes.find((r) => r.id === produto.restauranteId)?.nome ?? `#${produto.restauranteId}`;
   const nomeCategoria = categorias.find((c) => c.id === produto.categoriaId)?.nome ?? `#${produto.categoriaId}`;
 
+  const [imagemFalhouAoCarregar, setImagemFalhouAoCarregar] = useState(false);
+
+  useEffect(() => {
+    setImagemFalhouAoCarregar(false);
+  }, [produto.imagemUrl]);
+
   return (
     <article className="pedido-pendente-card">
-      {produto.imagemUrl ? (
-        <img className="produto-card__imagem" src={produto.imagemUrl} alt={produto.nome} loading="lazy" />
+      {produto.imagemUrl && !imagemFalhouAoCarregar ? (
+        <img
+          className="produto-card__imagem"
+          src={produto.imagemUrl}
+          alt={produto.nome}
+          loading="lazy"
+          onError={() => setImagemFalhouAoCarregar(true)}
+        />
       ) : (
         <div className="produto-card__imagem produto-card__imagem--placeholder" aria-hidden="true">
           🍔
