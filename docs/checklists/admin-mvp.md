@@ -170,21 +170,24 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 - [ ] Reset do contador após sucesso **não foi reexercitado manualmente** nesta task: exigiria esperar os `block-minutes` reais (15min) ou alterar a configuração só para o teste, o que a task pediu para evitar. Coberto por `LoginAttemptServiceTest.bloqueioDeveExpirarAposBlockMinutos`/`sucessoDeveLimparContadorDeFalhas`.
 - [x] (por revisão de código) Frontend (`AdminLoginPage.tsx` + `services/api.ts`): `429` não entra no fluxo de retry-via-refresh (só `401` aciona), cai direto no `catch` e exibe `error.message` via `ErrorMessage` — mesma mensagem do backend, sem quebrar a tela. Clique real na UI não foi realizado (sem automação de navegador disponível neste ambiente); revisão de código combinada com os resultados de `curl` acima dá confiança alta de que o comportamento visual é o esperado.
 
-## 9g. Listagem administrativa de pedidos (`/admin/pedidos`, TASK-068)
+## 9g. Listagem administrativa de pedidos (`/admin/pedidos`, TASK-068, validado manualmente na TASK-069)
 
-**Coberto por teste automatizado** (`integration/PedidoAdminIntegrationTest`, 10 testes MockMvc via HTTP real) — ver `docs/testes-backend-mvp.md` e `docs/09-contratos-api.md` seção "Admin — Pedidos". Validação manual (clique real na UI) ainda **não** foi realizada nesta task.
+**Coberto por teste automatizado** (`integration/PedidoAdminIntegrationTest`, 10 testes MockMvc via HTTP real) e **validado via `curl` contra o backend real** (2026-07-10) — ver `docs/testes-backend-mvp.md` e `docs/09-contratos-api.md` seção "Admin — Pedidos". Dados de teste: 2 restaurantes, 4 pedidos (`RETIRADO`, `AGUARDANDO_PAGAMENTO_DINHEIRO`, `PAGO` em restaurante A, `PAGO` em restaurante B), 1 `ADMIN_RESTAURANTE` real vinculado ao restaurante A, 1 `OPERADOR_CAIXA` real.
 
-- [x] (automatizado) `SUPER_ADMIN` lista pedidos de todos os restaurantes
-- [x] (automatizado) `SUPER_ADMIN` filtra por `statusPedido`
-- [x] (automatizado) `statusPedido` inválido → `400`
-- [x] (automatizado) `ADMIN_RESTAURANTE` lista apenas pedidos do próprio restaurante
-- [x] (automatizado) `ADMIN_RESTAURANTE` filtrando `restauranteId` de outro restaurante → `403`
-- [x] (automatizado) Detalhe do pedido retorna itens, pagamentos e histórico completo
-- [x] (automatizado) `ADMIN_RESTAURANTE` não acessa detalhe de pedido de outro restaurante (`403`), mas acessa o do próprio restaurante normalmente
-- [x] (automatizado) Pedido inexistente → `404`; sem token → `401`
-- [ ] Validação manual: login `SUPER_ADMIN` → `/admin/pedidos` → lista aparece, filtro por restaurante e por status funcionam, "Ver detalhes" mostra itens/pagamentos/histórico
-- [ ] Validação manual: login `ADMIN_RESTAURANTE` → `/admin/pedidos` → lista já vem restrita ao próprio restaurante, sem seletor de restaurante; tentar acessar pedido de outro restaurante via URL/API → mensagem amigável de permissão negada, sessão preservada
-- [ ] Card "Pedidos" aparece em `/admin` tanto para `SUPER_ADMIN` quanto para `ADMIN_RESTAURANTE`
+- [x] `SUPER_ADMIN` lista pedidos de todos os restaurantes (4/4, ordenados do mais recente ao mais antigo)
+- [x] `SUPER_ADMIN` filtra por `restauranteId` (isola corretamente cada restaurante) e por `statusPedido` (`RETIRADO` retornou só o pedido esperado)
+- [x] Filtro combinado sem nenhum resultado (`restauranteId` de B + `statusPedido=RETIRADO`) → `200` com `[]` (estado vazio)
+- [x] `statusPedido` inválido → `400`, mensagem já lista os valores aceitos
+- [x] `ADMIN_RESTAURANTE` lista apenas pedidos do próprio restaurante (3/3, nenhum do restaurante B)
+- [x] `ADMIN_RESTAURANTE` filtrando `restauranteId` do próprio → `200`; do outro restaurante → `403`
+- [x] Detalhe do pedido retirado retorna itens, pagamentos e histórico completo (6 transições: `CRIADO`→`PAGO`→`ENVIADO_PARA_COZINHA`→`EM_PREPARO`→`PRONTO`→`RETIRADO`, cada uma com o dispositivo que alterou)
+- [x] `ADMIN_RESTAURANTE` não acessa detalhe de pedido de outro restaurante (`403`), mas acessa o do próprio normalmente — e o mesmo token continua `200` logo depois do `403` (sessão preservada, sem revogação colateral)
+- [x] Pedido inexistente → `404`; sem token → `401`; perfil operacional (`OPERADOR_CAIXA`) → `403`
+- [x] Card "Pedidos" aparece em `/admin` tanto para `SUPER_ADMIN` quanto para `ADMIN_RESTAURANTE` (confirmado por leitura de código: sem `apenasSuperAdmin` no card, ao contrário de "Restaurantes"/"Usuários")
+- [x] (por revisão de código, cruzada com os resultados de `curl` acima) `AdminPedidosPage`: `ADMIN_RESTAURANTE` nunca chama `GET /api/admin/restaurantes` (`carregarRestaurantes` retorna cedo) nem mostra seletor de restaurante; `mostrarRestaurante={!adminRestaurante}` esconde a coluna "Restaurante" nos cards para esse perfil; `401` limpa a sessão (`clearSession()` + botão "Ir para login"), `403` preserva a sessão e mostra mensagem amigável — igual ao padrão das demais telas administrativas
+- [ ] Clique real na UI (login no navegador, alternar filtros, abrir/fechar detalhe, alternar tema) não foi realizado — sem automação de navegador disponível neste ambiente; a validação via `curl` exercita exatamente a mesma API que o frontend consome, e o código foi revisado linha a linha, mas uma conferência visual manual rápida continua recomendada para fechar 100%
+
+Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta task.
 
 **Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação.
 
