@@ -461,6 +461,87 @@ Response (`200 OK`) — mesmo formato de `UsuarioAdminResponse`, nunca inclui `s
 
 `novaSenha` segue a mesma validação de `senha` no cadastro (`@NotBlank`, 8 a 100 caracteres). Não força logout do usuário alterado nem invalida tokens já emitidos (sem infraestrutura de revogação de token para usuários humanos — mesma limitação já documentada em `docs/testes-backend-mvp.md`).
 
+## Admin — Pedidos (TASK-068)
+
+Somente leitura — não altera status, pagamento nem qualquer dado do pedido (isso continua exclusivo do fluxo operacional Totem/Caixa/Cozinha). Exige perfil `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`, com o mesmo escopo por restaurante da TASK-058: `SUPER_ADMIN` vê/lista tudo; `ADMIN_RESTAURANTE` só vê pedidos do próprio restaurante (`restauranteId` de outro restaurante, na listagem ou implícito no detalhe, retorna `403`).
+
+### Listar pedidos
+
+`GET /api/admin/pedidos[?restauranteId=][&statusPedido=]`
+
+- `restauranteId`: `SUPER_ADMIN` pode informar qualquer um ou omitir (retorna todos); `ADMIN_RESTAURANTE` só pode informar o próprio (ou omitir — sempre fica restrito ao próprio de qualquer forma).
+- `statusPedido`: filtra por um dos valores de `StatusPedido` (`CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO`, `PAGO`, `ENVIADO_PARA_COZINHA`, `EM_PREPARO`, `PRONTO`, `RETIRADO`, `CANCELADO`, `EXPIRADO`). Valor inválido retorna `400`.
+- Resultado ordenado do mais recente para o mais antigo (`criadoEm desc`).
+
+Response (`200 OK`):
+
+```json
+[
+  {
+    "pedidoId": 42,
+    "numeroPedido": "A42",
+    "restauranteId": 1,
+    "restauranteNome": "Lanchonete Central",
+    "clienteNome": "Cliente Teste",
+    "tipoConsumo": "LOCAL",
+    "statusPedido": "PAGO",
+    "valorTotal": 51.80,
+    "criadoEm": "2026-07-10T18:51:53.268448",
+    "atualizadoEm": "2026-07-10T18:51:53.28396"
+  }
+]
+```
+
+### Consultar detalhes do pedido
+
+`GET /api/admin/pedidos/{id}` — mesmos campos do resumo acima, mais `itens`, `pagamentos` e `historico`:
+
+```json
+{
+  "pedidoId": 42,
+  "numeroPedido": "A42",
+  "restauranteId": 1,
+  "restauranteNome": "Lanchonete Central",
+  "clienteNome": "Cliente Teste",
+  "tipoConsumo": "LOCAL",
+  "statusPedido": "RETIRADO",
+  "valorTotal": 51.80,
+  "criadoEm": "2026-07-10T18:51:53.268448",
+  "atualizadoEm": "2026-07-10T18:55:10.10000",
+  "itens": [
+    {
+      "produtoId": 4,
+      "nomeProduto": "X-Burger",
+      "quantidade": 2,
+      "precoUnitario": 25.90,
+      "subtotal": 51.80,
+      "observacao": "Sem cebola"
+    }
+  ],
+  "pagamentos": [
+    {
+      "id": 7,
+      "formaPagamento": "PIX",
+      "statusPagamento": "AUTORIZADO",
+      "valor": 51.80,
+      "paymentProvider": "FAKE",
+      "externalPaymentId": "FAKE-...",
+      "criadoEm": "2026-07-10T18:51:53.28",
+      "pagoEm": "2026-07-10T18:51:53.28",
+      "canceladoEm": null
+    }
+  ],
+  "historico": [
+    { "statusAnterior": null, "statusNovo": "CRIADO", "dataAlteracao": "...", "observacao": "Pedido criado pelo Totem", "alteradoPorUsuarioNome": null, "alteradoPorDispositivoNome": "Totem Loja 1" },
+    { "statusAnterior": "CRIADO", "statusNovo": "PAGO", "dataAlteracao": "...", "observacao": "Pagamento iniciado pelo Totem: PIX", "alteradoPorUsuarioNome": null, "alteradoPorDispositivoNome": "Totem Loja 1" }
+  ]
+}
+```
+
+`404` se o pedido não existir; `403` se pertencer a um restaurante fora do escopo do `ADMIN_RESTAURANTE` autenticado.
+
+**Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação (a listagem retorna todos os pedidos do escopo de uma vez — aceitável para o volume esperado do MVP; deve ser revisto se o histórico crescer muito).
+
 ## Admin — Uploads
 
 Implementado na TASK-053. Armazenamento local em disco (`app.uploads.dir`, padrão `uploads/`, configurável por variável de ambiente `UPLOAD_DIR`) — **em produção deve ser substituído por storage externo** (S3, Cloudinary ou equivalente). Os arquivos salvos ficam acessíveis publicamente sob `app.uploads.public-path` (padrão `/uploads`), ex.: `http://localhost:8080/uploads/produtos/<uuid>.png`.

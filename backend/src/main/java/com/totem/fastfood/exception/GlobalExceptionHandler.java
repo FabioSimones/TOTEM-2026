@@ -10,6 +10,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -117,6 +118,32 @@ public class GlobalExceptionHandler {
                 .build();
 
         log.debug("Argumento inválido em {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    /**
+     * Parâmetro de query/path com tipo incompatível (ex.: {@code ?statusPedido=NAO_EXISTE} contra
+     * um enum, TASK-068). Sem este handler, o Spring lançaria essa exceção antes de chegar ao
+     * controller e ela cairia no fallback genérico de {@link Exception} (500).
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+
+        Class<?> tipoEsperado = ex.getRequiredType();
+        String valorAceitos = tipoEsperado != null && tipoEsperado.isEnum()
+                ? " Valores aceitos: " + java.util.Arrays.toString(tipoEsperado.getEnumConstants())
+                : "";
+
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Parâmetro inválido")
+                .message("Valor inválido para o parâmetro '" + ex.getName() + "': " + ex.getValue() + "." + valorAceitos)
+                .path(request.getRequestURI())
+                .build();
+
+        log.debug("Parâmetro inválido em {}: {}={}", request.getRequestURI(), ex.getName(), ex.getValue());
         return ResponseEntity.badRequest().body(error);
     }
 

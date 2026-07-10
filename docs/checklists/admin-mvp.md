@@ -170,6 +170,24 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 - [ ] Reset do contador após sucesso **não foi reexercitado manualmente** nesta task: exigiria esperar os `block-minutes` reais (15min) ou alterar a configuração só para o teste, o que a task pediu para evitar. Coberto por `LoginAttemptServiceTest.bloqueioDeveExpirarAposBlockMinutos`/`sucessoDeveLimparContadorDeFalhas`.
 - [x] (por revisão de código) Frontend (`AdminLoginPage.tsx` + `services/api.ts`): `429` não entra no fluxo de retry-via-refresh (só `401` aciona), cai direto no `catch` e exibe `error.message` via `ErrorMessage` — mesma mensagem do backend, sem quebrar a tela. Clique real na UI não foi realizado (sem automação de navegador disponível neste ambiente); revisão de código combinada com os resultados de `curl` acima dá confiança alta de que o comportamento visual é o esperado.
 
+## 9g. Listagem administrativa de pedidos (`/admin/pedidos`, TASK-068)
+
+**Coberto por teste automatizado** (`integration/PedidoAdminIntegrationTest`, 10 testes MockMvc via HTTP real) — ver `docs/testes-backend-mvp.md` e `docs/09-contratos-api.md` seção "Admin — Pedidos". Validação manual (clique real na UI) ainda **não** foi realizada nesta task.
+
+- [x] (automatizado) `SUPER_ADMIN` lista pedidos de todos os restaurantes
+- [x] (automatizado) `SUPER_ADMIN` filtra por `statusPedido`
+- [x] (automatizado) `statusPedido` inválido → `400`
+- [x] (automatizado) `ADMIN_RESTAURANTE` lista apenas pedidos do próprio restaurante
+- [x] (automatizado) `ADMIN_RESTAURANTE` filtrando `restauranteId` de outro restaurante → `403`
+- [x] (automatizado) Detalhe do pedido retorna itens, pagamentos e histórico completo
+- [x] (automatizado) `ADMIN_RESTAURANTE` não acessa detalhe de pedido de outro restaurante (`403`), mas acessa o do próprio restaurante normalmente
+- [x] (automatizado) Pedido inexistente → `404`; sem token → `401`
+- [ ] Validação manual: login `SUPER_ADMIN` → `/admin/pedidos` → lista aparece, filtro por restaurante e por status funcionam, "Ver detalhes" mostra itens/pagamentos/histórico
+- [ ] Validação manual: login `ADMIN_RESTAURANTE` → `/admin/pedidos` → lista já vem restrita ao próprio restaurante, sem seletor de restaurante; tentar acessar pedido de outro restaurante via URL/API → mensagem amigável de permissão negada, sessão preservada
+- [ ] Card "Pedidos" aparece em `/admin` tanto para `SUPER_ADMIN` quanto para `ADMIN_RESTAURANTE`
+
+**Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação.
+
 ## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição

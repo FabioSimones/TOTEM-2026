@@ -26,6 +26,7 @@ const AREAS_ADMIN: AreaAdmin[] = [
   { nome: "Categorias", rota: "/admin/categorias" },
   { nome: "Produtos", rota: "/admin/produtos" },
   { nome: "Usuários", rota: "/admin/usuarios", apenasSuperAdmin: true },
+  { nome: "Pedidos", rota: "/admin/pedidos" },
 ];
 
 export function AdminHomePage() {
@@ -63,7 +64,7 @@ export function AdminHomePage() {
   const areasVisiveis = AREAS_ADMIN.filter((area) => superAdmin || !area.apenasSuperAdmin);
 
   return (
-    <AppLayout title="Painel Administrativo" description="Gestão de restaurantes, dispositivos, categorias, produtos e usuários.">
+    <AppLayout title="Painel Administrativo" description="Gestão de restaurantes, dispositivos, categorias, produtos, usuários e pedidos.">
       <section className="admin-dashboard">
         <div className="admin-dashboard__usuario">
           <div>

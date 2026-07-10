@@ -14,4 +14,12 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     List<Pedido> findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(
             Long restauranteId, Collection<StatusPedido> statusPedido);
+
+    List<Pedido> findAllByOrderByCriadoEmDesc();
+
+    List<Pedido> findByRestauranteIdOrderByCriadoEmDesc(Long restauranteId);
+
+    List<Pedido> findByStatusPedidoOrderByCriadoEmDesc(StatusPedido statusPedido);
+
+    List<Pedido> findByRestauranteIdAndStatusPedidoOrderByCriadoEmDesc(Long restauranteId, StatusPedido statusPedido);
 }

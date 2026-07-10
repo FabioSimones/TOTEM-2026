@@ -1,6 +1,7 @@
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\BCryptValidationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\GerarSenhaUtilTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\FluxoOperacionalMvpIntegrationTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\PedidoAdminIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\payment\FakePaymentProviderTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AdminScopeServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthLoginRateLimitTest.java

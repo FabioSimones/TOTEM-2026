@@ -11,6 +11,7 @@ import { AdminRestaurantesPage } from "../pages/admin/AdminRestaurantesPage";
 import { AdminCategoriasPage } from "../pages/admin/AdminCategoriasPage";
 import { AdminProdutosPage } from "../pages/admin/AdminProdutosPage";
 import { AdminUsuariosPage } from "../pages/admin/AdminUsuariosPage";
+import { AdminPedidosPage } from "../pages/admin/AdminPedidosPage";
 
 export function AppRoutes() {
   return (
@@ -27,6 +28,7 @@ export function AppRoutes() {
       <Route path="/admin/categorias" element={<AdminCategoriasPage />} />
       <Route path="/admin/produtos" element={<AdminProdutosPage />} />
       <Route path="/admin/usuarios" element={<AdminUsuariosPage />} />
+      <Route path="/admin/pedidos" element={<AdminPedidosPage />} />
     </Routes>
   );
 }

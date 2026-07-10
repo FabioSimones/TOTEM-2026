@@ -1578,3 +1578,43 @@ a:hover {
 .pedido-pendente-card > .produto-card__imagem {
   border-radius: var(--radius-md);
 }
+
+/* ===== Admin — pedidos (TASK-068) ===== */
+.pedido-admin-detalhe {
+  gap: var(--spacing-md);
+}
+
+.pedido-admin-detalhe__secao h4 {
+  margin: 0 0 var(--spacing-xs);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pedido-admin-detalhe__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.pedido-admin-detalhe__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pedido-admin-detalhe__item-data {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

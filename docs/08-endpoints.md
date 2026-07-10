@@ -105,6 +105,15 @@ Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senh
 | PATCH | `/api/admin/usuarios/{id}/desativar` | Desativar usuário (bloqueado para o próprio usuário autenticado) |
 | PATCH | `/api/admin/usuarios/{id}/senha` | Alterar senha do usuário (nunca retorna a senha/hash) |
 
+## Administração de pedidos
+
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` (TASK-068). Somente leitura — não altera status, pagamento nem qualquer dado do pedido; isso continua exclusivo do fluxo operacional (Totem/Caixa/Cozinha). **Escopo por restaurante**: mesma regra de Categorias/Produtos/Dispositivos — `ADMIN_RESTAURANTE` só lista/consulta pedidos do próprio restaurante, `403` para qualquer tentativa de acessar outro (via `restauranteId` na listagem ou implícito no detalhe).
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| GET | `/api/admin/pedidos` | Listar pedidos (filtros opcionais `restauranteId` e `statusPedido`) |
+| GET | `/api/admin/pedidos/{id}` | Consultar detalhes do pedido — itens, pagamentos e histórico de status |
+
 ## Administração de uploads
 
 Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` para envio; `SUPER_ADMIN` para limpeza de órfãos (TASK-056). Armazenamento local em disco — adequado para o MVP (ver `docs/09-contratos-api.md` para detalhes e limites). **Sem escopo por restaurante (TASK-058)**: o upload em si não tem vínculo direto com um restaurante (o arquivo só passa a pertencer a um restaurante indiretamente, quando referenciado por `Produto.imagemUrl`) — continua liberado para qualquer `ADMIN_RESTAURANTE` autenticado, e a limpeza de órfãos continua global (`SUPER_ADMIN`).
