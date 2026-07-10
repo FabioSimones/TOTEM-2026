@@ -421,7 +421,7 @@ Implementado na TASK-058, cobrindo Categorias, Produtos e Dispositivos (`/api/ad
 
 ## Erro padrão
 
-Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:
+Todo erro (400/401/403/404/500) segue o mesmo formato:
 
 ```json
 {
@@ -435,3 +435,14 @@ Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExc
 ```
 
 `errors` só é preenchido em erros de validação de campo (`400` por `@Valid`/Bean Validation), como uma lista de `{"campo": "...", "mensagem": "..."}` — um item por campo inválido.
+
+Produzido por `GlobalExceptionHandler` (`@RestControllerAdvice`) para exceções lançadas dentro do controller/service, e por `RestAuthenticationEntryPoint` (TASK-061) para o caso específico de requisição não autenticada — ambos usam o mesmo formato `ApiError`.
+
+### 401 vs. 403 (TASK-061)
+
+Semântica corrigida na TASK-061 (antes, token ausente/inválido retornava `403` com corpo vazio, indistinguível de "autenticado mas sem permissão" — achado registrado na TASK-060):
+
+- **`401 Unauthorized`** — **não autenticado**: nenhum token enviado, token malformado, assinatura inválida ou expirado. Produzido por `RestAuthenticationEntryPoint`, registrado em `SecurityConfig` via `.exceptionHandling(handling -> handling.authenticationEntryPoint(...))`. Também usado por `GlobalExceptionHandler` para credenciais inválidas em `POST /api/auth/login` (mensagem específica "Email ou senha inválidos", sem revelar qual campo errou).
+- **`403 Forbidden`** — **autenticado, mas sem permissão**: perfil/tipo de dispositivo sem a role exigida (`@PreAuthorize`) ou violação de escopo por restaurante (`AdminScopeService`, TASK-058). Continua vindo de `GlobalExceptionHandler.handleAccessDenied`, sem mudança nesta task.
+
+Nenhuma regra de autorização mudou — só a semântica do código HTTP para "sem autenticação válida". Isso permite ao frontend distinguir corretamente sessão inválida/expirada (`401` → limpar sessão e pedir novo login) de falta de permissão (`403` → manter sessão, mostrar mensagem de acesso negado).

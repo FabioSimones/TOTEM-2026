@@ -1,5 +1,7 @@
 # Endpoints REST Iniciais
 
+**Convenção de erro (TASK-061)**: qualquer endpoint protegido abaixo retorna `401` para requisição sem token, com token malformado/inválido/expirado (não autenticado), e `403` para token válido cujo perfil/dispositivo/escopo não tem permissão para aquela ação (autenticado, mas negado). Ver `docs/09-contratos-api.md` seção "401 vs. 403" para o formato completo do corpo de erro.
+
 ## Administração de restaurantes
 
 Permissão exigida: SUPER_ADMIN

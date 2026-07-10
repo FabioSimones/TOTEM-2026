@@ -81,7 +81,7 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 ## 9. Erros esperados (401/403/404/400)
 
-- [ ] Editar `totem.accessToken` no DevTools para um valor inválido e tentar qualquer ação → sessão expirada, botão "Ir para login", sessão limpa
+- [ ] Editar `totem.accessToken` no DevTools para um valor inválido e tentar qualquer ação → sessão expirada, botão "Ir para login", sessão limpa (**este cenário só passa de verdade a partir da TASK-061** — antes, o backend retornava `403` para token inválido, então a tela mostrava "sem permissão" em vez de "sessão expirada")
 - [ ] Acessar qualquer subtela do Admin com token de dispositivo (Totem/Caixa/Cozinha) → 403 amigável, sessão preservada
 - [ ] CNPJ duplicado, nome de categoria duplicado no mesmo restaurante, `codigoIdentificacao` de dispositivo duplicado → 400 amigável no formulário
 - [ ] Restaurante/categoria/dispositivo/usuário com ID inexistente → 404 amigável
@@ -114,7 +114,7 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 - [x] (por revisão de código) Repetido para `/admin/produtos` (formulário fixo, `categoriasDoRestaurante` filtradas por `restauranteFixo.id`) e `/admin/dispositivos` (formulário fixo)
 - [ ] Acessar `/admin/usuarios` digitando a URL diretamente → mensagem "Você não tem permissão para acessar usuários." (403), sessão preservada, sem redirecionar para login — **pendente de confirmação visual manual** (lógica idêntica às outras 3 páginas, já revisada, mas não clicada)
 - [x] (por revisão de código) Login como `SUPER_ADMIN` → todos os 5 cards aparecem em `/admin`; as 3 páginas mantêm seletor de restaurante completo (branch `restauranteFixo` não ativa)
-- [x] **Corrigido o texto deste item na TASK-060**: token inválido/expirado retorna `403`, não `401` (ver `docs/testes-backend-mvp.md` seção 6) — o branch de "sessão expirada" das páginas administrativas (`error.status === 401`) não é acionado nesse caso na prática; ver pendência registrada em `docs/testes-backend-mvp.md` (seção "Pendências de segurança"). Um token realmente ausente/malformado hoje aparece como "Você não tem permissão..." em vez de "Sessão expirada...", mantendo a sessão salva até logout manual.
+- [x] ~~Token inválido/expirado retornava `403`, não `401`~~ **corrigido de verdade na TASK-061** (`RestAuthenticationEntryPoint`) — validado por `security/SecurityHttpStatusTest` (MockMvc). O branch de "sessão expirada" das páginas administrativas (`error.status === 401`) agora é acionado corretamente para token ausente/inválido/expirado; `403` continua reservado a autenticado-sem-permissão. Backend recompilado após a TASK-061 ainda precisa de confirmação manual (`curl` sem token → 401) antes de considerar 100% fechado — ver seção 9 abaixo.
 
 ## 10. Consistência visual
 

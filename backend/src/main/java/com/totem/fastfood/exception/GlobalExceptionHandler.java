@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -178,6 +179,28 @@ public class GlobalExceptionHandler {
 
         log.debug("Acesso negado em {}: {}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
+     * Recurso estático não encontrado (ex.: arquivo inexistente sob /uploads/produtos/**,
+     * TASK-061). Sem este handler, o fallback genérico de Exception abaixo capturava esta
+     * exceção antes que o tratamento padrão do Spring MVC pudesse respondê-la como 404,
+     * transformando-a incorretamente em 500.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Recurso não encontrado")
+                .message("O recurso solicitado não foi encontrado")
+                .path(request.getRequestURI())
+                .build();
+
+        log.debug("Recurso estático não encontrado: {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     /**

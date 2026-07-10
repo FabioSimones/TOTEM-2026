@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -46,12 +48,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(PREFIXO_BEARER.length());
 
         if (jwtService.isTokenValido(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Authentication authentication = JwtService.TIPO_DISPOSITIVO.equals(jwtService.extrairTipo(token))
-                    ? autenticarDispositivo(token, request)
-                    : autenticarUsuario(token, request);
+            // Nunca deixar uma falha aqui (ex.: usuário do token já foi excluído do banco) vazar
+            // como 500 — trata como "não autenticado", igual a um token ausente/inválido, e deixa
+            // o RestAuthenticationEntryPoint (TASK-061) responder 401 se o endpoint exigir login.
+            try {
+                Authentication authentication = JwtService.TIPO_DISPOSITIVO.equals(jwtService.extrairTipo(token))
+                        ? autenticarDispositivo(token, request)
+                        : autenticarUsuario(token, request);
 
-            if (authentication != null) {
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (authentication != null) {
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } catch (Exception ex) {
+                log.debug("Falha ao autenticar token, tratando como não autenticado: {}", ex.getMessage());
+                SecurityContextHolder.clearContext();
             }
         }
 
