@@ -69,6 +69,7 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 ## 8. Validações automatizadas
 
 - [ ] Backend: `cd backend && mvn test -Dtest=CaixaPedidoServiceTest,CozinhaPedidoServiceTest` — passando
+- [x] Backend, teste de integração HTTP ponta a ponta (TASK-067): `cd backend && mvn test -Dtest=FluxoOperacionalMvpIntegrationTest` — `integration/FluxoOperacionalMvpIntegrationTest` exercita este mesmo fluxo (seção 3 deste checklist) via HTTP real/MockMvc contra H2 em memória, sem depender de backend/frontend rodando manualmente: cardápio → criar pedido → pagar Pix → Caixa envia à cozinha → Cozinha prepara/finaliza → Caixa retira, com verificação final no banco (status `RETIRADO`, pagamento `AUTORIZADO`, histórico de transições). Também cobre pedido em dinheiro (seção 4) e os cenários de permissão entre dispositivos (seção 6). 5/5 testes passando — ver `docs/testes-backend-mvp.md` para o detalhamento completo e a limitação conhecida (H2, não substitui PostgreSQL real/Testcontainers)
 - [ ] Backend completo: `cd backend && mvn test` — todos os testes devem passar, incluindo `TotemApplicationTests.contextLoads` (corrigido na TASK-057, ver `docs/testes-backend-mvp.md` seção 9)
 - [ ] Frontend: `cd frontend && npm run build` — sem erro TypeScript
 
