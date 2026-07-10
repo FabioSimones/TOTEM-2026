@@ -12,12 +12,17 @@ import {
   reativarDispositivo,
   revogarDispositivo,
 } from "../../services/adminDispositivoService";
+import { listarRestaurantes } from "../../services/adminRestauranteService";
 import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
 import type { CriarDispositivoRequest, DispositivoAdminResponse } from "../../types/dispositivo";
+import type { RestauranteAdminResponse } from "../../types/restaurante";
 
 export function AdminDispositivosPage() {
   const navigate = useNavigate();
+  const [restaurantes, setRestaurantes] = useState<RestauranteAdminResponse[]>([]);
+  const [erroRestaurantes, setErroRestaurantes] = useState<string | null>(null);
+
   const [dispositivos, setDispositivos] = useState<DispositivoAdminResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -29,6 +34,18 @@ export function AdminDispositivosPage() {
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
+
+  const carregarRestaurantes = useCallback(async () => {
+    setErroRestaurantes(null);
+    try {
+      const response = await listarRestaurantes();
+      setRestaurantes(response);
+    } catch {
+      // Best-effort: sem lista de restaurantes o formulário de criação fica
+      // indisponível, mas a listagem/revogação/reativação de dispositivos segue normalmente.
+      setErroRestaurantes("Não foi possível carregar a lista de restaurantes.");
+    }
+  }, []);
 
   const carregarDispositivos = useCallback(async () => {
     setLoading(true);
@@ -68,8 +85,9 @@ export function AdminDispositivosPage() {
       navigate("/admin/login", { replace: true });
       return;
     }
+    void carregarRestaurantes();
     void carregarDispositivos();
-  }, [navigate, carregarDispositivos]);
+  }, [navigate, carregarRestaurantes, carregarDispositivos]);
 
   const marcarAcaoEmAndamento = useCallback((id: number, emAndamento: boolean) => {
     setAcoesEmAndamento((atual) => {
@@ -120,7 +138,7 @@ export function AdminDispositivosPage() {
         } else if (error instanceof ApiError && error.status === 403) {
           setErroCriacao("Você não tem permissão para cadastrar dispositivos.");
         } else if (error instanceof ApiError && error.status === 404) {
-          setErroCriacao("Restaurante não encontrado. Confira o ID informado.");
+          setErroCriacao("Restaurante não encontrado. Atualize a lista de restaurantes e tente novamente.");
         } else if (error instanceof ApiError && error.status === 400) {
           setErroCriacao(
             error.message || "Dados inválidos. O código de identificação pode já estar em uso.",
@@ -186,6 +204,8 @@ export function AdminDispositivosPage() {
         </Button>
       </div>
 
+      {erroRestaurantes && <ErrorMessage message={erroRestaurantes} />}
+
       {!erro && mensagemSucesso && (
         <p className="ui-success-message" role="status">
           {mensagemSucesso}
@@ -209,7 +229,12 @@ export function AdminDispositivosPage() {
 
       {!semAutorizacao && (
         <>
-          <DispositivoForm onCriar={handleCriarDispositivo} criando={criando} erro={erroCriacao} />
+          <DispositivoForm
+            restaurantes={restaurantes}
+            onCriar={handleCriarDispositivo}
+            criando={criando}
+            erro={erroCriacao}
+          />
 
           {loading && <p className="totem-estado">Carregando dispositivos...</p>}
 
