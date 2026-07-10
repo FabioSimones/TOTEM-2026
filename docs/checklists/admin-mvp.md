@@ -89,29 +89,32 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 ## 9b. Escopo por restaurante para ADMIN_RESTAURANTE (TASK-058, backend)
 
-Requer um usuário `ADMIN_RESTAURANTE` cadastrado (via `/admin/usuarios`, exige `SUPER_ADMIN`) vinculado a um restaurante (ex.: restaurante A), e pelo menos dois restaurantes cadastrados (A e B) com categoria/produto/dispositivo próprios em cada um. Use `docs/http/totem-fast-food-mvp.http` ou o Swagger para os testes de API pura com token de `ADMIN_RESTAURANTE` (a TASK-059, abaixo, cobre a experiência via UI).
+**Validado via API na TASK-060** (2026-07-10), com backend real rodando: restaurante 1 (existente) e restaurante 2 (criado para o teste), usuário `admin.r1@totem.local` (`ADMIN_RESTAURANTE`, vinculado ao restaurante 1).
 
-- [ ] Login como `ADMIN_RESTAURANTE` do restaurante A, `GET /api/admin/categorias` sem `restauranteId` → retorna só categorias do restaurante A (nunca todas)
-- [ ] `GET /api/admin/categorias?restauranteId=<B>` → `403`
-- [ ] `POST /api/admin/categorias` com `restauranteId=<B>` → `403`
-- [ ] `PUT`/`DELETE` em categoria do restaurante B → `403`; no restaurante A → sucesso normal
-- [ ] Repetir os 4 passos acima para `/api/admin/produtos` (incluindo `PATCH .../disponibilidade` e `.../destaque`)
-- [ ] Repetir para `/api/admin/dispositivos` (`GET` sem filtro já restringe ao restaurante A; `POST`/`PUT`/`PATCH .../revogar`/`PATCH .../ativar` no restaurante B → `403`)
-- [ ] `SUPER_ADMIN` continua acessando/alterando livremente categorias/produtos/dispositivos de A e B
-- [ ] `/api/admin/usuarios` continua bloqueado para `ADMIN_RESTAURANTE` (403), sem exceção — não recebeu escopo por restaurante, permanece exclusivo de `SUPER_ADMIN`
-- [ ] Upload de imagem (`POST /api/admin/uploads/produtos/imagem`) continua funcionando para `ADMIN_RESTAURANTE` normalmente (sem checagem de restaurante)
+- [x] Login como `ADMIN_RESTAURANTE` do restaurante A, `GET /api/admin/categorias` sem `restauranteId` → retorna só categorias do restaurante A (nunca todas)
+- [x] `GET /api/admin/categorias?restauranteId=<B>` → `403`
+- [x] `POST /api/admin/categorias` com `restauranteId=<B>` → `403`
+- [x] `PUT`/`DELETE` em categoria do restaurante B → `403`; no restaurante A → sucesso normal
+- [x] Repetir os 4 passos acima para `/api/admin/produtos` (incluindo `PATCH .../disponibilidade` e `.../destaque`) — incluindo o caso extra `restauranteId=A` + `categoriaId` de B → `400` "categoria não pertence ao restaurante informado" (não `403`, comportamento correto e distinto)
+- [x] Repetir para `/api/admin/dispositivos` (`GET` sem filtro já restringe ao restaurante A; `POST`/`PUT`/`PATCH .../revogar` no restaurante B → `403`)
+- [x] `SUPER_ADMIN` continua acessando/alterando livremente categorias/produtos/dispositivos de A e B
+- [x] `/api/admin/usuarios` continua bloqueado para `ADMIN_RESTAURANTE` (403), sem exceção — não recebeu escopo por restaurante, permanece exclusivo de `SUPER_ADMIN`
+- [x] Upload de imagem (`POST /api/admin/uploads/produtos/imagem`) continua funcionando para `ADMIN_RESTAURANTE` normalmente (`201`, sem checagem de restaurante); limpeza de órfãos (`limpar-orfas`) confirmada `403` para `ADMIN_RESTAURANTE`
+- [x] Todos os `403` acima preservam a sessão — chamada seguinte com o mesmo token a um recurso do próprio restaurante continua `200`
+
+Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 
 ## 9c. Escopo por restaurante — experiência visual no frontend (TASK-059)
 
-Continuação do bloco 9b, agora testando pela UI (`http://localhost:5173/admin`) em vez de chamadas diretas.
+**Revisado por leitura de código na TASK-060** (não houve automação de navegador disponível para clicar de fato na UI — recomenda-se uma passada manual rápida para confirmação visual final). O código de `AdminCategoriasPage`/`AdminProdutosPage`/`AdminDispositivosPage`/`AdminHomePage` e dos 3 forms foi conferido linha a linha e implementa exatamente o descrito abaixo; combinado com a validação de API (9b, que exercita a mesma lógica de backend que a UI consome), a confiança é alta.
 
-- [ ] Login como `ADMIN_RESTAURANTE` do restaurante A → em `/admin`, cards "Restaurantes" e "Usuários" **não aparecem**; aviso "Você está operando apenas no restaurante vinculado à sua conta." visível
-- [ ] `/admin/categorias`: sem seletor "Filtrar por restaurante"; formulário mostra "Restaurante" fixo como "Restaurante vinculado à sua conta" (não o nome real); lista já vem só com categorias do restaurante A
-- [ ] Cadastrar categoria: `POST` no Network mostra `restauranteId` do restaurante A, sem nenhuma forma de escolher B
-- [ ] Repetir para `/admin/produtos` (formulário fixo, categorias do seletor já filtradas para A) e `/admin/dispositivos` (formulário fixo)
-- [ ] Acessar `/admin/usuarios` digitando a URL diretamente → mensagem "Você não tem permissão para acessar usuários." (403), sessão preservada, sem redirecionar para login
-- [ ] Login como `SUPER_ADMIN` → todos os 5 cards aparecem em `/admin`; `/admin/categorias`, `/admin/produtos` e `/admin/dispositivos` continuam com seletor de restaurante completo, sem aviso de restrição
-- [ ] Editar `totem.accessToken` para um valor inválido (qualquer perfil) → 401 continua limpando a sessão normalmente (TASK-059 não mudou esse comportamento)
+- [x] (por revisão de código) Login como `ADMIN_RESTAURANTE` do restaurante A → em `/admin`, cards "Restaurantes" e "Usuários" **não aparecem** (`AREAS_ADMIN` filtrado por `apenasSuperAdmin`); aviso "Você está operando apenas no restaurante vinculado à sua conta." visível
+- [x] (por revisão de código) `/admin/categorias`: `carregarRestaurantes` retorna cedo sem chamar a API quando `adminRestaurante`; sem seletor "Filtrar por restaurante"; formulário mostra "Restaurante" fixo como "Restaurante vinculado à sua conta"; `carregarCategorias(restauranteIdEscopo)` já filtra a lista
+- [x] (por revisão de código) Cadastrar categoria: `onCriar` usa `restauranteFixo?.id ?? restauranteId`, sempre o do usuário — nenhum estado local permite outro valor
+- [x] (por revisão de código) Repetido para `/admin/produtos` (formulário fixo, `categoriasDoRestaurante` filtradas por `restauranteFixo.id`) e `/admin/dispositivos` (formulário fixo)
+- [ ] Acessar `/admin/usuarios` digitando a URL diretamente → mensagem "Você não tem permissão para acessar usuários." (403), sessão preservada, sem redirecionar para login — **pendente de confirmação visual manual** (lógica idêntica às outras 3 páginas, já revisada, mas não clicada)
+- [x] (por revisão de código) Login como `SUPER_ADMIN` → todos os 5 cards aparecem em `/admin`; as 3 páginas mantêm seletor de restaurante completo (branch `restauranteFixo` não ativa)
+- [x] **Corrigido o texto deste item na TASK-060**: token inválido/expirado retorna `403`, não `401` (ver `docs/testes-backend-mvp.md` seção 6) — o branch de "sessão expirada" das páginas administrativas (`error.status === 401`) não é acionado nesse caso na prática; ver pendência registrada em `docs/testes-backend-mvp.md` (seção "Pendências de segurança"). Um token realmente ausente/malformado hoje aparece como "Você não tem permissão..." em vez de "Sessão expirada...", mantendo a sessão salva até logout manual.
 
 ## 10. Consistência visual
 

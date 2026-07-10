@@ -359,7 +359,7 @@ Esperado: `200 OK`, `statusAnterior=CRIADO`, `statusAtual=CANCELADO`.
 
 | Cenário | Requisição | Esperado |
 |---|---|---|
-| Sem token em qualquer endpoint protegido | qualquer `GET/POST/PATCH` de admin/totem/caixa/cozinha sem header `Authorization` | `401 Unauthorized` |
+| Sem token, ou token inválido/malformado, em qualquer endpoint protegido | qualquer `GET/POST/PATCH` de admin/totem/caixa/cozinha sem header `Authorization`, ou com um valor inválido | `403 Forbidden` (**corrigido na TASK-060**: este documento afirmava `401` desde as tasks iniciais, mas o comportamento real sempre foi `403` — não há `AuthenticationEntryPoint` customizado em `SecurityConfig`, então o Spring Security usa o fallback padrão de `403` para requisição não autenticada. `401` só ocorre em `POST /api/auth/login` com credenciais inválidas, nunca por token ausente/inválido em outro endpoint) |
 | Token de perfil/dispositivo errado | ex.: `POST /api/totem/pedidos` com `TOKEN_CAIXA` | `403 Forbidden` |
 | Pedido sem item | `POST /api/totem/pedidos` com `itens: []` | `400 Bad Request` |
 | Quantidade zero/negativa | item com `quantidade: 0` | `400 Bad Request` |
@@ -438,6 +438,7 @@ Não existe teste de integração real (subindo contexto Spring + banco, exercit
 - ~~`ADMIN_RESTAURANTE` não tem escopo por restaurante nos CRUDs administrativos (Categoria/Produto/Dispositivo)~~ **corrigido na TASK-058**: `AdminScopeService` valida, em cada operação de Categoria/Produto/Dispositivo, que o `ADMIN_RESTAURANTE` só acessa/altera/lista dados do próprio restaurante (`403` via `AccessDeniedException` caso contrário); `SUPER_ADMIN` mantém acesso irrestrito. `/api/admin/usuarios` permanece deliberadamente fora dessa regra (continua `SUPER_ADMIN` exclusivo). Ver `docs/09-contratos-api.md` seção "Escopo por restaurante para ADMIN_RESTAURANTE".
 - Sem refresh token nem logout — token só expira por tempo (`app.security.jwt.expiration-minutes`), sem revogação ativa para usuários humanos (dispositivos têm revogação via `ativo=false`).
 - Sem rate limiting/brute-force protection no login.
+- **Encontrado na TASK-060**: como token ausente/inválido/expirado sempre retorna `403` (nunca `401` — ver seção 6 acima), o fluxo de "sessão expirada" do frontend administrativo (`clearSession()` + "Faça login novamente." quando `error.status === 401`) nunca é de fato acionado por essa causa na prática — um token de usuário expirado ou corrompido aparece para o admin como "Você não tem permissão para acessar X.", com a sessão inválida permanecendo em `localStorage` até o usuário clicar em "Sair" manualmente. Isso é um comportamento pré-existente (desde a config de segurança original, TASK-010/011), não introduzido nem agravado pelas TASK-058/059/060 — mas vale registrar como pendência real para uma futura task de autenticação (ex.: `AuthenticationEntryPoint` customizado retornando `401` de verdade para falta/invalidez de token, reservando `403` só para autenticado-mas-sem-permissão).
 
 ### Pendências financeiras
 

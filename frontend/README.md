@@ -495,9 +495,9 @@ Os cadastros administrativos têm dependências entre si — seguir esta ordem e
 
 Cada seção "Como testar Admin — ..." acima assume os passos anteriores já feitos.
 
-## Como testar o escopo de ADMIN_RESTAURANTE (TASK-059)
+## Como testar o escopo de ADMIN_RESTAURANTE (TASK-059, validado por API na TASK-060)
 
-A TASK-058 (backend) restringiu `ADMIN_RESTAURANTE` ao próprio restaurante em Categorias/Produtos/Dispositivos (`403` para qualquer outro). A TASK-059 ajustou o frontend para refletir isso visualmente — **apenas UX, a segurança real é sempre o backend**.
+A TASK-058 (backend) restringiu `ADMIN_RESTAURANTE` ao próprio restaurante em Categorias/Produtos/Dispositivos (`403` para qualquer outro). A TASK-059 ajustou o frontend para refletir isso visualmente — **apenas UX, a segurança real é sempre o backend**. A TASK-060 validou o backend ponta a ponta via API real (todos os cenários abaixo passaram) e revisou o código do frontend linha a linha; não houve automação de navegador disponível para clicar de fato na UI, então uma conferência visual manual rápida ainda é recomendada.
 
 Requer um usuário `ADMIN_RESTAURANTE` vinculado a um restaurante (cadastrado via `/admin/usuarios`, que exige `SUPER_ADMIN`).
 
@@ -508,7 +508,7 @@ Requer um usuário `ADMIN_RESTAURANTE` vinculado a um restaurante (cadastrado vi
 5. Acessar `/admin/usuarios` diretamente pela URL: a listagem falha com "Você não tem permissão para acessar usuários." (`403`), sem apagar a sessão — mesmo padrão já usado nas demais telas.
 6. Login com `SUPER_ADMIN`: todos os 5 cards aparecem em `/admin`, sem o aviso de restaurante fixo; `/admin/categorias`, `/admin/produtos` e `/admin/dispositivos` continuam com o seletor de restaurante completo, exatamente como antes da TASK-059.
 7. Simular usuário `ADMIN_RESTAURANTE` sem restaurante vinculado (`restauranteId: null` — só possível manipulando o registro diretamente, já que o backend exige restaurante para esse perfil): as 3 telas mostram "Seu usuário não possui restaurante vinculado. Contate um SUPER_ADMIN." e o formulário de cadastro não aparece.
-8. Editar `totem.accessToken` no DevTools para um valor inválido (401): sessão limpa normalmente, mesmo comportamento de antes — TASK-059 não mudou o tratamento de 401.
+8. **Achado na TASK-060**: editar `totem.accessToken` no DevTools para um valor inválido não produz `401` — o backend retorna `403` para qualquer token ausente/inválido em endpoint protegido (não há `AuthenticationEntryPoint` customizado; ver `docs/testes-backend-mvp.md`). Na prática, isso aparece como "Você não tem permissão para acessar categorias." em vez de "Sessão expirada...", e a sessão inválida permanece salva até o usuário clicar em "Sair" manualmente. Comportamento pré-existente (desde antes da TASK-058), não introduzido por esta task — registrado como pendência, não corrigido aqui (exigiria alterar `SecurityConfig`, fora do escopo desta validação).
 
 ## Limitações atuais do Admin
 
