@@ -500,6 +500,7 @@ Cada seção "Como testar Admin — ..." acima assume os passos anteriores já f
 - **Sem refresh token nem logout no backend** — "Sair" (`AdminHomePage`) e a limpeza de sessão em 401 são só client-side (`localStorage`); o token em si continua válido no backend até expirar por tempo.
 - **Sem upload de imagem** — `imagemUrl` em Produtos continua um campo de texto livre (com validação de formato e prévia, desde a TASK-052); o admin precisa hospedar a imagem em outro lugar e colar a URL.
 - **Sem proteção de rota por perfil no frontend** — todas as páginas administrativas verificam só "existe sessão?", nunca "este perfil pode acessar esta tela?"; quem decide isso de fato é sempre o backend (403).
+- **Sem seletor de restaurante ciente do escopo do `ADMIN_RESTAURANTE`** — a TASK-058 fez o backend restringir Categorias/Produtos/Dispositivos ao restaurante do `ADMIN_RESTAURANTE` autenticado (403 para qualquer outro), mas as telas de Admin continuam mostrando o seletor de restaurante normalmente; um `ADMIN_RESTAURANTE` que escolher outro restaurante no seletor recebe erro 403 do backend em vez de o frontend simplesmente não oferecer essa opção. Fora do escopo desta task ajustar isso no frontend.
 
 ## Próximas tasks sugeridas
 

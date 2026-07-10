@@ -50,6 +50,8 @@ Permissão exigida: SUPER_ADMIN
 
 ## Administração de categorias
 
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Escopo por restaurante (TASK-058)**: `ADMIN_RESTAURANTE` só acessa/altera categorias do próprio restaurante (o vinculado ao seu usuário) — tentar criar, listar filtrando outro restaurante, atualizar ou inativar categoria de outro restaurante retorna `403`. `SUPER_ADMIN` continua com acesso global.
+
 | Método | Rota | Objetivo |
 |---|---|---|
 | POST | `/api/admin/categorias` | Criar categoria |
@@ -58,6 +60,8 @@ Permissão exigida: SUPER_ADMIN
 | DELETE | `/api/admin/categorias/{id}` | Remover ou inativar categoria |
 
 ## Administração de produtos
+
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Escopo por restaurante (TASK-058)**: mesma regra de Categorias — `ADMIN_RESTAURANTE` só acessa/altera produtos do próprio restaurante, `403` para qualquer tentativa de acessar outro.
 
 | Método | Rota | Objetivo |
 |---|---|---|
@@ -70,7 +74,7 @@ Permissão exigida: SUPER_ADMIN
 
 ## Administração de dispositivos
 
-Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`.
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Escopo por restaurante (TASK-058)**: mesma regra de Categorias/Produtos — `ADMIN_RESTAURANTE` só acessa/altera dispositivos do próprio restaurante (inclusive a listagem, que passa a ser filtrada automaticamente mesmo sem esse dispositivo aceitar `restauranteId` como parâmetro).
 
 | Método | Rota | Objetivo |
 |---|---|---|
@@ -82,7 +86,7 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`.
 
 ## Administração de usuários
 
-Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senha na TASK-049).
+Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senha na TASK-049). **Não recebeu escopo por restaurante na TASK-058** — continua exclusivo de `SUPER_ADMIN`, decisão deliberada (gestão de usuários, inclusive outros admins, é mais sensível que cardápio/dispositivos).
 
 | Método | Rota | Objetivo |
 |---|---|---|
@@ -95,7 +99,7 @@ Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senh
 
 ## Administração de uploads
 
-Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` para envio; `SUPER_ADMIN` para limpeza de órfãos (TASK-056). Armazenamento local em disco — adequado para o MVP (ver `docs/09-contratos-api.md` para detalhes e limites).
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` para envio; `SUPER_ADMIN` para limpeza de órfãos (TASK-056). Armazenamento local em disco — adequado para o MVP (ver `docs/09-contratos-api.md` para detalhes e limites). **Sem escopo por restaurante (TASK-058)**: o upload em si não tem vínculo direto com um restaurante (o arquivo só passa a pertencer a um restaurante indiretamente, quando referenciado por `Produto.imagemUrl`) — continua liberado para qualquer `ADMIN_RESTAURANTE` autenticado, e a limpeza de órfãos continua global (`SUPER_ADMIN`).
 
 | Método | Rota | Objetivo |
 |---|---|---|

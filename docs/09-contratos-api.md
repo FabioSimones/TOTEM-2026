@@ -403,6 +403,20 @@ Em `dryRun=true`, `excluido` é sempre `false` nos itens de `detalhes` (nenhuma 
 
 **Fora do escopo desta task**: exclusão automática no momento de atualizar/trocar a `imagemUrl` de um produto (arriscado se duas entidades referenciarem a mesma imagem), agendamento/scheduler automático, e qualquer integração com storage externo.
 
+## Escopo por restaurante para ADMIN_RESTAURANTE
+
+Implementado na TASK-058, cobrindo Categorias, Produtos e Dispositivos (`/api/admin/categorias`, `/api/admin/produtos`, `/api/admin/dispositivos`).
+
+**Regra**: `SUPER_ADMIN` continua com acesso irrestrito a qualquer restaurante. `ADMIN_RESTAURANTE` só pode consultar, criar, atualizar ou inativar/revogar recursos vinculados ao restaurante do seu próprio usuário — mesmo que informe um `restauranteId` diferente no corpo da requisição ou no filtro de listagem, a operação é bloqueada.
+
+- **Criar** (`POST`): o `restauranteId` do corpo é validado contra o restaurante do usuário autenticado antes de qualquer outra regra de negócio. Tentar criar em outro restaurante retorna `403`.
+- **Listar** (`GET`): se `ADMIN_RESTAURANTE` não informar `restauranteId`, a listagem é automaticamente restrita ao próprio restaurante (não retorna "todos"). Se informar um `restauranteId` diferente do seu, retorna `403`. `SUPER_ADMIN` mantém o comportamento anterior (sem filtro = todos os restaurantes).
+- **Atualizar/inativar/revogar/reativar** (`PUT`/`DELETE`/`PATCH`): o recurso é buscado por `id` normalmente (`404` se não existir); em seguida o restaurante do recurso encontrado é validado contra o do usuário autenticado (`403` se for de outro restaurante). A ordem importa: recurso inexistente sempre é `404`, recurso de outro restaurante é `403`.
+
+**Como o backend descobre o restaurante do `ADMIN_RESTAURANTE`**: o JWT de usuário humano já carrega `restauranteId` como claim, mas o filtro de autenticação não o utiliza — em vez de alterar login/geração de token, o backend resolve o restaurante buscando o usuário por email (`Authentication.getName()`) a cada validação de escopo (`AdminScopeService`). Login e emissão de token não foram alterados.
+
+**Fora do escopo desta task**: `/api/admin/usuarios` continua exclusivo de `SUPER_ADMIN` (não recebeu escopo por restaurante — gestão de usuários é mais sensível). Upload de imagem (`/api/admin/uploads/produtos/imagem`) continua liberado a qualquer `ADMIN_RESTAURANTE` sem checagem de restaurante (o arquivo em si não pertence a um restaurante até ser referenciado por um produto); a limpeza de órfãos (`/limpar-orfas`) continua `SUPER_ADMIN` apenas.
+
 ## Erro padrão
 
 Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:

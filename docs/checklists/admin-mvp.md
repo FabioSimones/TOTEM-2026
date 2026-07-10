@@ -87,6 +87,20 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Restaurante/categoria/dispositivo/usuário com ID inexistente → 404 amigável
 - [ ] Email de usuário duplicado → 400 amigável no formulário
 
+## 9b. Escopo por restaurante para ADMIN_RESTAURANTE (TASK-058)
+
+Requer um usuário `ADMIN_RESTAURANTE` cadastrado (via `/admin/usuarios`, exige `SUPER_ADMIN`) vinculado a um restaurante (ex.: restaurante A), e pelo menos dois restaurantes cadastrados (A e B) com categoria/produto/dispositivo próprios em cada um. Como o frontend ainda não filtra por perfil, use `docs/http/totem-fast-food-mvp.http` ou o Swagger para os testes com token de `ADMIN_RESTAURANTE`.
+
+- [ ] Login como `ADMIN_RESTAURANTE` do restaurante A, `GET /api/admin/categorias` sem `restauranteId` → retorna só categorias do restaurante A (nunca todas)
+- [ ] `GET /api/admin/categorias?restauranteId=<B>` → `403`
+- [ ] `POST /api/admin/categorias` com `restauranteId=<B>` → `403`
+- [ ] `PUT`/`DELETE` em categoria do restaurante B → `403`; no restaurante A → sucesso normal
+- [ ] Repetir os 4 passos acima para `/api/admin/produtos` (incluindo `PATCH .../disponibilidade` e `.../destaque`)
+- [ ] Repetir para `/api/admin/dispositivos` (`GET` sem filtro já restringe ao restaurante A; `POST`/`PUT`/`PATCH .../revogar`/`PATCH .../ativar` no restaurante B → `403`)
+- [ ] `SUPER_ADMIN` continua acessando/alterando livremente categorias/produtos/dispositivos de A e B
+- [ ] `/api/admin/usuarios` continua bloqueado para `ADMIN_RESTAURANTE` (403), sem exceção — não recebeu escopo por restaurante, permanece exclusivo de `SUPER_ADMIN`
+- [ ] Upload de imagem (`POST /api/admin/uploads/produtos/imagem`) continua funcionando para `ADMIN_RESTAURANTE` normalmente (sem checagem de restaurante)
+
 ## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição

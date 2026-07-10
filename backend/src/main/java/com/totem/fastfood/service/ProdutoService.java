@@ -12,6 +12,7 @@ import com.totem.fastfood.mapper.ProdutoMapper;
 import com.totem.fastfood.repository.CategoriaRepository;
 import com.totem.fastfood.repository.ProdutoRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
+import com.totem.fastfood.security.AdminScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,12 +30,15 @@ public class ProdutoService {
     private final RestauranteRepository restauranteRepository;
     private final CategoriaRepository categoriaRepository;
     private final ProdutoMapper produtoMapper;
+    private final AdminScopeService adminScopeService;
 
     @Transactional
     public ProdutoResponse criar(CriarProdutoRequest request) {
         Restaurante restaurante = restauranteRepository.findById(request.restauranteId())
                 .orElseThrow(() -> new NoSuchElementException(
                         "Restaurante não encontrado para o id: " + request.restauranteId()));
+
+        adminScopeService.validarAcessoRestaurante(request.restauranteId());
 
         Categoria categoria = buscarCategoriaDoRestaurante(request.categoriaId(), request.restauranteId());
 
@@ -51,12 +55,13 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listar(Long restauranteId, Long categoriaId, Boolean disponivel) {
+        Long restauranteIdEfetivo = adminScopeService.resolverRestauranteIdParaListagem(restauranteId);
         List<Produto> produtos;
 
-        if (restauranteId != null && categoriaId != null) {
-            produtos = produtoRepository.findByRestauranteIdAndCategoriaId(restauranteId, categoriaId);
-        } else if (restauranteId != null) {
-            produtos = produtoRepository.findByRestauranteId(restauranteId);
+        if (restauranteIdEfetivo != null && categoriaId != null) {
+            produtos = produtoRepository.findByRestauranteIdAndCategoriaId(restauranteIdEfetivo, categoriaId);
+        } else if (restauranteIdEfetivo != null) {
+            produtos = produtoRepository.findByRestauranteId(restauranteIdEfetivo);
         } else if (categoriaId != null) {
             produtos = produtoRepository.findByCategoriaId(categoriaId);
         } else {
@@ -76,6 +81,7 @@ public class ProdutoService {
     public ProdutoResponse atualizar(Long id, AtualizarProdutoRequest request) {
         Produto produto = buscarOuLancarExcecao(id);
         Long restauranteId = produto.getRestaurante().getId();
+        adminScopeService.validarAcessoRestaurante(restauranteId);
 
         Categoria categoria = buscarCategoriaDoRestaurante(request.categoriaId(), restauranteId);
 
@@ -93,6 +99,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoResponse inativar(Long id) {
         Produto produto = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(produto.getRestaurante().getId());
         produto.setDisponivel(false);
         log.info("Produto inativado (disponivel=false): id={}", id);
         return produtoMapper.toResponse(produtoRepository.save(produto));
@@ -101,6 +108,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoResponse alterarDisponibilidade(Long id, AlterarDisponibilidadeProdutoRequest request) {
         Produto produto = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(produto.getRestaurante().getId());
         produto.setDisponivel(request.disponivel());
         log.info("Disponibilidade do produto alterada: id={}, disponivel={}", id, request.disponivel());
         return produtoMapper.toResponse(produtoRepository.save(produto));
@@ -109,6 +117,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoResponse alterarDestaque(Long id, AlterarDestaqueProdutoRequest request) {
         Produto produto = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(produto.getRestaurante().getId());
         produto.setDestaque(request.destaque());
         log.info("Destaque do produto alterado: id={}, destaque={}", id, request.destaque());
         return produtoMapper.toResponse(produtoRepository.save(produto));

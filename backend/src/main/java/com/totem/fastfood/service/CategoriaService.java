@@ -8,6 +8,7 @@ import com.totem.fastfood.entity.Restaurante;
 import com.totem.fastfood.mapper.CategoriaMapper;
 import com.totem.fastfood.repository.CategoriaRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
+import com.totem.fastfood.security.AdminScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,12 +25,15 @@ public class CategoriaService {
     private final CategoriaRepository categoriaRepository;
     private final RestauranteRepository restauranteRepository;
     private final CategoriaMapper categoriaMapper;
+    private final AdminScopeService adminScopeService;
 
     @Transactional
     public CategoriaResponse criar(CriarCategoriaRequest request) {
         Restaurante restaurante = restauranteRepository.findById(request.restauranteId())
                 .orElseThrow(() -> new NoSuchElementException(
                         "Restaurante não encontrado para o id: " + request.restauranteId()));
+
+        adminScopeService.validarAcessoRestaurante(request.restauranteId());
 
         if (categoriaRepository.existsByRestauranteIdAndNomeIgnoreCase(request.restauranteId(), request.nome())) {
             throw new IllegalArgumentException(
@@ -44,8 +48,9 @@ public class CategoriaService {
 
     @Transactional(readOnly = true)
     public List<CategoriaResponse> listar(Long restauranteId) {
-        List<Categoria> categorias = restauranteId != null
-                ? categoriaRepository.findByRestauranteId(restauranteId)
+        Long restauranteIdEfetivo = adminScopeService.resolverRestauranteIdParaListagem(restauranteId);
+        List<Categoria> categorias = restauranteIdEfetivo != null
+                ? categoriaRepository.findByRestauranteId(restauranteIdEfetivo)
                 : categoriaRepository.findAll();
         return categoriaMapper.toResponseList(categorias);
     }
@@ -54,6 +59,7 @@ public class CategoriaService {
     public CategoriaResponse atualizar(Long id, AtualizarCategoriaRequest request) {
         Categoria categoria = buscarOuLancarExcecao(id);
         Long restauranteId = categoria.getRestaurante().getId();
+        adminScopeService.validarAcessoRestaurante(restauranteId);
 
         if (categoriaRepository.existsByRestauranteIdAndNomeIgnoreCaseAndIdNot(restauranteId, request.nome(), id)) {
             throw new IllegalArgumentException(
@@ -69,6 +75,7 @@ public class CategoriaService {
     @Transactional
     public CategoriaResponse inativar(Long id) {
         Categoria categoria = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(categoria.getRestaurante().getId());
         categoria.setAtiva(false);
         log.info("Categoria inativada: id={}", id);
         return categoriaMapper.toResponse(categoriaRepository.save(categoria));

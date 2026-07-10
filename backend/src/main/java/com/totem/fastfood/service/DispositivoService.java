@@ -10,6 +10,7 @@ import com.totem.fastfood.entity.Restaurante;
 import com.totem.fastfood.mapper.DispositivoMapper;
 import com.totem.fastfood.repository.DispositivoRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
+import com.totem.fastfood.security.AdminScopeService;
 import com.totem.fastfood.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,12 +36,15 @@ public class DispositivoService {
     private final RestauranteRepository restauranteRepository;
     private final DispositivoMapper dispositivoMapper;
     private final JwtService jwtService;
+    private final AdminScopeService adminScopeService;
 
     @Transactional
     public DispositivoResponse criar(CriarDispositivoRequest request) {
         Restaurante restaurante = restauranteRepository.findById(request.restauranteId())
                 .orElseThrow(() -> new NoSuchElementException(
                         "Restaurante não encontrado para o id: " + request.restauranteId()));
+
+        adminScopeService.validarAcessoRestaurante(request.restauranteId());
 
         if (dispositivoRepository.existsByCodigoIdentificacao(request.codigoIdentificacao())) {
             throw new IllegalArgumentException(
@@ -57,12 +61,16 @@ public class DispositivoService {
 
     @Transactional(readOnly = true)
     public List<DispositivoResponse> listar() {
-        return dispositivoMapper.toResponseList(dispositivoRepository.findAll());
+        List<Dispositivo> dispositivos = adminScopeService.isSuperAdmin()
+                ? dispositivoRepository.findAll()
+                : dispositivoRepository.findByRestauranteId(adminScopeService.getRestauranteIdUsuarioAtual());
+        return dispositivoMapper.toResponseList(dispositivos);
     }
 
     @Transactional
     public DispositivoResponse atualizar(Long id, AtualizarDispositivoRequest request) {
         Dispositivo dispositivo = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(dispositivo.getRestaurante().getId());
 
         if (dispositivoRepository.existsByCodigoIdentificacaoAndIdNot(request.codigoIdentificacao(), id)) {
             throw new IllegalArgumentException(
@@ -78,6 +86,7 @@ public class DispositivoService {
     @Transactional
     public DispositivoResponse revogar(Long id) {
         Dispositivo dispositivo = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(dispositivo.getRestaurante().getId());
         dispositivo.setAtivo(false);
         dispositivo.setRevogadoEm(LocalDateTime.now());
         log.info("Dispositivo revogado: id={}", id);
@@ -87,6 +96,7 @@ public class DispositivoService {
     @Transactional
     public DispositivoResponse reativar(Long id) {
         Dispositivo dispositivo = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(dispositivo.getRestaurante().getId());
         dispositivo.setAtivo(true);
         dispositivo.setRevogadoEm(null);
         log.info("Dispositivo reativado: id={}", id);
