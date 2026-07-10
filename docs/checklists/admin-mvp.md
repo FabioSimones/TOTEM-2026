@@ -156,17 +156,19 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 
 **Pendência**: clique real na UI (duas abas de verdade, DevTools/Local Storage) não foi realizado por falta de automação de navegador neste ambiente. A cobertura por `curl` (que exercita exatamente a mesma API que o frontend consome) mais a revisão de código dão confiança alta, mas uma conferência visual manual continua recomendada para fechar 100%.
 
-## 9f. Rate limiting do login administrativo (TASK-065)
+## 9f. Rate limiting do login administrativo (TASK-065, validado manualmente na TASK-066)
 
-**Coberto por testes automatizados** (`LoginAttemptServiceTest`, 9 testes unitários com `Clock` controlado; `AuthLoginRateLimitTest`, 5 testes MockMvc de ponta a ponta) — ver `docs/09-contratos-api.md` seção "Rate limiting do login administrativo" para o contrato completo. Validação manual com backend real (curl) ainda **não** foi realizada nesta task.
+**Coberto por testes automatizados** (`LoginAttemptServiceTest`, 9 testes unitários com `Clock` controlado; `AuthLoginRateLimitTest`, 5 testes MockMvc de ponta a ponta) e **validado via `curl` contra o backend real** (2026-07-10) — ver `docs/09-contratos-api.md` seção "Rate limiting do login administrativo" para o contrato completo.
 
-- [x] (automatizado) Tentativas abaixo do limite continuam `401`
-- [x] (automatizado) Atingir `max-failures` → `429`, com header `Retry-After` e corpo `{"error":"Muitas tentativas","message":"Muitas tentativas de login. Tente novamente mais tarde."}`
-- [x] (automatizado) Senha **correta** durante o bloqueio → ainda `429` (backend nem chega a validar a senha)
-- [x] (automatizado) Login correto antes de atingir o limite → `200`, zera o contador de falhas
-- [x] (automatizado) Chave é por e-mail normalizado (`trim`+`lowercase`) + IP — bloquear um e-mail/IP não afeta outro
-- [x] (automatizado, unitário com `Clock` manual) Bloqueio expira exatamente após `block-minutes`, não antes
-- [ ] Validação manual com backend real: 5 tentativas erradas seguidas → `401` cada uma; 6ª → `429`; aguardar `block-minutes` (padrão 15min) → volta a aceitar tentativas
+- [x] Login correto (`admin@totem.local`) antes de qualquer falha → `200`, `accessToken`+`refreshToken`+`usuario`, sem senha na resposta
+- [x] 5 tentativas com senha errada para o mesmo e-mail → `401` em todas, corpo `{"error":"Não autenticado","message":"Email ou senha inválidos",...}` — idêntico ao 401 de e-mail inexistente (não vaza se o e-mail existe)
+- [x] 6ª tentativa → `429`, corpo `{"error":"Muitas tentativas","message":"Muitas tentativas de login. Tente novamente mais tarde."}`, header `Retry-After` presente (`881`s, ~ tempo restante do bloqueio de 15min)
+- [x] Senha **correta** durante o bloqueio → ainda `429` com `Retry-After`, sem `accessToken`/`refreshToken` — backend nem chega a validar a senha
+- [x] Chave é por e-mail — `admin.r1@totem.local` (mesmo IP, sem tentativas próprias) → `401` normal, não afetado pelo bloqueio de `admin@totem.local`
+- [x] Refresh/logout não afetados pelo bloqueio do usuário: `POST /api/auth/refresh` com o `refreshToken` obtido antes do bloqueio → `200`, novo par de tokens; `POST /api/auth/logout` com o token rotacionado → `204`; refresh subsequente com o token revogado → `401` (comportamento de sempre, sem regressão)
+- [x] (automatizado, unitário com `Clock` manual) Bloqueio expira exatamente após `block-minutes`, não antes; login correto zera o contador (`LoginAttemptServiceTest`)
+- [ ] Reset do contador após sucesso **não foi reexercitado manualmente** nesta task: exigiria esperar os `block-minutes` reais (15min) ou alterar a configuração só para o teste, o que a task pediu para evitar. Coberto por `LoginAttemptServiceTest.bloqueioDeveExpirarAposBlockMinutos`/`sucessoDeveLimparContadorDeFalhas`.
+- [x] (por revisão de código) Frontend (`AdminLoginPage.tsx` + `services/api.ts`): `429` não entra no fluxo de retry-via-refresh (só `401` aciona), cai direto no `catch` e exibe `error.message` via `ErrorMessage` — mesma mensagem do backend, sem quebrar a tela. Clique real na UI não foi realizado (sem automação de navegador disponível neste ambiente); revisão de código combinada com os resultados de `curl` acima dá confiança alta de que o comportamento visual é o esperado.
 
 ## 10. Consistência visual
 
