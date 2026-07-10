@@ -21,12 +21,14 @@ Todos os 4 endpoints abaixo são públicos (`permitAll`) — `/login`, `/refresh
 
 | Método | Rota | Objetivo |
 |---|---|---|
-| POST | `/api/auth/login` | Autenticar usuário humano — retorna `accessToken` (JWT) + `refreshToken` (implementado desde o início; `refreshToken` na resposta a partir da TASK-063) |
+| POST | `/api/auth/login` | Autenticar usuário humano — retorna `accessToken` (JWT) + `refreshToken` (implementado desde o início; `refreshToken` na resposta a partir da TASK-063). **Protegido por rate limiting desde a TASK-065** — pode retornar `429` após várias falhas consecutivas para a mesma combinação email+IP |
 | POST | `/api/auth/refresh` | **Implementado na TASK-063.** Renova a sessão administrativa: troca um `refreshToken` válido por um novo par `accessToken`/`refreshToken` (rotação — o informado é revogado mesmo em caso de sucesso) |
 | POST | `/api/auth/logout` | **Implementado na TASK-063.** Revoga o `refreshToken` informado. Idempotente — token já revogado ou inexistente não é erro, sempre `204` |
 | POST | `/api/auth/dispositivos/ativar` | Ativar dispositivo por código |
 
 **Escopo do refresh token (TASK-063)**: só para sessão de usuário humano administrativo (`Usuario`). Dispositivos (Totem/Caixa/Cozinha) continuam com token único de longa duração e revogação via `PATCH /api/admin/dispositivos/{id}/revogar` (`ativo=false`) — não receberam refresh token nesta task. Ver `docs/09-contratos-api.md` seção "Refresh token e logout administrativo" para o contrato completo.
+
+**Rate limiting do login (TASK-065)**: `POST /api/auth/login` bloqueia temporariamente (`429`) após `app.security.login-rate-limit.max-failures` falhas consecutivas (padrão 5) para a mesma chave email normalizado + IP remoto, por `app.security.login-rate-limit.block-minutes` minutos (padrão 15). Implementação em memória (`LoginAttemptService`) — reiniciar a aplicação limpa os contadores; não substitui um WAF/proxy/rate limiting de borda em produção. Ver `docs/09-contratos-api.md` seção "Rate limiting do login administrativo" para o contrato completo do `429`.
 
 ## Totem
 

@@ -39,6 +39,12 @@ app:
       secret: chave-fake-de-teste-nao-usar-em-producao-totem-fast-food-contextloads
       expiration-minutes: 60
       refresh-expiration-days: 7
+    login-rate-limit:
+      # Valor baixo só para o teste de MockMvc (AuthLoginRateLimitTest) não precisar de muitas
+      # requisições para atingir o bloqueio. A expiração do bloqueio em si é testada com Clock
+      # controlado em LoginAttemptServiceTest (unitário puro), não aqui.
+      max-failures: 3
+      block-minutes: 1
   uploads:
     dir: target/test-uploads
     public-path: /uploads

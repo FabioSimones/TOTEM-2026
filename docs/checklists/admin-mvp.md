@@ -17,6 +17,7 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Login com `admin@totem.local` / `Admin@2026!` → redireciona para `/admin`, mostra nome/e-mail/perfil
 - [ ] Recarregar `/admin` (F5) → sessão persiste
 - [ ] Botão "Sair" → limpa sessão e volta para `/admin/login`
+- [ ] Errar a senha repetidamente (padrão: 5 vezes seguidas para o mesmo e-mail) → a partir da 6ª tentativa, `429` "Muitas tentativas de login. Tente novamente mais tarde." (rate limiting, TASK-065) — ver seção 9f
 
 ## 3. Restaurante (`/admin/restaurantes`)
 
@@ -154,6 +155,18 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 - [x] FormData (upload de imagem) continua intacto: `body instanceof FormData` é reavaliado em cada chamada (inclusive na retentativa pós-refresh), e o mesmo objeto `FormData` é reenviado sem problema (não é um stream consumível)
 
 **Pendência**: clique real na UI (duas abas de verdade, DevTools/Local Storage) não foi realizado por falta de automação de navegador neste ambiente. A cobertura por `curl` (que exercita exatamente a mesma API que o frontend consome) mais a revisão de código dão confiança alta, mas uma conferência visual manual continua recomendada para fechar 100%.
+
+## 9f. Rate limiting do login administrativo (TASK-065)
+
+**Coberto por testes automatizados** (`LoginAttemptServiceTest`, 9 testes unitários com `Clock` controlado; `AuthLoginRateLimitTest`, 5 testes MockMvc de ponta a ponta) — ver `docs/09-contratos-api.md` seção "Rate limiting do login administrativo" para o contrato completo. Validação manual com backend real (curl) ainda **não** foi realizada nesta task.
+
+- [x] (automatizado) Tentativas abaixo do limite continuam `401`
+- [x] (automatizado) Atingir `max-failures` → `429`, com header `Retry-After` e corpo `{"error":"Muitas tentativas","message":"Muitas tentativas de login. Tente novamente mais tarde."}`
+- [x] (automatizado) Senha **correta** durante o bloqueio → ainda `429` (backend nem chega a validar a senha)
+- [x] (automatizado) Login correto antes de atingir o limite → `200`, zera o contador de falhas
+- [x] (automatizado) Chave é por e-mail normalizado (`trim`+`lowercase`) + IP — bloquear um e-mail/IP não afeta outro
+- [x] (automatizado, unitário com `Clock` manual) Bloqueio expira exatamente após `block-minutes`, não antes
+- [ ] Validação manual com backend real: 5 tentativas erradas seguidas → `401` cada uma; 6ª → `429`; aguardar `block-minutes` (padrão 15min) → volta a aceitar tentativas
 
 ## 10. Consistência visual
 

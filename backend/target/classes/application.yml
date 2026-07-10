@@ -47,6 +47,11 @@ app:
       secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
       refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
+    login-rate-limit:
+      # Rate limiting em memória (TASK-065) — reinicia ao reiniciar a aplicação; não substitui
+      # um WAF/proxy/rate limiting de borda em produção.
+      max-failures: ${LOGIN_RATE_LIMIT_MAX_FAILURES:5}
+      block-minutes: ${LOGIN_RATE_LIMIT_BLOCK_MINUTES:15}
   uploads:
     # Armazenamento local em disco — adequado para o MVP. Em produção,
     # substituir por storage externo (S3, Cloudinary ou equivalente).

@@ -2,7 +2,9 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\GerarSenhaUtilTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\payment\FakePaymentProviderTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AdminScopeServiceTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthLoginRateLimitTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthRefreshLogoutTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\LoginAttemptServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\RefreshTokenServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\SecurityHttpStatusTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\CaixaPedidoServiceTest.java

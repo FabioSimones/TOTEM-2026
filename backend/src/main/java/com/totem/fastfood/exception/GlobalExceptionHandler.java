@@ -184,6 +184,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Rate limiting do login administrativo (TASK-065) — chave email+IP excedeu o número de
+     * falhas consecutivas configurado (`app.security.login-rate-limit`) e ainda está dentro da
+     * janela de bloqueio temporário. `Retry-After` (segundos) ajuda o cliente a saber quando tentar
+     * de novo, sem precisar adivinhar.
+     */
+    @ExceptionHandler(LoginRateLimitExceededException.class)
+    public ResponseEntity<ApiError> handleLoginRateLimitExceeded(
+            LoginRateLimitExceededException ex, HttpServletRequest request) {
+
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.TOO_MANY_REQUESTS.value())
+                .error("Muitas tentativas")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        log.warn("Rate limit de login excedido em {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(error);
+    }
+
+    /**
      * Recurso estático não encontrado (ex.: arquivo inexistente sob /uploads/produtos/**,
      * TASK-061). Sem este handler, o fallback genérico de Exception abaixo capturava esta
      * exceção antes que o tratamento padrão do Spring MVC pudesse respondê-la como 404,

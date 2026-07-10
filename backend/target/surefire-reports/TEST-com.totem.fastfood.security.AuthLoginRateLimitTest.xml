@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.totem.fastfood.security.AuthRefreshLogoutTest" time="2.637" tests="7" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.totem.fastfood.security.AuthLoginRateLimitTest" time="13.674" tests="5" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -65,11 +65,41 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="refresh_deveRejeitarTokenJaRotacionado_umUsoSo" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.509"/>
-  <testcase name="loginNovo_deveRevogarRefreshTokenAnteriorDoMesmoUsuario" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.681"/>
-  <testcase name="login_deveRetornarAccessTokenERefreshToken" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.459"/>
-  <testcase name="refresh_comTokenInexistente_deveRetornar401" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.006"/>
-  <testcase name="logout_comTokenInexistente_deveSerIdempotente_retornando204" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.009"/>
-  <testcase name="refresh_comTokenValido_deveEmitirNovoParEDiferenteDoAnterior" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.492"/>
-  <testcase name="logout_deveRevogarRefreshToken_eImpedirRefreshFuturo" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.471"/>
+  <testcase name="deveRetornar429_aposAtingirMaxFailures" classname="com.totem.fastfood.security.AuthLoginRateLimitTest" time="1.264">
+    <system-out><![CDATA[18:34:09.703 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.totem.fastfood.security.AuthLoginRateLimitTest]: AuthLoginRateLimitTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:34:09.869 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.totem.fastfood.TotemApplication for test class com.totem.fastfood.security.AuthLoginRateLimitTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.5)
+
+2026-07-10T18:34:13.364-03:00  INFO 2380 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-07-10T18:34:13.491-03:00  INFO 2380 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-07-10T18:34:13.530-03:00  INFO 2380 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-07-10T18:34:13.650-03:00  INFO 2380 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-07-10T18:34:13.786-03:00  INFO 2380 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:totem_test user=SA
+2026-07-10T18:34:13.787-03:00  INFO 2380 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-07-10T18:34:13.805-03:00  WARN 2380 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-07-10T18:34:14.618-03:00  INFO 2380 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-07-10T18:34:17.159-03:00  WARN 2380 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-07-10T18:34:19.548-03:00  WARN 2380 --- [           main] c.t.f.security.LoginAttemptService       : Login bloqueado temporariamente por 1 min: falhas consecutivas atingiram o limite (3)
+2026-07-10T18:34:19.552-03:00  WARN 2380 --- [           main] c.t.f.exception.GlobalExceptionHandler   : Rate limit de login excedido em /api/auth/login
+]]></system-out>
+  </testcase>
+  <testcase name="tentativasAbaixoDoLimite_devemRetornar401" classname="com.totem.fastfood.security.AuthLoginRateLimitTest" time="0.669"/>
+  <testcase name="loginCorretoDuranteBloqueio_deveContinuarRetornando429" classname="com.totem.fastfood.security.AuthLoginRateLimitTest" time="0.923">
+    <system-out><![CDATA[2026-07-10T18:34:21.168-03:00  WARN 2380 --- [           main] c.t.f.security.LoginAttemptService       : Login bloqueado temporariamente por 1 min: falhas consecutivas atingiram o limite (3)
+2026-07-10T18:34:21.171-03:00  WARN 2380 --- [           main] c.t.f.exception.GlobalExceptionHandler   : Rate limit de login excedido em /api/auth/login
+]]></system-out>
+  </testcase>
+  <testcase name="loginBemSucedido_semTentativasAnteriores_naoDeveSerBloqueado" classname="com.totem.fastfood.security.AuthLoginRateLimitTest" time="0.5"/>
+  <testcase name="loginCorreto_antesDeAtingirLimite_devePermitirELimparFalhas" classname="com.totem.fastfood.security.AuthLoginRateLimitTest" time="1.549">
+    <system-out><![CDATA[2026-07-10T18:34:23.223-03:00  WARN 2380 --- [           main] c.t.f.security.LoginAttemptService       : Login bloqueado temporariamente por 1 min: falhas consecutivas atingiram o limite (3)
+]]></system-out>
+  </testcase>
 </testsuite>

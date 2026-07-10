@@ -88,6 +88,48 @@ Response: `204 No Content`, sem corpo.
 - **Escopo**: só sessão de usuário humano administrativo. Dispositivos (Totem/Caixa/Cozinha) não têm refresh token — continuam com token único de longa duração e revogação via `ativo=false` no dispositivo (TASK-010 em diante).
 - **Fora do escopo desta task** (deliberado): cookie HttpOnly, múltiplas sessões simultâneas por usuário, tela de "sessões ativas", "remember me", CSRF, refresh token para dispositivos.
 
+## Rate limiting do login administrativo (TASK-065)
+
+`POST /api/auth/login` bloqueia temporariamente novas tentativas para a mesma chave (email normalizado + IP remoto) após várias falhas consecutivas, reduzindo o risco de força bruta.
+
+**Configuração** (`application.yml`, com defaults documentados):
+
+```yaml
+app:
+  security:
+    login-rate-limit:
+      max-failures: 5      # ${LOGIN_RATE_LIMIT_MAX_FAILURES}
+      block-minutes: 15    # ${LOGIN_RATE_LIMIT_BLOCK_MINUTES}
+```
+
+**Resposta ao exceder o limite** (`429 Too Many Requests`), mesmo formato `ApiError` do restante da API, mais o header `Retry-After` (segundos até o bloqueio expirar):
+
+```json
+{
+  "timestamp": "2026-07-10T18:20:00",
+  "status": 429,
+  "error": "Muitas tentativas",
+  "message": "Muitas tentativas de login. Tente novamente mais tarde.",
+  "path": "/api/auth/login"
+}
+```
+
+**Regras**:
+
+- Cada falha de credencial (email inexistente, usuário inativo, ou senha errada — sem distinção, a mensagem de `401` já é genérica) incrementa o contador da chave `email normalizado (trim + lowercase) + IP remoto`. Ao atingir `max-failures`, a chave fica bloqueada por `block-minutes`.
+- **Login bem-sucedido zera o contador** da chave. Um usuário que erra a senha algumas vezes e depois acerta não fica bloqueado.
+- **Durante o bloqueio, mesmo a senha correta retorna `429`** — a checagem de rate limit acontece antes de validar a senha, então nem chega a tentar autenticar.
+- A chave combina email **e** IP: tentativas de um mesmo email vindas de IPs diferentes (ou vice-versa) não se bloqueiam mutuamente sem necessidade.
+- Erros de validação de request (`400`, ex.: email malformado, campo ausente) **não contam como falha** — o `@Valid` do Spring rejeita a requisição antes de o controller sequer invocar o rate limiter.
+- A resposta nunca revela se o bloqueio foi causado por email inexistente ou senha errada — mesma filosofia do `401` de login.
+
+**Limitações do MVP (deliberadas)**:
+
+- **Em memória** (`ConcurrentHashMap` num `LoginAttemptService` singleton) — reiniciar a aplicação limpa todos os contadores; não há coordenação entre múltiplas instâncias/réplicas do backend (cada uma teria seu próprio contador).
+- Não substitui um WAF, proxy reverso ou rate limiting de borda em produção — é uma proteção básica de MVP.
+- `getRemoteAddr()` é usado diretamente para o IP — atrás de um proxy/load balancer sem configuração de `X-Forwarded-For`, todas as requisições apareceriam com o mesmo IP (o do proxy). Não implementado nesta task (fora de escopo — exigiria decidir em quais proxies confiar).
+- Sem captcha, sem desbloqueio administrativo manual, sem tabela de tentativas no banco — tudo deliberadamente fora do escopo do MVP.
+
 ## Totem
 
 ### Criar pedido
