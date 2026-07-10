@@ -63,26 +63,31 @@ public class RefreshTokenService {
     /**
      * Valida o refresh token informado (existe, não revogado, não expirado, vinculado a um usuário)
      * e já o revoga como parte da rotação — o chamador é responsável por emitir um novo em seguida.
+     *
+     * A revogação usa {@link RefreshTokenRepository#revogarSeAtivo} (UPDATE atômico condicional,
+     * TASK-064) em vez de "ler, checar em Java, salvar": duas chamadas concorrentes com o mesmo
+     * token (ex.: duas abas renovando ao mesmo tempo) faziam ambas passar pela checagem antes de
+     * qualquer uma persistir a revogação, rotacionando o mesmo token de uso único duas vezes. Com o
+     * UPDATE atômico, no máximo uma das chamadas concorrentes revoga com sucesso — a outra recebe
+     * 0 linhas afetadas e é tratada como token inválido.
      */
     @Transactional
     public Usuario validarERevogar(String tokenBruto) {
-        RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(hash(tokenBruto))
+        String tokenHash = hash(tokenBruto);
+        LocalDateTime agora = LocalDateTime.now();
+
+        int linhasAfetadas = refreshTokenRepository.revogarSeAtivo(tokenHash, agora);
+        if (linhasAfetadas == 0) {
+            throw new BadCredentialsException(MENSAGEM_INVALIDO);
+        }
+
+        RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new BadCredentialsException(MENSAGEM_INVALIDO));
 
-        if (Boolean.TRUE.equals(refreshToken.getRevogado())) {
-            throw new BadCredentialsException(MENSAGEM_INVALIDO);
-        }
-        if (refreshToken.getExpiraEm().isBefore(LocalDateTime.now())) {
-            throw new BadCredentialsException(MENSAGEM_INVALIDO);
-        }
         if (refreshToken.getUsuario() == null) {
             // Reservado para refresh de dispositivo no futuro — fora do escopo da TASK-063.
             throw new BadCredentialsException(MENSAGEM_INVALIDO);
         }
-
-        refreshToken.setRevogado(true);
-        refreshToken.setRevogadoEm(LocalDateTime.now());
-        refreshTokenRepository.save(refreshToken);
 
         return refreshToken.getUsuario();
     }

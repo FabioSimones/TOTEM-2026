@@ -129,6 +129,32 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 
 **Validação do frontend**: sem ferramenta de automação de navegador disponível neste ambiente, não cliquei de fato na UI. Em vez disso, confirmei que o código das 5 páginas administrativas (`AdminRestaurantesPage`, `AdminCategoriasPage`, `AdminProdutosPage`, `AdminDispositivosPage`, `AdminUsuariosPage`) já trata `error.status === 401` (limpa sessão, "Sessão expirada...") e `error.status === 403` (preserva sessão, "Você não tem permissão...") de forma idêntica e correta — o `apiFetch` de `services/api.ts` propaga o `status` HTTP real da resposta, então, com o backend agora corrigido, o comportamento visual deve seguir exatamente esse padrão. Uma conferência manual rápida no navegador (login → editar `totem.accessToken` no DevTools → clicar "Atualizar lista") ainda é recomendada para fechar 100%.
 
+## 9e. Refresh token e logout administrativo (TASK-064)
+
+**Validado via `curl` contra o backend real** (2026-07-10), reaproveitando o usuário seed `admin@totem.local` e o `ADMIN_RESTAURANTE` `admin.r1@totem.local` criado em tasks anteriores.
+
+- [x] Login → response com `accessToken`, `refreshToken`, `tokenType=Bearer`, `expiresIn`, `refreshExpiresIn`, `usuario` preenchido, sem campo de senha
+- [x] `POST /api/auth/refresh` com o `refreshToken` do login → `200`, novo `accessToken`/`refreshToken` (diferente do anterior), `usuario` preenchido
+- [x] Reuso do `refreshToken` já rotacionado → `401` ("Refresh token inválido ou expirado")
+- [x] `POST /api/auth/logout` com `refreshToken` atual → `204 No Content`; tentativa de refresh com esse token depois → `401`
+- [x] Login novo do mesmo usuário revoga o `refreshToken` da sessão anterior: refresh com o token antigo → `401`; refresh com o token da sessão nova → `200`
+- [x] `ADMIN_RESTAURANTE` acessando `/api/admin/usuarios` → `403` (não `401`); confirmado que o `refreshToken` dessa sessão continua válido logo depois (refresh → `200`) — um `403` não mexe na sessão
+- [x] Upload de imagem (`multipart/form-data`) via `curl` direto no endpoint → `201`, continua funcionando normalmente (o endpoint em si não foi alterado nesta task)
+
+**Achado real e corrigido nesta task — condição de corrida em `RefreshTokenService.validarERevogar`**: disparando duas chamadas `POST /api/auth/refresh` em paralelo com o **mesmo** `refreshToken` (simulando duas abas com o mesmo `accessToken` expirado), a implementação original (SELECT depois UPDATE em passos separados) permitiu que **ambas tivessem sucesso** em 5 de 5 repetições — violando a regra de "um refresh ativo por usuário" e desperdiçando a semântica de uso único. Corrigido com um `UPDATE` atômico condicional (`RefreshTokenRepository.revogarSeAtivo`), que usa o lock de linha do Postgres para serializar as duas transações. Reconfirmado empiricamente após a correção: **10 de 10 repetições** com exatamente um sucesso (`200`) e uma rejeição limpa (`401`), sem erro 500 nem estado corrompido. Novo teste automatizado: `RefreshTokenServiceTest.validarERevogar_duasChamadasConcorrentesComMesmoToken_apenasUmaDeveSerAceita`.
+
+**Validação do frontend (`api.ts`, `authService.ts`, `tokenStorage.ts`, `AdminHomePage.tsx`)**: sem automação de navegador disponível neste ambiente, feita por revisão de código linha a linha (não clique real na UI):
+
+- [x] `saveUserSession` grava `accessToken`+`refreshToken`+`usuario` no `localStorage`; nenhum campo de senha é tocado em nenhum ponto do fluxo
+- [x] `apiFetchInternal` só tenta renovar em `response.status === 401 && withAuth && !jaTentouRenovar` — nunca em `403` (item 12 da task: 403 não deve tentar refresh) e nunca nas chamadas de `login`/`refresh`/`logout`/`ativar-dispositivo` (todas usam `withAuth: false`, então ficam fora do fluxo de retry por construção, sem precisar checar path)
+- [x] Em caso de renovação bem-sucedida, a chamada original é repetida automaticamente (`apiFetchInternal(path, options, true)`) — `jaTentouRenovar=true` garante no máximo uma tentativa, sem loop infinito
+- [x] Em caso de falha na renovação, `clearSession()` é chamado antes do erro original (401) ser lançado — a tela recebe o mesmo erro de sempre e trata normalmente (idempotente com a limpeza que o próprio `api.ts` já fez)
+- [x] `refreshEmAndamento` (guarda de concorrência) evita que 401s concorrentes **na mesma aba** disparem duas renovações — chamadas concorrentes aguardam a mesma promise. **Isso não protege entre abas diferentes** (cada aba tem sua própria instância do módulo JS, logo seu próprio `refreshEmAndamento`) — é exatamente por isso que a correção do backend (`revogarSeAtivo`) é a proteção real contra a corrida entre abas, não o guard do frontend
+- [x] `handleSair` (`AdminHomePage`) chama `authService.logout()` antes de `clearSession()`; falha do backend (rede indisponível, token já expirado) é capturada e ignorada — a sessão local é sempre limpa
+- [x] FormData (upload de imagem) continua intacto: `body instanceof FormData` é reavaliado em cada chamada (inclusive na retentativa pós-refresh), e o mesmo objeto `FormData` é reenviado sem problema (não é um stream consumível)
+
+**Pendência**: clique real na UI (duas abas de verdade, DevTools/Local Storage) não foi realizado por falta de automação de navegador neste ambiente. A cobertura por `curl` (que exercita exatamente a mesma API que o frontend consome) mais a revisão de código dão confiança alta, mas uma conferência visual manual continua recomendada para fechar 100%.
+
 ## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição

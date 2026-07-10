@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.totem.fastfood.security.RefreshTokenServiceTest
 -------------------------------------------------------------------------------
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.108 s -- in com.totem.fastfood.security.RefreshTokenServiceTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.071 s -- in com.totem.fastfood.security.RefreshTokenServiceTest

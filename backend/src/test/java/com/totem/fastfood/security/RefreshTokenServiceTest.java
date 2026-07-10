@@ -83,33 +83,32 @@ class RefreshTokenServiceTest {
     void validarERevogar_devePermitir_quandoTokenValido() {
         Usuario usuario = usuarioComId(1L);
         RefreshToken refreshToken = RefreshToken.builder()
-                .id(1L).usuario(usuario).revogado(false)
+                .id(1L).usuario(usuario).revogado(true) // já revogado pelo UPDATE atômico simulado abaixo
                 .expiraEm(LocalDateTime.now().plusDays(1))
                 .build();
 
+        // revogarSeAtivo == 1 linha afetada simula o UPDATE atômico (TASK-064) revogando com sucesso.
+        when(refreshTokenRepository.revogarSeAtivo(any(), any())).thenReturn(1);
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(refreshToken));
 
         Usuario resultado = refreshTokenService.validarERevogar("qualquer-token-bruto");
 
         assertEquals(usuario, resultado);
-        assertTrue(refreshToken.getRevogado());
-        verify(refreshTokenRepository).save(refreshToken);
+        // A revogação em si não passa mais por save() — é atômica no banco via revogarSeAtivo.
+        verify(refreshTokenRepository, never()).save(any());
     }
 
     @Test
     void validarERevogar_deveLancarExcecao_quandoTokenNaoEncontrado() {
-        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.empty());
-
+        // revogarSeAtivo retorna 0 (default do mock) — token inexistente nunca casa o WHERE do UPDATE.
         assertThrows(BadCredentialsException.class, () -> refreshTokenService.validarERevogar("inexistente"));
+        verify(refreshTokenRepository, never()).findByTokenHash(any());
     }
 
     @Test
     void validarERevogar_deveLancarExcecao_quandoTokenJaRevogado() {
-        RefreshToken refreshToken = RefreshToken.builder()
-                .id(1L).usuario(usuarioComId(1L)).revogado(true)
-                .expiraEm(LocalDateTime.now().plusDays(1))
-                .build();
-        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(refreshToken));
+        // revogarSeAtivo já filtra "revogado = false" no próprio UPDATE — token já revogado -> 0 linhas.
+        when(refreshTokenRepository.revogarSeAtivo(any(), any())).thenReturn(0);
 
         assertThrows(BadCredentialsException.class, () -> refreshTokenService.validarERevogar("revogado"));
         verify(refreshTokenRepository, never()).save(any());
@@ -117,11 +116,8 @@ class RefreshTokenServiceTest {
 
     @Test
     void validarERevogar_deveLancarExcecao_quandoTokenExpirado() {
-        RefreshToken refreshToken = RefreshToken.builder()
-                .id(1L).usuario(usuarioComId(1L)).revogado(false)
-                .expiraEm(LocalDateTime.now().minusMinutes(1))
-                .build();
-        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(refreshToken));
+        // revogarSeAtivo já filtra "expiraEm > agora" no próprio UPDATE — token expirado -> 0 linhas.
+        when(refreshTokenRepository.revogarSeAtivo(any(), any())).thenReturn(0);
 
         assertThrows(BadCredentialsException.class, () -> refreshTokenService.validarERevogar("expirado"));
         verify(refreshTokenRepository, never()).save(any());
@@ -130,12 +126,32 @@ class RefreshTokenServiceTest {
     @Test
     void validarERevogar_deveLancarExcecao_quandoTokenSemUsuario() {
         RefreshToken refreshToken = RefreshToken.builder()
-                .id(1L).usuario(null).revogado(false)
+                .id(1L).usuario(null).revogado(true)
                 .expiraEm(LocalDateTime.now().plusDays(1))
                 .build();
+        when(refreshTokenRepository.revogarSeAtivo(any(), any())).thenReturn(1);
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(refreshToken));
 
         assertThrows(BadCredentialsException.class, () -> refreshTokenService.validarERevogar("sem-usuario"));
+    }
+
+    @Test
+    void validarERevogar_duasChamadasConcorrentesComMesmoToken_apenasUmaDeveSerAceita() {
+        // Simula a corrida validada manualmente na TASK-064: primeira chamada revoga (1 linha), a
+        // segunda encontra o token já revogado pelo UPDATE atômico (0 linhas) e falha.
+        Usuario usuario = usuarioComId(1L);
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(1L).usuario(usuario).revogado(true)
+                .expiraEm(LocalDateTime.now().plusDays(1))
+                .build();
+
+        when(refreshTokenRepository.revogarSeAtivo(any(), any())).thenReturn(1, 0);
+        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(refreshToken));
+
+        Usuario primeiraChamada = refreshTokenService.validarERevogar("token-disputado");
+        assertEquals(usuario, primeiraChamada);
+
+        assertThrows(BadCredentialsException.class, () -> refreshTokenService.validarERevogar("token-disputado"));
     }
 
     @Test
