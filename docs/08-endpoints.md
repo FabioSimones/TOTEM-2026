@@ -70,10 +70,13 @@ Permissão exigida: SUPER_ADMIN
 
 ## Administração de dispositivos
 
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`.
+
 | Método | Rota | Objetivo |
 |---|---|---|
 | POST | `/api/admin/dispositivos` | Cadastrar dispositivo |
 | GET | `/api/admin/dispositivos` | Listar dispositivos |
+| PUT | `/api/admin/dispositivos/{id}` | Atualizar nome, código de identificação e tipo (implementado na TASK-051; não altera restaurante, ativo/ativado nem código de ativação) |
 | PATCH | `/api/admin/dispositivos/{id}/revogar` | Revogar dispositivo |
 | PATCH | `/api/admin/dispositivos/{id}/ativar` | Reativar dispositivo |
 

@@ -1,5 +1,6 @@
 package com.totem.fastfood.controller.admin;
 
+import com.totem.fastfood.dto.dispositivo.AtualizarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.CriarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.DispositivoResponse;
 import com.totem.fastfood.service.DispositivoService;
@@ -39,6 +40,18 @@ public class DispositivoAdminController {
     @GetMapping
     public ResponseEntity<List<DispositivoResponse>> listar() {
         return ResponseEntity.ok(dispositivoService.listar());
+    }
+
+    @Operation(summary = "Atualizar dispositivo",
+            description = "Atualiza nome, código de identificação e tipo. Não altera restaurante, ativo/ativado nem código de ativação")
+    @ApiResponse(responseCode = "200", description = "Dispositivo atualizado com sucesso")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos ou código de identificação já cadastrado")
+    @ApiResponse(responseCode = "404", description = "Dispositivo não encontrado")
+    @PutMapping("/{id}")
+    public ResponseEntity<DispositivoResponse> atualizar(
+            @PathVariable Long id,
+            @RequestBody @Valid AtualizarDispositivoRequest request) {
+        return ResponseEntity.ok(dispositivoService.atualizar(id, request));
     }
 
     @Operation(summary = "Revogar dispositivo", description = "Impede que o dispositivo continue autenticando, mesmo com token ainda válido")

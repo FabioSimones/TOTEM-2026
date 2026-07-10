@@ -1,5 +1,6 @@
 package com.totem.fastfood.mapper;
 
+import com.totem.fastfood.dto.dispositivo.AtualizarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.CriarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.DispositivoAutenticadoResponse;
 import com.totem.fastfood.dto.dispositivo.DispositivoResponse;
@@ -42,6 +43,13 @@ public class DispositivoMapper {
         return dispositivos.stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /** Atualiza os campos editáveis da entidade existente com os dados do request. Não altera restaurante. */
+    public void atualizarEntidade(Dispositivo dispositivo, AtualizarDispositivoRequest request) {
+        dispositivo.setNome(request.nome());
+        dispositivo.setCodigoIdentificacao(request.codigoIdentificacao());
+        dispositivo.setTipoDispositivo(request.tipoDispositivo());
     }
 
     public DispositivoAutenticadoResponse toAutenticadoResponse(Dispositivo dispositivo) {

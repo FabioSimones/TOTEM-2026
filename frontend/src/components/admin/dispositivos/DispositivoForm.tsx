@@ -1,16 +1,19 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import type { TipoDispositivo } from "../../../types/auth";
-import type { CriarDispositivoRequest } from "../../../types/dispositivo";
+import type { AtualizarDispositivoRequest, CriarDispositivoRequest, DispositivoAdminResponse } from "../../../types/dispositivo";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
 import { Input } from "../../ui/Input";
 
 interface DispositivoFormProps {
+  dispositivoEmEdicao: DispositivoAdminResponse | null;
   restaurantes: RestauranteAdminResponse[];
   onCriar: (request: CriarDispositivoRequest) => void;
-  criando: boolean;
+  onAtualizar: (id: number, request: AtualizarDispositivoRequest) => void;
+  onCancelarEdicao: () => void;
+  salvando: boolean;
   erro: string | null;
 }
 
@@ -21,7 +24,15 @@ const OPCOES_TIPO: { valor: TipoDispositivo; rotulo: string }[] = [
   { valor: "ADMINISTRACAO", rotulo: "Administração" },
 ];
 
-export function DispositivoForm({ restaurantes, onCriar, criando, erro }: DispositivoFormProps) {
+export function DispositivoForm({
+  dispositivoEmEdicao,
+  restaurantes,
+  onCriar,
+  onAtualizar,
+  onCancelarEdicao,
+  salvando,
+  erro,
+}: DispositivoFormProps) {
   const [restauranteId, setRestauranteId] = useState<number | null>(null);
   const [nome, setNome] = useState("");
   const [codigoIdentificacao, setCodigoIdentificacao] = useState("");
@@ -29,13 +40,24 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
 
   useEffect(() => {
-    setRestauranteId(restaurantes[0]?.id ?? null);
-  }, [restaurantes]);
+    if (dispositivoEmEdicao) {
+      setRestauranteId(dispositivoEmEdicao.restauranteId);
+      setNome(dispositivoEmEdicao.nome);
+      setCodigoIdentificacao(dispositivoEmEdicao.codigoIdentificacao);
+      setTipoDispositivo(dispositivoEmEdicao.tipoDispositivo);
+    } else {
+      setRestauranteId(restaurantes[0]?.id ?? null);
+      setNome("");
+      setCodigoIdentificacao("");
+      setTipoDispositivo("TOTEM");
+    }
+    setErroValidacao(null);
+  }, [dispositivoEmEdicao, restaurantes]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!restauranteId) {
+    if (!dispositivoEmEdicao && !restauranteId) {
       setErroValidacao("Selecione um restaurante.");
       return;
     }
@@ -49,15 +71,24 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
     }
 
     setErroValidacao(null);
-    onCriar({
-      restauranteId,
-      nome: nome.trim(),
-      codigoIdentificacao: codigoIdentificacao.trim(),
-      tipoDispositivo,
-    });
+
+    if (dispositivoEmEdicao) {
+      onAtualizar(dispositivoEmEdicao.id, {
+        nome: nome.trim(),
+        codigoIdentificacao: codigoIdentificacao.trim(),
+        tipoDispositivo,
+      });
+    } else {
+      onCriar({
+        restauranteId: restauranteId as number,
+        nome: nome.trim(),
+        codigoIdentificacao: codigoIdentificacao.trim(),
+        tipoDispositivo,
+      });
+    }
   }
 
-  if (restaurantes.length === 0) {
+  if (!dispositivoEmEdicao && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
         <h2 className="dispositivo-form__titulo">Cadastrar dispositivo</h2>
@@ -71,27 +102,37 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
 
   return (
     <form onSubmit={handleSubmit} className="dispositivo-form">
-      <h2 className="dispositivo-form__titulo">Cadastrar dispositivo</h2>
+      <h2 className="dispositivo-form__titulo">
+        {dispositivoEmEdicao ? `Editar dispositivo — ${dispositivoEmEdicao.nome}` : "Cadastrar dispositivo"}
+      </h2>
 
       <div className="dispositivo-form__tipo">
         <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
-        <div className="dispositivo-form__tipo-opcoes">
-          {restaurantes.map((restaurante) => (
-            <button
-              key={restaurante.id}
-              type="button"
-              className={
-                "dispositivo-form__tipo-botao" +
-                (restauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
-              }
-              aria-pressed={restauranteId === restaurante.id}
-              onClick={() => setRestauranteId(restaurante.id)}
-              disabled={criando}
-            >
-              {restaurante.nome}
-            </button>
-          ))}
-        </div>
+        {dispositivoEmEdicao ? (
+          <p className="dispositivo-form__restaurante-fixo">
+            {restaurantes.find((r) => r.id === dispositivoEmEdicao.restauranteId)?.nome ??
+              `#${dispositivoEmEdicao.restauranteId}`}{" "}
+            (não pode ser alterado)
+          </p>
+        ) : (
+          <div className="dispositivo-form__tipo-opcoes">
+            {restaurantes.map((restaurante) => (
+              <button
+                key={restaurante.id}
+                type="button"
+                className={
+                  "dispositivo-form__tipo-botao" +
+                  (restauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
+                }
+                aria-pressed={restauranteId === restaurante.id}
+                onClick={() => setRestauranteId(restaurante.id)}
+                disabled={salvando}
+              >
+                {restaurante.nome}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <Input
@@ -100,7 +141,7 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
         value={nome}
         onChange={(event) => setNome(event.target.value)}
         placeholder="Ex.: Totem 01"
-        disabled={criando}
+        disabled={salvando}
       />
 
       <Input
@@ -109,7 +150,7 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
         value={codigoIdentificacao}
         onChange={(event) => setCodigoIdentificacao(event.target.value)}
         placeholder="Ex.: TOTEM_01"
-        disabled={criando}
+        disabled={salvando}
       />
 
       <div className="dispositivo-form__tipo">
@@ -125,7 +166,7 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
               }
               aria-pressed={tipoDispositivo === opcao.valor}
               onClick={() => setTipoDispositivo(opcao.valor)}
-              disabled={criando}
+              disabled={salvando}
             >
               {opcao.rotulo}
             </button>
@@ -135,9 +176,17 @@ export function DispositivoForm({ restaurantes, onCriar, criando, erro }: Dispos
 
       <ErrorMessage message={erroValidacao ?? erro} />
 
-      <Button type="submit" loading={criando}>
-        Cadastrar dispositivo
-      </Button>
+      <div className="dispositivo-form__acoes">
+        <Button type="submit" loading={salvando}>
+          {dispositivoEmEdicao ? "Salvar alterações" : "Cadastrar dispositivo"}
+        </Button>
+
+        {dispositivoEmEdicao && (
+          <button type="button" className="dispositivo-form__cancelar" onClick={onCancelarEdicao} disabled={salvando}>
+            Cancelar edição
+          </button>
+        )}
+      </div>
     </form>
   );
 }

@@ -54,10 +54,12 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 ## 7. Dispositivo (`/admin/dispositivos`)
 
-- [ ] Criar dispositivo informando o `id` do restaurante (passo 3), nome, código de identificação e tipo
+- [ ] Sem restaurante cadastrado → aviso "Cadastre um restaurante antes de criar dispositivos."
+- [ ] Criar dispositivo selecionando o restaurante visualmente (passo 3), nome, código de identificação e tipo
 - [ ] Copiar o `codigoAtivacao` gerado (botão "Copiar")
 - [ ] Abrir `/ativar-dispositivo` em outra aba, colar o código → dispositivo ativa e redireciona conforme o tipo
 - [ ] Voltar a `/admin/dispositivos` e atualizar a lista → "Ativado pelo dispositivo: Sim"
+- [ ] Editar dispositivo → `PUT`, restaurante fixo (não editável), `codigoAtivacao` não é enviado nem muda
 - [ ] Revogar dispositivo → `PATCH .../revogar`, status "Revogado"
 - [ ] Tentar reativar em `/ativar-dispositivo` com o mesmo código → falha (dispositivo revogado)
 - [ ] Reativar pelo Admin → `PATCH .../ativar`, status volta a "Ativo"

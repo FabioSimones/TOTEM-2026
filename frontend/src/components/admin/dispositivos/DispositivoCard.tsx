@@ -8,6 +8,7 @@ interface DispositivoCardProps {
   dispositivo: DispositivoAdminResponse;
   executando: boolean;
   erro: string | null;
+  onEditar: (dispositivo: DispositivoAdminResponse) => void;
   onRevogar: (id: number) => void;
   onReativar: (id: number) => void;
 }
@@ -19,7 +20,7 @@ const ROTULO_TIPO: Record<DispositivoAdminResponse["tipoDispositivo"], string> =
   ADMINISTRACAO: "Administração",
 };
 
-export function DispositivoCard({ dispositivo, executando, erro, onRevogar, onReativar }: DispositivoCardProps) {
+export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRevogar, onReativar }: DispositivoCardProps) {
   const [copiado, setCopiado] = useState(false);
   const [erroCopia, setErroCopia] = useState<string | null>(null);
 
@@ -111,9 +112,25 @@ export function DispositivoCard({ dispositivo, executando, erro, onRevogar, onRe
 
       <ErrorMessage message={erro} />
 
-      <Button type="button" className="pedido-pendente-card__acao" loading={executando} onClick={handleClicarAcao}>
-        {dispositivo.ativo ? "Revogar" : "Reativar"}
-      </Button>
+      <div className="dispositivo-form__acoes">
+        <Button
+          type="button"
+          className="pedido-pendente-card__acao"
+          onClick={() => onEditar(dispositivo)}
+          disabled={executando}
+        >
+          Editar
+        </Button>
+
+        <button
+          type="button"
+          className="restaurante-card__acao-secundaria"
+          disabled={executando}
+          onClick={handleClicarAcao}
+        >
+          {executando ? "Aguarde..." : dispositivo.ativo ? "Revogar" : "Reativar"}
+        </button>
+      </div>
     </article>
   );
 }

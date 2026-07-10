@@ -8,7 +8,14 @@ export interface CriarDispositivoRequest {
   tipoDispositivo: TipoDispositivo;
 }
 
-/** GET/POST/PATCH /api/admin/dispositivos — resposta completa do backend. */
+/** PUT /api/admin/dispositivos/{id} — não aceita restauranteId (dispositivo não muda de restaurante por edição), nem ativo/ativado/codigoAtivacao. */
+export interface AtualizarDispositivoRequest {
+  nome: string;
+  codigoIdentificacao: string;
+  tipoDispositivo: TipoDispositivo;
+}
+
+/** GET/POST/PUT/PATCH /api/admin/dispositivos — resposta completa do backend. */
 export interface DispositivoAdminResponse {
   id: number;
   restauranteId: number;

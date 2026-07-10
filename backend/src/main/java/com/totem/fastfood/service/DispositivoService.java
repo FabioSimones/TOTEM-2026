@@ -1,6 +1,7 @@
 package com.totem.fastfood.service;
 
 import com.totem.fastfood.dto.dispositivo.AtivarDispositivoRequest;
+import com.totem.fastfood.dto.dispositivo.AtualizarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.AtivarDispositivoResponse;
 import com.totem.fastfood.dto.dispositivo.CriarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.DispositivoResponse;
@@ -57,6 +58,21 @@ public class DispositivoService {
     @Transactional(readOnly = true)
     public List<DispositivoResponse> listar() {
         return dispositivoMapper.toResponseList(dispositivoRepository.findAll());
+    }
+
+    @Transactional
+    public DispositivoResponse atualizar(Long id, AtualizarDispositivoRequest request) {
+        Dispositivo dispositivo = buscarOuLancarExcecao(id);
+
+        if (dispositivoRepository.existsByCodigoIdentificacaoAndIdNot(request.codigoIdentificacao(), id)) {
+            throw new IllegalArgumentException(
+                    "Já existe outro dispositivo cadastrado com o código de identificação: " + request.codigoIdentificacao());
+        }
+
+        dispositivoMapper.atualizarEntidade(dispositivo, request);
+        Dispositivo atualizado = dispositivoRepository.save(dispositivo);
+        log.info("Dispositivo atualizado: id={}", id);
+        return dispositivoMapper.toResponse(atualizado);
     }
 
     @Transactional

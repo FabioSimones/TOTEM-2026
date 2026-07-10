@@ -17,6 +17,7 @@
 @tokenCozinha =
 @pedidoId =
 @usuarioId =
+@dispositivoId =
 
 
 ### 1. Health check (público)
@@ -420,4 +421,41 @@ Authorization: Bearer {{tokenSuperAdmin}}
 
 {
   "novaSenha": "NovaSenha@2026!"
+}
+
+
+### 40. Admin — Atualizar dispositivo (TASK-051)
+# @name atualizarDispositivo
+PUT {{baseUrl}}/api/admin/dispositivos/{{dispositivoId}}
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "nome": "Totem 01 - Entrada",
+  "codigoIdentificacao": "TOTEM_01",
+  "tipoDispositivo": "TOTEM"
+}
+
+
+### 41. Admin — Atualizar dispositivo com código já usado por outro -> 400
+PUT {{baseUrl}}/api/admin/dispositivos/{{dispositivoId}}
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "nome": "Totem 01",
+  "codigoIdentificacao": "CAIXA_01",
+  "tipoDispositivo": "TOTEM"
+}
+
+
+### 42. Admin — Atualizar dispositivo inexistente -> 404
+PUT {{baseUrl}}/api/admin/dispositivos/999999
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "nome": "Totem 01",
+  "codigoIdentificacao": "TOTEM_01",
+  "tipoDispositivo": "TOTEM"
 }

@@ -216,6 +216,39 @@ Response (`200 OK`):
 }
 ```
 
+## Admin — Dispositivos
+
+### Atualizar dispositivo
+
+`PUT /api/admin/dispositivos/{id}` — implementado na TASK-051. Exige perfil `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Não aceita `restauranteId`** (dispositivo não muda de restaurante por edição — mesma decisão já tomada em Categoria/Produto) nem `ativo`, `ativado` ou `codigoAtivacao`:
+
+```json
+{
+  "nome": "Totem 01",
+  "codigoIdentificacao": "TOTEM_01",
+  "tipoDispositivo": "TOTEM"
+}
+```
+
+Response (`200 OK`) — mesmo formato de `DispositivoResponse` usado em `POST`/`GET`/`PATCH`, incluindo o `codigoAtivacao` já existente (não regenerado pela edição):
+
+```json
+{
+  "id": 3,
+  "restauranteId": 1,
+  "nome": "Totem 01",
+  "codigoIdentificacao": "TOTEM_01",
+  "tipoDispositivo": "TOTEM",
+  "ativo": true,
+  "ativado": false,
+  "codigoAtivacao": "aB3x...",
+  "ultimoAcesso": null,
+  "ativadoEm": null,
+  "criadoEm": "2026-05-05T15:00:00",
+  "atualizadoEm": "2026-05-05T15:20:00"
+}
+```
+
 ## Admin — Usuários
 
 Implementado na TASK-048. Todos os endpoints exigem perfil `SUPER_ADMIN`.

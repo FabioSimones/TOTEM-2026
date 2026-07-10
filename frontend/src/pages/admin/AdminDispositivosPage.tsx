@@ -7,6 +7,7 @@ import { DispositivoForm } from "../../components/admin/dispositivos/Dispositivo
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import {
+  atualizarDispositivo,
   criarDispositivo,
   listarDispositivos,
   reativarDispositivo,
@@ -15,7 +16,7 @@ import {
 import { listarRestaurantes } from "../../services/adminRestauranteService";
 import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { CriarDispositivoRequest, DispositivoAdminResponse } from "../../types/dispositivo";
+import type { AtualizarDispositivoRequest, CriarDispositivoRequest, DispositivoAdminResponse } from "../../types/dispositivo";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
 
 export function AdminDispositivosPage() {
@@ -29,8 +30,9 @@ export function AdminDispositivosPage() {
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
-  const [criando, setCriando] = useState(false);
-  const [erroCriacao, setErroCriacao] = useState<string | null>(null);
+  const [dispositivoEmEdicao, setDispositivoEmEdicao] = useState<DispositivoAdminResponse | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -121,8 +123,8 @@ export function AdminDispositivosPage() {
 
   const handleCriarDispositivo = useCallback(
     async (request: CriarDispositivoRequest) => {
-      setErroCriacao(null);
-      setCriando(true);
+      setErroSalvar(null);
+      setSalvando(true);
 
       try {
         const response = await criarDispositivo(request);
@@ -136,20 +138,55 @@ export function AdminDispositivosPage() {
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
-          setErroCriacao("Você não tem permissão para cadastrar dispositivos.");
+          setErroSalvar("Você não tem permissão para cadastrar dispositivos.");
         } else if (error instanceof ApiError && error.status === 404) {
-          setErroCriacao("Restaurante não encontrado. Atualize a lista de restaurantes e tente novamente.");
+          setErroSalvar("Restaurante não encontrado. Atualize a lista de restaurantes e tente novamente.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroCriacao(
+          setErroSalvar(
             error.message || "Dados inválidos. O código de identificação pode já estar em uso.",
           );
         } else if (error instanceof ApiError) {
-          setErroCriacao(error.message);
+          setErroSalvar(error.message);
         } else {
-          setErroCriacao("Não foi possível cadastrar o dispositivo. Tente novamente.");
+          setErroSalvar("Não foi possível cadastrar o dispositivo. Tente novamente.");
         }
       } finally {
-        setCriando(false);
+        setSalvando(false);
+      }
+    },
+    [carregarDispositivos],
+  );
+
+  const handleAtualizarDispositivo = useCallback(
+    async (id: number, request: AtualizarDispositivoRequest) => {
+      setErroSalvar(null);
+      setSalvando(true);
+
+      try {
+        const response = await atualizarDispositivo(id, request);
+        await carregarDispositivos();
+        setDispositivoEmEdicao(null);
+        setMensagemSucesso(`Dispositivo "${response.nome}" atualizado.`);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          clearSession();
+          setSemAutorizacao(true);
+          setErro("Sessão expirada. Faça login novamente.");
+        } else if (error instanceof ApiError && error.status === 403) {
+          setErroSalvar("Você não tem permissão para editar dispositivos.");
+        } else if (error instanceof ApiError && error.status === 404) {
+          setErroSalvar("Dispositivo não encontrado.");
+        } else if (error instanceof ApiError && error.status === 400) {
+          setErroSalvar(
+            error.message || "Dados inválidos. O código de identificação pode já estar em uso.",
+          );
+        } else if (error instanceof ApiError) {
+          setErroSalvar(error.message);
+        } else {
+          setErroSalvar("Não foi possível atualizar o dispositivo. Tente novamente.");
+        }
+      } finally {
+        setSalvando(false);
       }
     },
     [carregarDispositivos],
@@ -191,6 +228,16 @@ export function AdminDispositivosPage() {
     [carregarDispositivos, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  function handleEditar(dispositivo: DispositivoAdminResponse) {
+    setErroSalvar(null);
+    setDispositivoEmEdicao(dispositivo);
+  }
+
+  function handleCancelarEdicao() {
+    setErroSalvar(null);
+    setDispositivoEmEdicao(null);
+  }
+
   return (
     <AppLayout
       title="Dispositivos"
@@ -230,10 +277,13 @@ export function AdminDispositivosPage() {
       {!semAutorizacao && (
         <>
           <DispositivoForm
+            dispositivoEmEdicao={dispositivoEmEdicao}
             restaurantes={restaurantes}
             onCriar={handleCriarDispositivo}
-            criando={criando}
-            erro={erroCriacao}
+            onAtualizar={handleAtualizarDispositivo}
+            onCancelarEdicao={handleCancelarEdicao}
+            salvando={salvando}
+            erro={erroSalvar}
           />
 
           {loading && <p className="totem-estado">Carregando dispositivos...</p>}
@@ -250,6 +300,7 @@ export function AdminDispositivosPage() {
                   dispositivo={dispositivo}
                   executando={acoesEmAndamento.has(dispositivo.id)}
                   erro={errosAcao[dispositivo.id] ?? null}
+                  onEditar={handleEditar}
                   onRevogar={handleRevogar}
                   onReativar={handleReativar}
                 />
