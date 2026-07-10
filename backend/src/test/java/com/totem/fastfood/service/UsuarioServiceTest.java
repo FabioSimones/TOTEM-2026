@@ -1,5 +1,6 @@
 package com.totem.fastfood.service;
 
+import com.totem.fastfood.dto.usuario.AlterarSenhaUsuarioRequest;
 import com.totem.fastfood.dto.usuario.AtualizarUsuarioRequest;
 import com.totem.fastfood.dto.usuario.CriarUsuarioRequest;
 import com.totem.fastfood.dto.usuario.UsuarioAdminResponse;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -158,5 +160,49 @@ class UsuarioServiceTest {
 
         assertEquals(Boolean.FALSE, response.ativo());
         verify(usuarioRepository).save(any(Usuario.class));
+    }
+
+    @Test
+    void alterarSenha_usuarioExistente_atualizaHash() {
+        Usuario usuario = Usuario.builder().id(2L).email("operador@totem.local").perfil(PerfilUsuario.OPERADOR_CAIXA).senhaHash("hash-antigo").build();
+        AlterarSenhaUsuarioRequest request = new AlterarSenhaUsuarioRequest("NovaSenha@2026!");
+
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.encode("NovaSenha@2026!")).thenReturn("hash-novo");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioAdminMapper.toResponse(any(Usuario.class))).thenReturn(
+                new UsuarioAdminResponse(2L, null, "Operador", "operador@totem.local", PerfilUsuario.OPERADOR_CAIXA, true, null, null));
+
+        usuarioService.alterarSenha(2L, request);
+
+        verify(passwordEncoder).encode("NovaSenha@2026!");
+        verify(usuarioRepository).save(argThat(u -> "hash-novo".equals(u.getSenhaHash())));
+    }
+
+    @Test
+    void alterarSenha_usuarioInexistente_lancaErro() {
+        AlterarSenhaUsuarioRequest request = new AlterarSenhaUsuarioRequest("NovaSenha@2026!");
+        when(usuarioRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(NoSuchElementException.class, () -> usuarioService.alterarSenha(999L, request));
+        verify(usuarioRepository, never()).save(any());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void alterarSenha_naoRetornaSenhaHash() {
+        Usuario usuario = Usuario.builder().id(2L).email("operador@totem.local").perfil(PerfilUsuario.OPERADOR_CAIXA).senhaHash("hash-antigo").build();
+        AlterarSenhaUsuarioRequest request = new AlterarSenhaUsuarioRequest("NovaSenha@2026!");
+
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.encode("NovaSenha@2026!")).thenReturn("hash-novo");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioAdminMapper.toResponse(any(Usuario.class))).thenReturn(
+                new UsuarioAdminResponse(2L, null, "Operador", "operador@totem.local", PerfilUsuario.OPERADOR_CAIXA, true, null, null));
+
+        UsuarioAdminResponse response = usuarioService.alterarSenha(2L, request);
+
+        assertEquals(2L, response.id());
+        // UsuarioAdminResponse não tem campo de senha/hash — a própria assinatura do record já garante isso.
     }
 }

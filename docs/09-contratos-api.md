@@ -273,6 +273,33 @@ Response (`201 Created`) — nunca inclui `senha`/`senhaHash`:
 
 `PATCH /api/admin/usuarios/{id}/ativar` e `PATCH /api/admin/usuarios/{id}/desativar` — sem corpo de requisição, retornam o mesmo formato de `UsuarioAdminResponse`. Desativar o próprio usuário autenticado é bloqueado com `400`.
 
+### Alterar senha do usuário
+
+`PATCH /api/admin/usuarios/{id}/senha` — implementado na TASK-049. Único campo aceito é `novaSenha` (o admin nunca informa/conhece a senha atual):
+
+```json
+{
+  "novaSenha": "NovaSenha@2026!"
+}
+```
+
+Response (`200 OK`) — mesmo formato de `UsuarioAdminResponse`, nunca inclui `senha`/`senhaHash`:
+
+```json
+{
+  "id": 5,
+  "restauranteId": 1,
+  "nome": "Operador Caixa",
+  "email": "caixa@totem.local",
+  "perfil": "OPERADOR_CAIXA",
+  "ativo": true,
+  "criadoEm": "2026-05-05T15:00:00",
+  "atualizadoEm": "2026-05-05T15:20:00"
+}
+```
+
+`novaSenha` segue a mesma validação de `senha` no cadastro (`@NotBlank`, 8 a 100 caracteres). Não força logout do usuário alterado nem invalida tokens já emitidos (sem infraestrutura de revogação de token para usuários humanos — mesma limitação já documentada em `docs/testes-backend-mvp.md`).
+
 ## Erro padrão
 
 Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:

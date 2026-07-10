@@ -1,5 +1,10 @@
 import { api } from "./api";
-import type { AtualizarUsuarioRequest, CriarUsuarioRequest, UsuarioAdminResponse } from "../types/usuario";
+import type {
+  AlterarSenhaUsuarioRequest,
+  AtualizarUsuarioRequest,
+  CriarUsuarioRequest,
+  UsuarioAdminResponse,
+} from "../types/usuario";
 
 /** GET /api/admin/usuarios[?restauranteId=] — exige token de usuário SUPER_ADMIN. */
 export function listarUsuarios(restauranteId?: number): Promise<UsuarioAdminResponse[]> {
@@ -25,4 +30,12 @@ export function ativarUsuario(id: number): Promise<UsuarioAdminResponse> {
 /** PATCH /api/admin/usuarios/{id}/desativar — sem corpo de requisição. Backend bloqueia autodesativação. */
 export function desativarUsuario(id: number): Promise<UsuarioAdminResponse> {
   return api.patch<UsuarioAdminResponse>(`/api/admin/usuarios/${id}/desativar`);
+}
+
+/** PATCH /api/admin/usuarios/{id}/senha — a senha nunca é lida de volta, só enviada uma vez. */
+export function alterarSenhaUsuario(
+  id: number,
+  request: AlterarSenhaUsuarioRequest,
+): Promise<UsuarioAdminResponse> {
+  return api.patch<UsuarioAdminResponse>(`/api/admin/usuarios/${id}/senha`, request);
 }

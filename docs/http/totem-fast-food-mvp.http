@@ -389,3 +389,35 @@ Authorization: Bearer {{tokenSuperAdmin}}
 ### 36. Admin — Desativar o próprio usuário autenticado -> 400
 PATCH {{baseUrl}}/api/admin/usuarios/1/desativar
 Authorization: Bearer {{tokenSuperAdmin}}
+
+
+### 37. Admin — Alterar senha do usuário (TASK-049)
+PATCH {{baseUrl}}/api/admin/usuarios/{{usuarioId}}/senha
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "novaSenha": "NovaSenha@2026!"
+}
+
+### -> teste em seguida: POST /api/auth/login com o email do usuário e a nova senha
+
+
+### 38. Admin — Alterar senha com senha curta -> 400 (Bean Validation)
+PATCH {{baseUrl}}/api/admin/usuarios/{{usuarioId}}/senha
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "novaSenha": "curta"
+}
+
+
+### 39. Admin — Alterar senha de usuário inexistente -> 404
+PATCH {{baseUrl}}/api/admin/usuarios/999999/senha
+Content-Type: application/json
+Authorization: Bearer {{tokenSuperAdmin}}
+
+{
+  "novaSenha": "NovaSenha@2026!"
+}

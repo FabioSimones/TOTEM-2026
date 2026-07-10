@@ -78,6 +78,7 @@ mvn spring-boot:run
 | PUT | `/api/admin/usuarios/{id}` |
 | PATCH | `/api/admin/usuarios/{id}/ativar` |
 | PATCH | `/api/admin/usuarios/{id}/desativar` (bloqueado para o próprio usuário autenticado) |
+| PATCH | `/api/admin/usuarios/{id}/senha` (TASK-049, nunca retorna senha/hash) |
 
 ### Totem (`DEVICE_TOTEM`)
 
@@ -376,7 +377,7 @@ mvn test
 | `payment/FakePaymentProviderTest` | PIX/cartão → `AUTORIZADO`; dinheiro → `PENDENTE` |
 | `service/CaixaPedidoServiceTest` (TASK-026, ampliado na TASK-027 e TASK-040) | `enviarParaCozinha`, `marcarComoRetirado`, `cancelarPedido`: transições válidas e bloqueio de todas as transições inválidas (parametrizado por `StatusPedido`), 404 para pedido inexistente/outro restaurante; `listarPendentes`: busca apenas `AGUARDANDO_PAGAMENTO_DINHEIRO`/`PAGO`/`PRONTO`, `acaoSugerida` correta por status (incluindo `PRONTO`→`MARCAR_RETIRADO`), lista vazia não chama `ItemPedidoRepository`, nunca altera o pedido |
 | `service/CozinhaPedidoServiceTest` (novo, TASK-026) | `atualizarStatus`: `ENVIADO_PARA_COZINHA→EM_PREPARO`, `EM_PREPARO→PRONTO`, bloqueio de salto e de regressão, bloqueio para pedidos fora do fluxo da cozinha |
-| `service/UsuarioServiceTest` (novo, TASK-048) | `criar`: `restauranteId` obrigatório/proibido conforme perfil, 404 para restaurante inexistente, e-mail duplicado, senha codificada via `PasswordEncoder`; `atualizar`: e-mail duplicado bloqueado; `desativar`: bloqueio de autodesativação, permitido para outro usuário |
+| `service/UsuarioServiceTest` (TASK-048, ampliado na TASK-049) | `criar`: `restauranteId` obrigatório/proibido conforme perfil, 404 para restaurante inexistente, e-mail duplicado, senha codificada via `PasswordEncoder`; `atualizar`: e-mail duplicado bloqueado; `desativar`: bloqueio de autodesativação, permitido para outro usuário; `alterarSenha`: hash atualizado via `PasswordEncoder`, 404 para usuário inexistente (sem chamar `encode`/`save`), response sem campo de senha |
 
 Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — validam apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo (autenticação, serialização, banco real).
 
@@ -392,7 +393,7 @@ Não existe teste de integração real (subindo contexto Spring + banco) no proj
 | `POST /api/auth/logout` | Documentado, **não implementado** | Idem — depende de refresh token existir primeiro |
 | `POST /api/webhooks/pix`, `POST /api/webhooks/pagamentos` | Documentados como "futuros", não implementados | Esperado — não é uma divergência real, apenas roadmap ainda não executado |
 
-`POST/GET/PUT /api/admin/usuarios`, `PATCH .../ativar` e `.../desativar` — documentados desde a fase inicial, **implementados na TASK-048** junto com o frontend `/admin/usuarios`. Diferente de Categoria/Produto/Dispositivo, restrito a `SUPER_ADMIN` apenas (gestão de usuários, inclusive outros admins, é mais sensível). Alteração de senha por um admin não foi implementada nesta task (fora do escopo, ver seção 9).
+`POST/GET/PUT /api/admin/usuarios`, `PATCH .../ativar` e `.../desativar` — documentados desde a fase inicial, **implementados na TASK-048** junto com o frontend `/admin/usuarios`. Diferente de Categoria/Produto/Dispositivo, restrito a `SUPER_ADMIN` apenas (gestão de usuários, inclusive outros admins, é mais sensível). `PATCH .../senha` (alteração de senha por um admin) **implementado na TASK-049**.
 
 `POST /api/caixa/pedidos/{id}/enviar-cozinha` e `.../retirar` estavam implementados mas ausentes de `docs/08-endpoints.md` desde a TASK-026/TASK-027 — **corrigido na TASK-041** (revisão ponta a ponta).
 

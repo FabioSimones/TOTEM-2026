@@ -1,5 +1,6 @@
 package com.totem.fastfood.service;
 
+import com.totem.fastfood.dto.usuario.AlterarSenhaUsuarioRequest;
 import com.totem.fastfood.dto.usuario.AtualizarUsuarioRequest;
 import com.totem.fastfood.dto.usuario.CriarUsuarioRequest;
 import com.totem.fastfood.dto.usuario.UsuarioAdminResponse;
@@ -94,6 +95,15 @@ public class UsuarioService {
         usuario.setAtivo(false);
         log.info("Usuário desativado: id={}", id);
         return usuarioAdminMapper.toResponse(usuarioRepository.save(usuario));
+    }
+
+    @Transactional
+    public UsuarioAdminResponse alterarSenha(Long id, AlterarSenhaUsuarioRequest request) {
+        Usuario usuario = buscarOuLancarExcecao(id);
+        usuario.setSenhaHash(passwordEncoder.encode(request.novaSenha()));
+        Usuario atualizado = usuarioRepository.save(usuario);
+        log.info("Senha alterada pelo admin: id={}", id);
+        return usuarioAdminMapper.toResponse(atualizado);
     }
 
     /**

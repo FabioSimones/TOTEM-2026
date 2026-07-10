@@ -1,5 +1,6 @@
 package com.totem.fastfood.controller.admin;
 
+import com.totem.fastfood.dto.usuario.AlterarSenhaUsuarioRequest;
 import com.totem.fastfood.dto.usuario.AtualizarUsuarioRequest;
 import com.totem.fastfood.dto.usuario.CriarUsuarioRequest;
 import com.totem.fastfood.dto.usuario.UsuarioAdminResponse;
@@ -72,5 +73,16 @@ public class UsuarioAdminController {
     @PatchMapping("/{id}/desativar")
     public ResponseEntity<UsuarioAdminResponse> desativar(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(usuarioService.desativar(id, authentication.getName()));
+    }
+
+    @Operation(summary = "Alterar senha do usuário", description = "Define uma nova senha, criptografada com BCrypt. Nunca retorna a senha/hash")
+    @ApiResponse(responseCode = "200", description = "Senha alterada — estado atualizado do usuário retornado (sem senha)")
+    @ApiResponse(responseCode = "400", description = "Nova senha inválida")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    @PatchMapping("/{id}/senha")
+    public ResponseEntity<UsuarioAdminResponse> alterarSenha(
+            @PathVariable Long id,
+            @RequestBody @Valid AlterarSenhaUsuarioRequest request) {
+        return ResponseEntity.ok(usuarioService.alterarSenha(id, request));
     }
 }

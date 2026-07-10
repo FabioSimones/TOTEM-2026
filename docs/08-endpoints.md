@@ -79,7 +79,7 @@ Permissão exigida: SUPER_ADMIN
 
 ## Administração de usuários
 
-Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048).
+Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senha na TASK-049).
 
 | Método | Rota | Objetivo |
 |---|---|---|
@@ -88,6 +88,7 @@ Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048).
 | PUT | `/api/admin/usuarios/{id}` | Atualizar usuário (não altera senha nem `ativo`) |
 | PATCH | `/api/admin/usuarios/{id}/ativar` | Ativar usuário |
 | PATCH | `/api/admin/usuarios/{id}/desativar` | Desativar usuário (bloqueado para o próprio usuário autenticado) |
+| PATCH | `/api/admin/usuarios/{id}/senha` | Alterar senha do usuário (nunca retorna a senha/hash) |
 
 ## Webhooks futuros
 

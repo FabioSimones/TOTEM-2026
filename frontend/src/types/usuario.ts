@@ -24,6 +24,11 @@ export interface AtualizarUsuarioRequest {
   perfil: PerfilUsuario;
 }
 
+/** PATCH /api/admin/usuarios/{id}/senha — único campo aceito, nunca a senha atual (o admin não precisa conhecê-la). */
+export interface AlterarSenhaUsuarioRequest {
+  novaSenha: string;
+}
+
 /** GET/POST/PUT/PATCH /api/admin/usuarios — resposta completa do backend. Nunca inclui senha/senhaHash. */
 export interface UsuarioAdminResponse {
   id: number;

@@ -7,6 +7,7 @@ import { UsuarioForm } from "../../components/admin/usuarios/UsuarioForm";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import {
+  alterarSenhaUsuario,
   ativarUsuario,
   atualizarUsuario,
   criarUsuario,
@@ -225,6 +226,24 @@ export function AdminUsuariosPage() {
     [carregarUsuarios, filtroRestauranteId, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  const handleAlterarSenha = useCallback(
+    async (id: number, novaSenha: string) => {
+      setErrosAcao((atual) => ({ ...atual, [id]: null }));
+      marcarAcaoEmAndamento(id, true);
+
+      try {
+        const response = await alterarSenhaUsuario(id, { novaSenha });
+        await carregarUsuarios(filtroRestauranteId);
+        setMensagemSucesso(`Senha do usuário "${response.nome}" alterada.`);
+      } catch (error) {
+        tratarErroAcao(id, error, "Não foi possível alterar a senha. Tente novamente.");
+      } finally {
+        marcarAcaoEmAndamento(id, false);
+      }
+    },
+    [carregarUsuarios, filtroRestauranteId, marcarAcaoEmAndamento, tratarErroAcao],
+  );
+
   function handleEditar(usuario: UsuarioAdminResponse) {
     setErroSalvar(null);
     setUsuarioEmEdicao(usuario);
@@ -331,6 +350,7 @@ export function AdminUsuariosPage() {
                   onEditar={handleEditar}
                   onAtivar={handleAtivar}
                   onDesativar={handleDesativar}
+                  onAlterarSenha={handleAlterarSenha}
                 />
               ))}
             </div>

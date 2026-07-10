@@ -71,6 +71,11 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Tentar desativar o próprio usuário autenticado → `400` "Você não pode desativar o seu próprio usuário."
 - [ ] Fazer login com o usuário desativado → falha com "Email ou senha inválidos"
 - [ ] Login com usuário `ADMIN_RESTAURANTE` (se houver) → 403 "Você não tem permissão para acessar usuários.", sessão preservada
+- [ ] Clicar em "Alterar senha" no card de um usuário → bloco inline abre com "Nova senha"/"Confirmar nova senha"
+- [ ] Confirmar com senha < 8 caracteres ou confirmação diferente → validação client-side, sem chamar o backend
+- [ ] Confirmar com senhas iguais e válidas → `PATCH .../senha`, bloco fecha, mensagem de sucesso
+- [ ] Sair e fazer login com o usuário alterado e a nova senha → login funciona; senha antiga falha
+- [ ] Confirmar que a senha não aparece em nenhuma resposta nem em `localStorage` (DevTools → Network/Application)
 
 ## 9. Erros esperados (401/403/404/400)
 
@@ -88,4 +93,4 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 ## Fora do escopo (ainda não implementado)
 
-Alteração de senha de usuário por um admin, upload de imagem de produto, refresh token, seletor visual de restaurante em Dispositivos, proteção de rota por perfil no frontend — ver "Limitações atuais do Admin" em `frontend/README.md`.
+Upload de imagem de produto, refresh token, seletor visual de restaurante em Dispositivos, proteção de rota por perfil no frontend — ver "Limitações atuais do Admin" em `frontend/README.md`.
