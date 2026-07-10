@@ -513,3 +513,17 @@ Content-Type: image/png
 
 < ./caminho/para/arquivo-de-teste.txt
 --totemBoundary--
+
+
+### 47. Admin — Limpar uploads órfãos em modo dry-run (TASK-056) — não exclui nada, só reporta
+POST {{baseUrl}}/api/admin/uploads/produtos/limpar-orfas?dryRun=true
+Authorization: Bearer {{tokenSuperAdmin}}
+
+
+### 48. Admin — Limpar uploads órfãos de verdade (TASK-056) — exclui os arquivos órfãos do disco
+POST {{baseUrl}}/api/admin/uploads/produtos/limpar-orfas?dryRun=false
+Authorization: Bearer {{tokenSuperAdmin}}
+
+
+### 49. Admin — Limpar uploads órfãos sem token -> 401
+POST {{baseUrl}}/api/admin/uploads/produtos/limpar-orfas?dryRun=true

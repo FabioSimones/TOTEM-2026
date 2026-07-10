@@ -365,6 +365,44 @@ Erros (`400`): arquivo ausente/vazio, tipo de arquivo não permitido, conteúdo 
 
 **Nota de segurança (TASK-054)**: o armazenamento local em disco é uma decisão de MVP — os arquivos ficam publicamente acessíveis em `/uploads/**` sem autenticação (apenas o upload em si exige login admin) e sem qualquer verificação de malware. Em produção, isso deve ser substituído por um storage externo (S3, Cloudinary ou equivalente) e, se o risco justificar, complementado por um scan de antivírus antes de disponibilizar o arquivo publicamente — nenhum dos dois foi implementado nesta task.
 
+**Nota de correção (TASK-055)**: a validação em ambiente real encontrou `SecurityConfig` bloqueando `/uploads/**` com `401`/`403` mesmo sem exigir isso na regra de negócio (só `anyRequest().authenticated()` cobria o path, sem exceção para o resource handler estático) — corrigido para liberar `app.uploads.public-path` (`/uploads/**`) como público, conforme já documentado acima.
+
+### Limpar uploads órfãos de produto
+
+Implementado na TASK-056. `POST /api/admin/uploads/produtos/limpar-orfas` — exige perfil `SUPER_ADMIN` (mais restrito que o upload em si: excluir arquivos do storage é uma operação sensível, diferente de apenas enviar uma imagem).
+
+Query param `dryRun` (padrão `true`, por segurança):
+
+- `dryRun=true` (ou omitido): identifica imagens órfãs em `uploads/produtos` e retorna o relatório, **sem excluir nada**.
+- `dryRun=false`: identifica **e exclui** os arquivos órfãos, retornando o relatório da execução real.
+
+Uma imagem é considerada órfã quando o arquivo existe em `uploads/produtos` mas seu path público (`/uploads/produtos/<filename>`) não aparece em nenhum `Produto.imagemUrl` do banco — cobre `imagemUrl` salva como path relativo (`/uploads/produtos/arquivo.png`) ou como URL absoluta (`http://localhost:8080/uploads/produtos/arquivo.png`, ou o domínio de produção equivalente). URLs externas que não apontam para `/uploads/produtos` (ex.: `https://exemplo.com/imagem.png`) nunca são candidatas a exclusão — a varredura só considera arquivos físicos dentro do diretório de uploads local.
+
+Response (`200 OK`) em ambos os modos, mesmo formato:
+
+```json
+{
+  "arquivosEncontrados": 5,
+  "arquivosReferenciados": 3,
+  "arquivosOrfaos": 2,
+  "arquivosExcluidos": 2,
+  "falhas": 0,
+  "dryRun": false,
+  "detalhes": [
+    {
+      "filename": "1b2c3d4e-...-uuid.png",
+      "pathRelativo": "/uploads/produtos/1b2c3d4e-...-uuid.png",
+      "excluido": true,
+      "motivoFalha": null
+    }
+  ]
+}
+```
+
+Em `dryRun=true`, `excluido` é sempre `false` nos itens de `detalhes` (nenhuma exclusão ocorre) e `arquivosExcluidos` é sempre `0`. `falhas` conta itens que eram órfãos mas não puderam ser excluídos (ex.: erro de I/O) — a falha em um arquivo não interrompe a exclusão dos demais. A varredura só considera arquivos regulares (sem seguir symlink) diretamente em `uploads/produtos` com extensão `.jpg`/`.jpeg`/`.png`/`.webp`; subdiretórios e outras extensões são ignorados. Se o diretório não existir, o relatório retorna zerado em todos os campos, sem erro.
+
+**Fora do escopo desta task**: exclusão automática no momento de atualizar/trocar a `imagemUrl` de um produto (arriscado se duas entidades referenciarem a mesma imagem), agendamento/scheduler automático, e qualquer integração com storage externo.
+
 ## Erro padrão
 
 Todo erro (400/401/403/404/500) segue o mesmo formato, produzido pelo `GlobalExceptionHandler`:

@@ -1,6 +1,9 @@
 package com.totem.fastfood.service;
 
+import com.totem.fastfood.dto.upload.LimpezaUploadsResponse;
 import com.totem.fastfood.dto.upload.UploadImagemResponse;
+import com.totem.fastfood.dto.upload.UploadOrfaoItemResponse;
+import com.totem.fastfood.repository.ProdutoRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -8,10 +11,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -27,6 +35,9 @@ public class UploadImagemService {
             "image/webp", ".webp"
     );
 
+    /** Extensões controladas para a varredura de órfãos — mesmas geradas pelo upload em si. */
+    private static final Set<String> EXTENSOES_CONTROLADAS = Set.of(".jpg", ".jpeg", ".png", ".webp");
+
     /**
      * Assinatura binária (magic bytes) esperada para cada Content-Type permitido — a defesa real
      * contra spoofing, já que o Content-Type declarado pelo cliente não é confiável por si só.
@@ -41,12 +52,15 @@ public class UploadImagemService {
 
     private final Path diretorioProdutos;
     private final String publicPath;
+    private final ProdutoRepository produtoRepository;
 
     public UploadImagemService(
             @Value("${app.uploads.dir}") String uploadsDir,
-            @Value("${app.uploads.public-path}") String publicPath) {
+            @Value("${app.uploads.public-path}") String publicPath,
+            ProdutoRepository produtoRepository) {
         this.diretorioProdutos = Path.of(uploadsDir, "produtos").toAbsolutePath().normalize();
         this.publicPath = publicPath;
+        this.produtoRepository = produtoRepository;
     }
 
     public UploadImagemResponse salvarImagemProduto(MultipartFile file) {
@@ -88,6 +102,91 @@ public class UploadImagemService {
 
         String url = publicPath + "/produtos/" + filename;
         return new UploadImagemResponse(filename, url, contentType, conteudo.length);
+    }
+
+    /**
+     * Limpeza administrativa manual de imagens em uploads/produtos que não são mais
+     * referenciadas por nenhum Produto.imagemUrl (TASK-056). Nunca roda automaticamente —
+     * apagar no momento do update do produto seria arriscado se duas entidades apontarem
+     * para a mesma imagemUrl. Em dryRun=true apenas identifica e reporta, sem excluir nada.
+     */
+    public LimpezaUploadsResponse limparUploadsOrfaosProdutos(boolean dryRun) {
+        if (!Files.isDirectory(diretorioProdutos)) {
+            return new LimpezaUploadsResponse(0, 0, 0, 0, 0, dryRun, List.of());
+        }
+
+        String prefixoPublico = publicPath + "/produtos/";
+        List<String> imagemUrlsEmUso = produtoRepository.findImagemUrlsEmUso();
+
+        List<Path> arquivosCandidatos = listarArquivosControlados();
+
+        int referenciados = 0;
+        int excluidos = 0;
+        int falhas = 0;
+        List<UploadOrfaoItemResponse> detalhes = new ArrayList<>();
+
+        for (Path arquivo : arquivosCandidatos) {
+            String filename = arquivo.getFileName().toString();
+            String pathPublico = prefixoPublico + filename;
+
+            boolean referenciado = imagemUrlsEmUso.stream().anyMatch(url -> url.contains(pathPublico));
+            if (referenciado) {
+                referenciados++;
+                continue;
+            }
+
+            if (dryRun) {
+                detalhes.add(new UploadOrfaoItemResponse(filename, pathPublico, false, null));
+                continue;
+            }
+
+            try {
+                excluirComSeguranca(arquivo);
+                excluidos++;
+                detalhes.add(new UploadOrfaoItemResponse(filename, pathPublico, true, null));
+            } catch (IOException | SecurityException e) {
+                falhas++;
+                log.error("Falha ao excluir upload órfão: filename={}", filename, e);
+                detalhes.add(new UploadOrfaoItemResponse(filename, pathPublico, false, "Falha ao excluir o arquivo"));
+            }
+        }
+
+        int orfaos = detalhes.size();
+        return new LimpezaUploadsResponse(
+                arquivosCandidatos.size(), referenciados, orfaos, excluidos, falhas, dryRun, detalhes);
+    }
+
+    /** Apenas arquivos regulares (sem seguir symlink), direto no diretório, com extensão controlada. */
+    private List<Path> listarArquivosControlados() {
+        List<Path> resultado = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(diretorioProdutos)) {
+            for (Path entrada : stream) {
+                if (!Files.isRegularFile(entrada, LinkOption.NOFOLLOW_LINKS)) {
+                    continue;
+                }
+                String nome = entrada.getFileName().toString().toLowerCase();
+                boolean extensaoControlada = EXTENSOES_CONTROLADAS.stream().anyMatch(nome::endsWith);
+                if (extensaoControlada) {
+                    resultado.add(entrada);
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Falha ao listar o diretório de uploads", e);
+        }
+        return resultado;
+    }
+
+    /**
+     * Reconfere que o caminho a excluir está dentro do diretório base normalizado antes de
+     * apagar — nunca confia apenas na origem da listagem, mesma defesa em profundidade usada
+     * ao salvar. Nunca exclui diretórios (o filtro de listagem já garante arquivo regular).
+     */
+    private void excluirComSeguranca(Path arquivo) throws IOException {
+        Path normalizado = arquivo.toAbsolutePath().normalize();
+        if (!normalizado.startsWith(diretorioProdutos)) {
+            throw new SecurityException("Caminho fora do diretório de uploads de produtos");
+        }
+        Files.delete(normalizado);
     }
 
     private byte[] lerBytes(MultipartFile file) {

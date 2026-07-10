@@ -2,6 +2,7 @@ package com.totem.fastfood.repository;
 
 import com.totem.fastfood.entity.Produto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
@@ -20,4 +21,8 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
     List<Produto> findByRestauranteIdAndCategoriaIdAndDisponivelTrueOrderByOrdemExibicaoAscNomeAsc(
             Long restauranteId, Long categoriaId);
+
+    /** Usado pela limpeza de uploads órfãos (TASK-056) para saber quais imagens ainda estão em uso. */
+    @Query("select p.imagemUrl from Produto p where p.imagemUrl is not null and p.imagemUrl <> ''")
+    List<String> findImagemUrlsEmUso();
 }

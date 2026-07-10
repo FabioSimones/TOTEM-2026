@@ -377,7 +377,11 @@ A partir da TASK-046, `/admin/produtos` permite listar (com filtro por restauran
 21. Para simular sessão expirada, edite `totem.accessToken` no DevTools para um valor inválido e tente qualquer ação: aparece mensagem de sessão expirada e o botão "Ir para login".
 22. Alterne o tema (💡) com o formulário preenchido (alternadores Sim/Não, seletor de categoria, prévia de imagem visível) e com produtos disponíveis/indisponíveis/em destaque na lista — segue os mesmos tokens já usados nas demais telas do Admin.
 
-## Como testar o upload de imagem de produto (TASK-053, revisão de segurança na TASK-054)
+## Como testar o upload de imagem de produto (TASK-053, revisão de segurança na TASK-054, validação real na TASK-055, limpeza de órfãos na TASK-056)
+
+**Nota (TASK-055)**: a validação em ambiente real (backend + Postgres + frontend rodando de verdade) encontrou um bug — `/uploads/**` retornava `401`/`403` mesmo sem token, quebrando a exibição da imagem no passo 8 abaixo (tags `<img>` não enviam `Authorization`). Corrigido em `SecurityConfig` (backend), sem nenhuma mudança no frontend.
+
+**Nota (TASK-056)**: o backend ganhou `POST /api/admin/uploads/produtos/limpar-orfas` (`dryRun=true` por padrão) para identificar e, opcionalmente, excluir imagens em `uploads/produtos` sem referência em nenhum produto — restrito a `SUPER_ADMIN`, sem tela própria no frontend (uso via `docs/http/totem-fast-food-mvp.http` ou Swagger). Ver `docs/09-contratos-api.md` para o contrato completo.
 
 A partir da TASK-053, `/admin/produtos` permite enviar um arquivo de imagem de verdade (além do campo `imagemUrl` manual, que continua existindo). O backend salva o arquivo **localmente em disco** (`app.uploads.dir`, ver `docs/09-contratos-api.md`) — **essa é uma decisão de MVP**: em produção, isso deve ser substituído por um storage externo (S3, Cloudinary ou equivalente) e, se o risco justificar, complementado por um scan de antivírus antes de publicar o arquivo — nenhum dos dois está implementado.
 

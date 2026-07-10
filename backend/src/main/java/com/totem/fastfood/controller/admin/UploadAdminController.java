@@ -1,5 +1,6 @@
 package com.totem.fastfood.controller.admin;
 
+import com.totem.fastfood.dto.upload.LimpezaUploadsResponse;
 import com.totem.fastfood.dto.upload.UploadImagemResponse;
 import com.totem.fastfood.service.UploadImagemService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,5 +32,16 @@ public class UploadAdminController {
     @PostMapping(value = "/produtos/imagem", consumes = "multipart/form-data")
     public ResponseEntity<UploadImagemResponse> uploadImagemProduto(@RequestParam("file") MultipartFile file) {
         return ResponseEntity.status(HttpStatus.CREATED).body(uploadImagemService.salvarImagemProduto(file));
+    }
+
+    @Operation(summary = "Limpar uploads órfãos de produto",
+            description = "Identifica (e, fora do modo dry-run, exclui) imagens em uploads/produtos que não "
+                    + "são referenciadas por nenhum Produto.imagemUrl. Operação sensível — restrita a SUPER_ADMIN.")
+    @ApiResponse(responseCode = "200", description = "Relatório da limpeza (identificação ou exclusão)")
+    @PostMapping("/produtos/limpar-orfas")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<LimpezaUploadsResponse> limparUploadsOrfaosProdutos(
+            @RequestParam(name = "dryRun", defaultValue = "true") boolean dryRun) {
+        return ResponseEntity.ok(uploadImagemService.limparUploadsOrfaosProdutos(dryRun));
     }
 }
