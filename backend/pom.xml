@@ -112,6 +112,17 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Banco em memória só para o contexto de testes (TASK-057) — permite que
+             TotemApplicationTests.contextLoads suba os beans JPA reais (ex.: UsuarioRepository)
+             sem depender de PostgreSQL. As migrations Flyway continuam desativadas nos testes
+             (usam sintaxe específica do PostgreSQL, ex.: SERIAL/BIGSERIAL); o schema deste banco
+             é gerado a partir das entidades via ddl-auto. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -8,8 +8,9 @@ class TotemApplicationTests {
 
     @Test
     void contextLoads() {
-        // Valida que o contexto Spring sobe corretamente.
-        // Banco de dados desativado via src/test/resources/application.yml.
-        // PostgreSQL só é necessário ao rodar a aplicação com mvn spring-boot:run.
+        // Valida que o contexto Spring sobe corretamente (todos os beans se conectam).
+        // Usa H2 em memória via src/test/resources/application.yml (TASK-057) — schema gerado
+        // das entidades JPA (ddl-auto: create-drop), Flyway continua desativado (migrations usam
+        // sintaxe específica do PostgreSQL). PostgreSQL real só é necessário com mvn spring-boot:run.
     }
 }

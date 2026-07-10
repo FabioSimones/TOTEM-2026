@@ -2,18 +2,45 @@
 # Configuração de testes — substitui application.yml principal
 # durante a execução de `mvn test`
 #
-# O banco de dados é desativado para que os testes unitários
-# não dependam de PostgreSQL disponível.
-# Testes de integração que precisam de banco devem usar
-# @DataJpaTest ou um container TestContainers (futuro).
+# Os testes unitários (Mockito puro, sem @SpringBootTest) não usam nenhuma
+# propriedade daqui. TotemApplicationTests.contextLoads é o único teste que
+# sobe o contexto Spring completo — por isso ele precisa de um banco real
+# (H2 em memória, TASK-057) para satisfazer os beans JPA (ex.: UsuarioRepository,
+# exigido por CustomUserDetailsService -> JwtAuthenticationFilter -> SecurityConfig).
+# Flyway continua desativado: as migrations usam sintaxe específica do PostgreSQL
+# (SERIAL/BIGSERIAL) incompatível com H2; o schema é gerado via ddl-auto a partir
+# das entidades JPA, suficiente para validar que o contexto sobe.
 # ===========================================================
 
 spring:
   autoconfigure:
     exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
       - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:totem_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+# Este arquivo SUBSTITUI (não estende) o application.yml principal durante os testes —
+# por isso as propriedades abaixo, usadas via @Value no contexto Spring (JwtService,
+# WebConfig, UploadImagemService, SecurityConfig), precisam de valor próprio aqui, mesmo
+# não sendo exercitadas por nenhuma regra de negócio neste teste (contextLoads só valida
+# que o contexto sobe). Segredo puramente fictício, nunca usado para assinar tokens reais.
+app:
+  security:
+    jwt:
+      secret: chave-fake-de-teste-nao-usar-em-producao-totem-fast-food-contextloads
+      expiration-minutes: 60
+  uploads:
+    dir: target/test-uploads
+    public-path: /uploads
 
 logging:
   level:

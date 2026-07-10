@@ -399,7 +399,7 @@ Esses testes são unitários puros (Mockito, sem Spring context, sem banco) — 
 
 ### Pendência de teste de integração
 
-Não existe teste de integração real (subindo contexto Spring + banco) no projeto. Cobrir os fluxos completos (HTTP + segurança + persistência) exigiria configurar Testcontainers ou um banco H2/Postgres de teste dedicado — isso não foi feito nesta task para não introduzir infraestrutura nova sem alinhamento explícito. Fica documentado como pendência técnica (seção 9).
+Não existe teste de integração real (subindo contexto Spring + banco, exercitando HTTP/segurança/persistência ponta a ponta) no projeto. A TASK-057 adicionou H2 em memória, mas apenas para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam) — nenhum teste de fluxo HTTP real foi criado. Cobrir os fluxos completos ainda exigiria Testcontainers ou uma suíte de testes de integração dedicada — fica documentado como pendência técnica (seção 9).
 
 ## 8. Divergências encontradas entre `docs/08-endpoints.md` e a implementação
 
@@ -419,7 +419,7 @@ Não existe teste de integração real (subindo contexto Spring + banco) no proj
 
 - Sem testes de integração (HTTP + banco real) — só unitários de regra de negócio e de autenticação isolada.
 - Não existe listagem administrativa de pedidos/histórico (nenhum endpoint `GET /api/admin/pedidos` ou similar) — hoje só é possível inspecionar pedidos via banco ou via os endpoints operacionais (Totem/Caixa/Cozinha), cada um com seu próprio escopo restrito.
-- `TotemApplicationTests.contextLoads` falha em ambiente local por erro de criação do bean `JwtService`/`SecurityConfig` — investigado na TASK-041 e confirmado como problema de configuração/ambiente pré-existente, não relacionado a nenhuma mudança de código recente (reproduzido mesmo com `git stash` revertendo as últimas alterações). Fica como dívida técnica a investigar (provável causa: propriedade de configuração do JWT ausente/mal formada no perfil de teste).
+- ~~`TotemApplicationTests.contextLoads` falhava em ambiente local~~ **corrigido na TASK-057**. Causa raiz real (não só o JWT): `src/test/resources/application.yml` **substitui** por completo o `application.yml` principal durante os testes (mesmo nome de arquivo, classpath de teste tem prioridade), então nenhuma propriedade `app.security.jwt.*`/`app.uploads.*` (usadas via `@Value` em `JwtService`, `WebConfig`, `UploadImagemService`, `SecurityConfig`) tinha valor — `Could not resolve placeholder 'app.security.jwt.secret'`. Corrigir só isso revelou uma segunda causa: os testes excluíam `DataSourceAutoConfiguration`/`HibernateJpaAutoConfiguration` para não depender de PostgreSQL, mas o contexto completo (`@SpringBootTest`) precisa de `UsuarioRepository` (JPA) para `CustomUserDetailsService` → `JwtAuthenticationFilter` → `SecurityConfig`. Resolvido adicionando H2 em memória **só para teste** (`pom.xml`, escopo `test`) com `ddl-auto: create-drop` (schema gerado das entidades JPA, já que as migrations Flyway usam sintaxe `SERIAL`/`BIGSERIAL` específica do PostgreSQL e continuam excluídas nos testes). O secret de JWT usado em teste é uma string fictícia, nunca usada para assinar token real. `mvn test` completo passa: 90/90.
 
 ### Pendências de produto
 

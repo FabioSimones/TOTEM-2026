@@ -69,7 +69,7 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 ## 8. Validações automatizadas
 
 - [ ] Backend: `cd backend && mvn test -Dtest=CaixaPedidoServiceTest,CozinhaPedidoServiceTest` — passando
-- [ ] Backend completo: `cd backend && mvn test` — só falha esperada é `TotemApplicationTests.contextLoads` (dívida técnica de ambiente, ver `docs/testes-backend-mvp.md` seção 9)
+- [ ] Backend completo: `cd backend && mvn test` — todos os testes devem passar, incluindo `TotemApplicationTests.contextLoads` (corrigido na TASK-057, ver `docs/testes-backend-mvp.md` seção 9)
 - [ ] Frontend: `cd frontend && npm run build` — sem erro TypeScript
 
 ## Fora do escopo deste checklist
