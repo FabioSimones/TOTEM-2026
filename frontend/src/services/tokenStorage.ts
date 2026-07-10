@@ -2,19 +2,22 @@ import type { DispositivoAutenticadoResponse, LoginResponse, UsuarioAutenticadoR
 
 /**
  * Armazenamento simples de sessão em localStorage — aceitável para este
- * estágio do MVP (sem múltiplas abas/dispositivos concorrentes a resolver,
- * sem refresh token). Deve ser revisto se o projeto migrar para um fluxo
- * de autenticação mais robusto (ex: cookies httpOnly, refresh token).
+ * estágio do MVP (sem múltiplas abas/dispositivos concorrentes a resolver).
+ * Deve ser revisto se o projeto migrar para um fluxo de autenticação mais
+ * robusto (ex: cookies httpOnly).
  *
- * Não armazena senha nem qualquer dado sensível além do token de acesso
- * e dos campos mínimos de dispositivo/usuário necessários para a UI.
+ * Não armazena senha nem qualquer dado sensível além dos tokens de acesso/
+ * renovação e dos campos mínimos de dispositivo/usuário necessários para a UI.
  *
  * `totem.accessToken` é compartilhado entre os dois tipos de sessão
  * (dispositivo Totem/Caixa/Cozinha OU usuário humano administrativo) — só
  * um dos dois (`totem.dispositivo` ou `totem.usuario`) deve estar
- * preenchido por vez, nunca os dois ao mesmo tempo.
+ * preenchido por vez, nunca os dois ao mesmo tempo. `totem.refreshToken`
+ * (TASK-063) só é preenchido para sessão de usuário humano — dispositivos
+ * não têm refresh token nesta task.
  */
 const ACCESS_TOKEN_KEY = "totem.accessToken";
+const REFRESH_TOKEN_KEY = "totem.refreshToken";
 const DISPOSITIVO_KEY = "totem.dispositivo";
 const USUARIO_KEY = "totem.usuario";
 
@@ -28,6 +31,18 @@ export function setAccessToken(token: string): void {
 
 export function clearAccessToken(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function getStoredDispositivo(): DispositivoAutenticadoResponse | null {
@@ -70,15 +85,17 @@ export function clearStoredUsuario(): void {
   localStorage.removeItem(USUARIO_KEY);
 }
 
-/** Salva a sessão de usuário humano (login administrativo) a partir da resposta de POST /api/auth/login. */
+/** Salva a sessão de usuário humano (login administrativo) a partir da resposta de POST /api/auth/login (ou /refresh). */
 export function saveUserSession(response: LoginResponse): void {
   setAccessToken(response.accessToken);
+  setRefreshToken(response.refreshToken);
   setStoredUsuario(response.usuario);
 }
 
-/** Limpa toda a sessão local (token + dispositivo + usuário). Uso básico de "logout". */
+/** Limpa toda a sessão local (tokens + dispositivo + usuário). Uso básico de "logout". */
 export function clearSession(): void {
   clearAccessToken();
+  clearRefreshToken();
   clearStoredDispositivo();
   clearStoredUsuario();
 }

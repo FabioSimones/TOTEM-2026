@@ -19,9 +19,24 @@ export interface UsuarioAutenticadoResponse {
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
   tokenType: string;
   expiresIn: number;
+  refreshExpiresIn: number;
   usuario: UsuarioAutenticadoResponse;
+}
+
+/** POST /api/auth/refresh — troca um refreshToken válido por um novo par accessToken/refreshToken (rotação). */
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+/** Mesmo formato de LoginResponse — resposta de POST /api/auth/refresh. */
+export type RefreshResponse = LoginResponse;
+
+/** POST /api/auth/logout — revoga o refreshToken informado. Idempotente. */
+export interface LogoutRequest {
+  refreshToken: string;
 }
 
 /** POST /api/auth/dispositivos/ativar */

@@ -38,6 +38,7 @@ app:
     jwt:
       secret: chave-fake-de-teste-nao-usar-em-producao-totem-fast-food-contextloads
       expiration-minutes: 60
+      refresh-expiration-days: 7
   uploads:
     dir: target/test-uploads
     public-path: /uploads

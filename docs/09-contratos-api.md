@@ -2,6 +2,92 @@
 
 Revisado na TASK-041 para refletir os DTOs Java reais (antes desta revisão, este documento continha campos de um design inicial que nunca foram implementados — ver histórico do repositório). Os exemplos abaixo são representativos; para o contrato completo por campo, ver `docs/08-endpoints.md` e os próprios DTOs em `backend/src/main/java/com/totem/fastfood/dto/`.
 
+## Autenticação — login, refresh e logout administrativo
+
+### Login
+
+`POST /api/auth/login` — sem mudança de contrato de request. A partir da TASK-063, a response passa a incluir `refreshToken`/`refreshExpiresIn`:
+
+Request:
+
+```json
+{
+  "email": "admin@totem.local",
+  "senha": "Admin@2026!"
+}
+```
+
+Response (`200 OK`):
+
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "8f2a1c9e...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "refreshExpiresIn": 604800,
+  "usuario": {
+    "id": 1,
+    "nome": "Super Administrador",
+    "email": "admin@totem.local",
+    "perfil": "SUPER_ADMIN",
+    "restauranteId": null,
+    "ativo": true
+  }
+}
+```
+
+`expiresIn`/`refreshExpiresIn` em segundos (`app.security.jwt.expiration-minutes`, padrão 60min; `app.security.jwt.refresh-expiration-days`, padrão 7 dias).
+
+### Refresh token (TASK-063)
+
+`POST /api/auth/refresh` — endpoint público (`permitAll`), mas a validação real é do `refreshToken` no corpo, não de um Bearer token. **Rotação**: o `refreshToken` informado é sempre revogado (uso único), mesmo em caso de sucesso — a resposta traz um `refreshToken` novo, que deve substituir o anterior no cliente.
+
+Request:
+
+```json
+{
+  "refreshToken": "8f2a1c9e..."
+}
+```
+
+Response (`200 OK`) — mesmo formato de `LoginResponse`:
+
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "b7e40d21...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "refreshExpiresIn": 604800,
+  "usuario": { "...": "..." }
+}
+```
+
+Erros (`401`, mesmo formato de `ApiError`, mensagem `"Refresh token inválido ou expirado"`): token inexistente, já revogado (usado antes, ou revogado por login/logout mais recente), expirado, ou pertencente a um usuário desativado.
+
+### Logout (TASK-063)
+
+`POST /api/auth/logout` — endpoint público (`permitAll`); revoga o `refreshToken` informado. **Idempotente**: token já revogado ou inexistente não retorna erro — sempre `204 No Content`.
+
+Request:
+
+```json
+{
+  "refreshToken": "8f2a1c9e..."
+}
+```
+
+Response: `204 No Content`, sem corpo.
+
+### Regras e limitações do MVP (TASK-063)
+
+- **Um refresh token ativo por usuário.** Login novo revoga qualquer refresh token anterior do mesmo usuário — logar em uma segunda aba/dispositivo invalida a sessão da primeira na próxima tentativa de refresh (não afeta o `accessToken` já emitido, que continua válido até expirar por tempo; só o próximo `/refresh` da sessão antiga falhará).
+- **Refresh token bruto nunca é persistido.** Só o hash SHA-256 (`RefreshToken.tokenHash`, coluna já existente desde a migration `V3`/TASK-010) fica no banco — o valor bruto existe apenas no cliente e na resposta HTTP no momento da emissão.
+- **Refresh token não é JWT** — é uma string aleatória (`SecureRandom`, 32 bytes, Base64 URL-safe), sem claims, sem assinatura própria; só serve para ser trocada por um `accessToken` novo via `/refresh`.
+- **Escopo**: só sessão de usuário humano administrativo. Dispositivos (Totem/Caixa/Cozinha) não têm refresh token — continuam com token único de longa duração e revogação via `ativo=false` no dispositivo (TASK-010 em diante).
+- **Fora do escopo desta task** (deliberado): cookie HttpOnly, múltiplas sessões simultâneas por usuário, tela de "sessões ativas", "remember me", CSRF, refresh token para dispositivos.
+
 ## Totem
 
 ### Criar pedido

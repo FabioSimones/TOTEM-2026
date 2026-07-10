@@ -4,6 +4,9 @@ import type {
   AtivarDispositivoResponse,
   LoginRequest,
   LoginResponse,
+  LogoutRequest,
+  RefreshRequest,
+  RefreshResponse,
 } from "../types/auth";
 
 /**
@@ -19,4 +22,18 @@ export function ativarDispositivo(codigoAtivacao: string): Promise<AtivarDisposi
 /** POST /api/auth/login — endpoint público, não exige token. Autenticação de usuário humano (admin/operador). */
 export function login(request: LoginRequest): Promise<LoginResponse> {
   return api.post<LoginResponse>("/api/auth/login", request, { withAuth: false });
+}
+
+/**
+ * POST /api/auth/refresh — endpoint público (valida o refreshToken no corpo, não exige Bearer).
+ * Troca um refreshToken válido por um novo par accessToken/refreshToken (rotação: o informado é
+ * revogado). Usado tanto por `api.ts` (renovação automática em 401) quanto manualmente, se necessário.
+ */
+export function refreshToken(request: RefreshRequest): Promise<RefreshResponse> {
+  return api.post<RefreshResponse>("/api/auth/refresh", request, { withAuth: false });
+}
+
+/** POST /api/auth/logout — endpoint público, idempotente. Revoga o refreshToken informado. */
+export function logout(request: LogoutRequest): Promise<void> {
+  return api.post<void>("/api/auth/logout", request, { withAuth: false });
 }

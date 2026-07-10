@@ -17,12 +17,16 @@ Permissão exigida: SUPER_ADMIN
 
 ## Autenticação e Segurança
 
+Todos os 4 endpoints abaixo são públicos (`permitAll`) — `/login`, `/refresh` e `/logout` validam pelo corpo da requisição (credenciais ou refresh token), nunca por um Bearer token.
+
 | Método | Rota | Objetivo |
 |---|---|---|
-| POST | `/api/auth/login` | Autenticar usuário humano |
-| POST | `/api/auth/refresh` | Renovar sessão com refresh token |
-| POST | `/api/auth/logout` | Encerrar sessão e revogar token |
+| POST | `/api/auth/login` | Autenticar usuário humano — retorna `accessToken` (JWT) + `refreshToken` (implementado desde o início; `refreshToken` na resposta a partir da TASK-063) |
+| POST | `/api/auth/refresh` | **Implementado na TASK-063.** Renova a sessão administrativa: troca um `refreshToken` válido por um novo par `accessToken`/`refreshToken` (rotação — o informado é revogado mesmo em caso de sucesso) |
+| POST | `/api/auth/logout` | **Implementado na TASK-063.** Revoga o `refreshToken` informado. Idempotente — token já revogado ou inexistente não é erro, sempre `204` |
 | POST | `/api/auth/dispositivos/ativar` | Ativar dispositivo por código |
+
+**Escopo do refresh token (TASK-063)**: só para sessão de usuário humano administrativo (`Usuario`). Dispositivos (Totem/Caixa/Cozinha) continuam com token único de longa duração e revogação via `PATCH /api/admin/dispositivos/{id}/revogar` (`ativo=false`) — não receberam refresh token nesta task. Ver `docs/09-contratos-api.md` seção "Refresh token e logout administrativo" para o contrato completo.
 
 ## Totem
 

@@ -46,6 +46,7 @@ app:
       # nunca deve usar o valor padrão de desenvolvimento abaixo.
       secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+      refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
   uploads:
     # Armazenamento local em disco — adequado para o MVP. Em produção,
     # substituir por storage externo (S3, Cloudinary ou equivalente).

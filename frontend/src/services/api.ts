@@ -1,5 +1,6 @@
 import { ApiError, type ApiErrorResponse } from "../types/api";
-import { getAccessToken } from "./tokenStorage";
+import type { RefreshResponse } from "../types/auth";
+import { clearSession, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from "./tokenStorage";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
@@ -10,12 +11,53 @@ interface ApiFetchOptions extends Omit<RequestInit, "body"> {
 }
 
 /**
- * Cliente HTTP centralizado. Todas as chamadas às APIs do backend devem
- * passar por aqui — nenhuma tela deve chamar fetch/axios diretamente.
+ * Renovação automática de sessão (TASK-063). Só é acionada para chamadas com `withAuth: true`
+ * (o padrão) — chamadas com `withAuth: false` (login/refresh/logout/ativar-dispositivo) nunca
+ * disparam isso, então não há risco de recursão nelas. Sessões de dispositivo (Totem/Caixa/Cozinha)
+ * não têm refreshToken salvo, então `getRefreshToken()` retorna null e a renovação é pulada
+ * silenciosamente — comportamento idêntico ao anterior à TASK-063 para esses casos.
+ *
+ * `refreshEmAndamento` evita que requisições 401 concorrentes disparem múltiplas renovações em
+ * paralelo (o refresh token é de uso único — duas chamadas simultâneas desperdiçariam uma rotação
+ * derrubando a outra); todas aguardam a mesma renovação em andamento.
  */
-export async function apiFetch<TResponse>(
+let refreshEmAndamento: Promise<boolean> | null = null;
+
+async function tentarRenovarSessao(): Promise<boolean> {
+  if (refreshEmAndamento) {
+    return refreshEmAndamento;
+  }
+
+  refreshEmAndamento = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
+    try {
+      const response = await apiFetchInternal<RefreshResponse>(
+        "/api/auth/refresh",
+        { method: "POST", body: { refreshToken }, withAuth: false },
+        true,
+      );
+      setAccessToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  try {
+    return await refreshEmAndamento;
+  } finally {
+    refreshEmAndamento = null;
+  }
+}
+
+async function apiFetchInternal<TResponse>(
   path: string,
-  options: ApiFetchOptions = {},
+  options: ApiFetchOptions,
+  jaTentouRenovar: boolean,
 ): Promise<TResponse> {
   const { body, withAuth = true, headers, ...rest } = options;
 
@@ -40,6 +82,18 @@ export async function apiFetch<TResponse>(
     body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  if (response.status === 401 && withAuth && !jaTentouRenovar) {
+    const renovou = await tentarRenovarSessao();
+    if (renovou) {
+      return apiFetchInternal<TResponse>(path, options, true);
+    }
+    // Renovação falhou (sem refreshToken salvo, ou refreshToken também inválido/expirado/revogado):
+    // limpa a sessão aqui: sessão de fato inválida. As telas continuam com seu próprio tratamento
+    // de `error.status === 401` (chamando clearSession de novo, idempotente) para mostrar a mensagem
+    // de "sessão expirada" e redirecionar ao login.
+    clearSession();
+  }
+
   if (!response.ok) {
     let errorBody: ApiErrorResponse | undefined;
     try {
@@ -59,6 +113,17 @@ export async function apiFetch<TResponse>(
   }
 
   return (await response.json()) as TResponse;
+}
+
+/**
+ * Cliente HTTP centralizado. Todas as chamadas às APIs do backend devem
+ * passar por aqui — nenhuma tela deve chamar fetch/axios diretamente.
+ */
+export async function apiFetch<TResponse>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<TResponse> {
+  return apiFetchInternal<TResponse>(path, options, false);
 }
 
 export const api = {

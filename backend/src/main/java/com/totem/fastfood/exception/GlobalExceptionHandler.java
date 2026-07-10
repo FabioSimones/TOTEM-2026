@@ -141,8 +141,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Credenciais inválidas no login (email inexistente, senha incorreta ou usuário inativo).
-     * Mensagem genérica para não revelar qual dado está incorreto.
+     * Falha de autenticação — credenciais inválidas no login (mensagem genérica, para não revelar
+     * qual dado está incorreto) ou refresh token inválido/expirado/revogado (TASK-063, mensagem
+     * própria vinda de {@code RefreshTokenService}). Usa a mensagem da exceção quando presente;
+     * "Email ou senha inválidos" continua o padrão apenas quando nenhuma mensagem foi definida.
      */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(
@@ -152,7 +154,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.UNAUTHORIZED.value())
                 .error("Não autenticado")
-                .message("Email ou senha inválidos")
+                .message(ex.getMessage() != null ? ex.getMessage() : "Email ou senha inválidos")
                 .path(request.getRequestURI())
                 .build();
 

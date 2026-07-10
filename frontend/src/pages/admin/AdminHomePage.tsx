@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { logout } from "../../services/authService";
+import { clearSession, getAccessToken, getRefreshToken, getStoredUsuario } from "../../services/tokenStorage";
 import type { UsuarioAutenticadoResponse } from "../../types/auth";
 import { isSuperAdmin } from "../../utils/adminScope";
 
@@ -40,7 +41,16 @@ export function AdminHomePage() {
     setUsuario(usuarioSalvo);
   }, [navigate]);
 
-  function handleSair() {
+  async function handleSair() {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      try {
+        await logout({ refreshToken });
+      } catch {
+        // Best-effort: mesmo se o backend falhar (ex.: já expirado, rede indisponível),
+        // a sessão local é sempre limpa — o usuário não pode ficar "preso" logado.
+      }
+    }
     clearSession();
     navigate("/admin/login", { replace: true });
   }
@@ -61,7 +71,7 @@ export function AdminHomePage() {
             <p className="admin-dashboard__usuario-detalhe">{usuario.email}</p>
             <p className="admin-dashboard__usuario-detalhe">{ROTULO_PERFIL[usuario.perfil]}</p>
           </div>
-          <button type="button" className="admin-dashboard__sair" onClick={handleSair}>
+          <button type="button" className="admin-dashboard__sair" onClick={() => void handleSair()}>
             Sair
           </button>
         </div>

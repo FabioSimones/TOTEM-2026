@@ -17,6 +17,8 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\totem\PedidoTotemController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LoginRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LoginResponse.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LogoutRequest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\RefreshRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\UsuarioAutenticadoResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pagamento\ConfirmarPagamentoDinheiroRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pagamento\ConfirmarPagamentoDinheiroResponse.java
@@ -107,12 +109,14 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\PagamentoRepository.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\PedidoRepository.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\ProdutoRepository.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\RefreshTokenRepository.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\RestauranteRepository.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\UsuarioRepository.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\AdminScopeService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\CustomUserDetailsService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtAuthenticationFilter.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtService.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\RefreshTokenService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\RestAuthenticationEntryPoint.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\AuthService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CaixaPagamentoService.java
