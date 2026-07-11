@@ -131,6 +131,8 @@ TOTEM
 
 Cancelamento é um desvio possível **antes** do envio à cozinha: o Caixa pode cancelar um pedido em `CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO` ou `PAGO` → `statusPedido=CANCELADO`. A partir de `ENVIADO_PARA_COZINHA` o cancelamento não é mais permitido (envolveria perda de insumos/preparo em andamento).
 
+Expiração é outro desvio possível **antes** do pagamento (TASK-070): pedido em `CRIADO`, `AGUARDANDO_PAGAMENTO` ou `AGUARDANDO_PAGAMENTO_DINHEIRO` criado há mais de `app.pedidos.expiracao.minutos` (padrão 30min) vira `EXPIRADO` automaticamente (job agendado) ou por chamada manual do SUPER_ADMIN. Nunca afeta pedido `PAGO` em diante — ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos".
+
 ## Fluxo de alteração de cardápio
 
 ```text

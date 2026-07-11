@@ -48,6 +48,14 @@ app:
   uploads:
     dir: target/test-uploads
     public-path: /uploads
+  pedidos:
+    expiracao:
+      # Job desligado nos testes de integração: evita expirar pedidos criados durante os cenários
+      # (ex.: FluxoOperacionalMvpIntegrationTest) só porque a execução do teste demorou alguns
+      # segundos. PedidoExpiracaoServiceTest testa a regra isoladamente, com Clock controlado.
+      minutos: 30
+      job-enabled: false
+      job-fixed-delay-ms: 60000
 
 logging:
   level:

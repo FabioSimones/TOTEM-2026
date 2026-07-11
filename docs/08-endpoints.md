@@ -114,6 +114,18 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` (TASK-068). Somente lei
 | GET | `/api/admin/pedidos` | Listar pedidos (filtros opcionais `restauranteId` e `statusPedido`) |
 | GET | `/api/admin/pedidos/{id}` | Consultar detalhes do pedido — itens, pagamentos e histórico de status |
 
+### Expiração de pedidos não pagos (TASK-070)
+
+Complementa a listagem acima com uma ação de escrita restrita — ver seção específica logo abaixo.
+
+Permissão exigida: **somente `SUPER_ADMIN`** (mais restrito que a listagem — ação em massa que afeta qualquer restaurante).
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| POST | `/api/admin/pedidos/expirar-vencidos` | Expirar manualmente pedidos não pagos (`CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO`) criados há mais de `app.pedidos.expiracao.minutos` |
+
+Além do endpoint manual, um job agendado (`PedidoExpiracaoJob`, `@Scheduled(fixedDelayString = "${app.pedidos.expiracao.job-fixed-delay-ms}")`) executa a mesma regra automaticamente a cada `app.pedidos.expiracao.job-fixed-delay-ms` (padrão 60s), desde que `app.pedidos.expiracao.job-enabled=true` (padrão). Nunca afeta pedido `PAGO` em diante. Ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos" para o contrato completo.
+
 ## Administração de uploads
 
 Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` para envio; `SUPER_ADMIN` para limpeza de órfãos (TASK-056). Armazenamento local em disco — adequado para o MVP (ver `docs/09-contratos-api.md` para detalhes e limites). **Sem escopo por restaurante (TASK-058)**: o upload em si não tem vínculo direto com um restaurante (o arquivo só passa a pertencer a um restaurante indiretamente, quando referenciado por `Produto.imagemUrl`) — continua liberado para qualquer `ADMIN_RESTAURANTE` autenticado, e a limpeza de órfãos continua global (`SUPER_ADMIN`).

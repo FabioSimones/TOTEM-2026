@@ -191,6 +191,18 @@ Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta t
 
 **Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação.
 
+## 9h. Expiração automática de pedidos não pagos (TASK-070)
+
+**Coberto por testes automatizados** (`PedidoExpiracaoServiceTest`, unitário com `Clock` controlado; `PedidoAdminIntegrationTest`, casos `expirarVencidos_*` via HTTP real). Ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos" para o contrato completo.
+
+- [ ] Criar pedido no Totem e **não pagar** → status permanece `CRIADO`
+- [ ] Ajustar `PEDIDO_EXPIRACAO_MINUTOS` para um valor baixo (ex.: `1`) localmente, aguardar o job automático (padrão a cada 60s, `PEDIDO_EXPIRACAO_JOB_ENABLED=true`) → pedido vira `EXPIRADO`, com histórico registrado (`observacao="Pedido expirado automaticamente por falta de pagamento."`)
+- [ ] Chamar manualmente `POST /api/admin/pedidos/expirar-vencidos` como `SUPER_ADMIN` → `200`, `{"pedidosExpirados": N}`, mesmos pedidos vencidos afetados
+- [ ] Chamar o mesmo endpoint sem token → `401`; com `ADMIN_RESTAURANTE`/perfil operacional → `403` (só `SUPER_ADMIN` pode expirar)
+- [ ] Pedido `PAGO` (ou posterior) criado há muito tempo **nunca** vira `EXPIRADO`, nem pelo job nem pelo endpoint manual
+- [ ] `GET /api/admin/pedidos?statusPedido=EXPIRADO` retorna os pedidos expirados; o painel Admin Pedidos exibe o status normalmente (sem alteração de frontend necessária — a listagem já reflete qualquer valor de `StatusPedido`)
+- [ ] Reexecutar o endpoint manual/job em seguida → pedidos já `EXPIRADO` não são reprocessados (`pedidosExpirados` não conta o mesmo pedido duas vezes, sem histórico duplicado)
+
 ## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição

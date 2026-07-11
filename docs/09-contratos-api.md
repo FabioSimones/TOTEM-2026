@@ -542,6 +542,43 @@ Response (`200 OK`):
 
 **Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação (a listagem retorna todos os pedidos do escopo de uma vez — aceitável para o volume esperado do MVP; deve ser revisto se o histórico crescer muito).
 
+## Admin — Expiração de pedidos (TASK-070)
+
+Pedidos não pagos podem ficar indefinidamente em estados iniciais se o cliente abandonar o totem antes de pagar. A expiração automática/manual resolve isso sem tocar em pagamento, estorno ou pedidos já operacionais.
+
+**Status elegíveis** (não pagos, "presos" antes da confirmação): `CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO`. **Nunca expira**: `PAGO`, `ENVIADO_PARA_COZINHA`, `EM_PREPARO`, `PRONTO`, `RETIRADO`, `CANCELADO`, `EXPIRADO` (idempotente — um pedido já expirado não é candidato de novo).
+
+**Critério de idade**: `Pedido.criadoEm` (`@CreationTimestamp`) mais antigo que `app.pedidos.expiracao.minutos` (padrão 30min) a partir do momento da execução (job ou chamada manual).
+
+**Configuração** (`application.yml`):
+
+```yaml
+app:
+  pedidos:
+    expiracao:
+      minutos: 30              # ${PEDIDO_EXPIRACAO_MINUTOS}
+      job-enabled: true        # ${PEDIDO_EXPIRACAO_JOB_ENABLED}
+      job-fixed-delay-ms: 60000 # ${PEDIDO_EXPIRACAO_JOB_DELAY_MS}
+```
+
+**Job automático**: `PedidoExpiracaoJob`, executa a cada `job-fixed-delay-ms` (padrão 60s) enquanto `job-enabled=true`. Uma falha em uma execução é logada e não derruba a aplicação nem impede a próxima execução. Nos testes de integração, o job vem desligado (`job-enabled=false` em `application-test.yml`) para não expirar pedidos criados durante os cenários de teste.
+
+### Expirar pedidos vencidos (manual)
+
+`POST /api/admin/pedidos/expirar-vencidos` — exige perfil `SUPER_ADMIN` (mais restrito que a listagem de pedidos: ação em massa, afeta qualquer restaurante). Sem corpo de requisição.
+
+Response (`200 OK`):
+
+```json
+{
+  "pedidosExpirados": 3
+}
+```
+
+**Histórico**: cada pedido expirado gera um registro em `HistoricoStatusPedido` com `statusAnterior` = status anterior à expiração, `statusNovo=EXPIRADO`, `observacao="Pedido expirado automaticamente por falta de pagamento."` e ambos `alteradoPorUsuario`/`alteradoPorDispositivo` nulos (ação do sistema, não de uma pessoa/dispositivo específico).
+
+**Fora do escopo desta task**: estorno de pagamento (nunca acontece — pedido `PAGO` não expira), exclusão do pedido/itens/pagamentos, fila externa (SQS/RabbitMQ), regras de expiração diferentes por restaurante, tela nova no frontend (o painel Admin Pedidos já exibe `EXPIRADO` por já listar qualquer valor de `StatusPedido`, sem alteração necessária).
+
 ## Admin — Uploads
 
 Implementado na TASK-053. Armazenamento local em disco (`app.uploads.dir`, padrão `uploads/`, configurável por variável de ambiente `UPLOAD_DIR`) — **em produção deve ser substituído por storage externo** (S3, Cloudinary ou equivalente). Os arquivos salvos ficam acessíveis publicamente sob `app.uploads.public-path` (padrão `/uploads`), ex.: `http://localhost:8080/uploads/produtos/<uuid>.png`.

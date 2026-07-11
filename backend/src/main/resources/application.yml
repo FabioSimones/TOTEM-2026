@@ -57,6 +57,14 @@ app:
     # substituir por storage externo (S3, Cloudinary ou equivalente).
     dir: ${UPLOAD_DIR:uploads}
     public-path: /uploads
+  pedidos:
+    expiracao:
+      # Expiração automática de pedidos não pagos (TASK-070): CRIADO, AGUARDANDO_PAGAMENTO e
+      # AGUARDANDO_PAGAMENTO_DINHEIRO criados há mais de `minutos` viram EXPIRADO. Nunca afeta
+      # pedidos pagos ou em fluxo operacional (PAGO em diante).
+      minutos: ${PEDIDO_EXPIRACAO_MINUTOS:30}
+      job-enabled: ${PEDIDO_EXPIRACAO_JOB_ENABLED:true}
+      job-fixed-delay-ms: ${PEDIDO_EXPIRACAO_JOB_DELAY_MS:60000}
 
 springdoc:
   api-docs:
