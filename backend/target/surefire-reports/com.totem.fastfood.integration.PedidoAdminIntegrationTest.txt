@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.totem.fastfood.integration.PedidoAdminIntegrationTest
 -------------------------------------------------------------------------------
-Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 12.18 s -- in com.totem.fastfood.integration.PedidoAdminIntegrationTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 39.72 s -- in com.totem.fastfood.integration.PedidoAdminIntegrationTest

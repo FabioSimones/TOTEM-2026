@@ -189,7 +189,7 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 
 Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta task.
 
-**Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação.
+**Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação. **Paginação implementada na TASK-072** — ver seção 9i abaixo.
 
 ## 9h. Expiração automática de pedidos não pagos (TASK-070, validado com backend real na TASK-071)
 
@@ -203,6 +203,22 @@ Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta t
 - [x] `GET /api/admin/pedidos?statusPedido=EXPIRADO` retornou os 4 pedidos expirados (incluindo um pré-existente de outra task, id 2); painel Admin Pedidos consome o mesmo contrato já validado por código na TASK-070 (não clicado diretamente na UI — sem automação de navegador disponível)
 - [x] Reexecutar o endpoint manual em seguida → `pedidosExpirados=0`, sem histórico duplicado (idempotência confirmada com dados reais)
 - [x] **Achado operacional, não é bug**: um processo de backend de longa duração (rodando desde antes das edições da TASK-070 serem salvas) respondeu `500` nesse endpoint especificamente, por estado inconsistente de hot-swap do IDE. Reproduzido em instância nova/limpa (mesmo código, mesmo banco) → `200` normalmente. Recomendação: **sempre reiniciar o backend depois de adicionar `@Component`/`@Service`/`@Scheduled` novos**, antes de validar manualmente.
+
+## 9i. Paginação simples em Admin Pedidos (TASK-072)
+
+**Coberto por testes automatizados** (`integration/PedidoAdminIntegrationTest`, 15 testes MockMvc via HTTP real, incluindo os novos casos de paginação). Ver `docs/09-contratos-api.md` seção "Admin — Pedidos" para o contrato completo do objeto paginado.
+
+- [ ] Login `SUPER_ADMIN`, acessar `/admin/pedidos` → lista paginada (20 por página), resumo "Página 1 de N — Total: N pedidos"
+- [ ] Clicar "Próxima" → avança para a página seguinte; "Anterior" desabilitado na primeira página
+- [ ] Clicar "Anterior" a partir da segunda página → volta corretamente; "Próxima" desabilitado na última página
+- [ ] Filtrar por status ou restaurante → volta automaticamente para a página 1
+- [ ] Trocar de página/filtro com um detalhe de pedido aberto → detalhe fecha automaticamente
+- [ ] Login `ADMIN_RESTAURANTE` → paginação restrita aos pedidos do próprio restaurante, mesmo comportamento de filtros/página
+- [ ] Abrir detalhe de um pedido → segue idêntico a antes da TASK-072 (não paginado)
+
+Clique real na UI não foi realizado nesta task — sem automação de navegador disponível neste ambiente. Validado via `mvn test` (195/195, incluindo os novos cenários de paginação) e `npm run build` sem erros de tipo.
+
+**Fora do escopo desta task**: busca textual, ordenação avançada na UI, seletor de tamanho de página, infinite scroll.
 
 ## 10. Consistência visual
 

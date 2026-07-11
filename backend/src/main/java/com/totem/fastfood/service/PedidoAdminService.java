@@ -1,5 +1,6 @@
 package com.totem.fastfood.service;
 
+import com.totem.fastfood.dto.PageResponse;
 import com.totem.fastfood.dto.pedido.admin.PedidoAdminDetalheResponse;
 import com.totem.fastfood.dto.pedido.admin.PedidoAdminResumoResponse;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
@@ -15,11 +16,18 @@ import com.totem.fastfood.repository.PedidoRepository;
 import com.totem.fastfood.security.AdminScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 /**
  * Listagem administrativa de pedidos e consulta de detalhes/histórico (TASK-068). Somente
@@ -38,22 +46,28 @@ public class PedidoAdminService {
     private final PedidoAdminMapper pedidoAdminMapper;
     private final AdminScopeService adminScopeService;
 
+    private static final int TAMANHO_PAGINA_MAXIMO = 100;
+
     @Transactional(readOnly = true)
-    public List<PedidoAdminResumoResponse> listarPedidos(Long restauranteId, StatusPedido statusPedido) {
+    public PageResponse<PedidoAdminResumoResponse> listarPedidos(
+            Long restauranteId, StatusPedido statusPedido, int page, int size) {
         Long restauranteIdEfetivo = adminScopeService.resolverRestauranteIdParaListagem(restauranteId);
 
-        List<Pedido> pedidos;
+        Pageable pageable = PageRequest.of(
+                max(page, 0), min(max(size, 1), TAMANHO_PAGINA_MAXIMO), Sort.by("criadoEm").descending());
+
+        Page<Pedido> pedidos;
         if (restauranteIdEfetivo != null && statusPedido != null) {
-            pedidos = pedidoRepository.findByRestauranteIdAndStatusPedidoOrderByCriadoEmDesc(restauranteIdEfetivo, statusPedido);
+            pedidos = pedidoRepository.findByRestauranteIdAndStatusPedido(restauranteIdEfetivo, statusPedido, pageable);
         } else if (restauranteIdEfetivo != null) {
-            pedidos = pedidoRepository.findByRestauranteIdOrderByCriadoEmDesc(restauranteIdEfetivo);
+            pedidos = pedidoRepository.findByRestauranteId(restauranteIdEfetivo, pageable);
         } else if (statusPedido != null) {
-            pedidos = pedidoRepository.findByStatusPedidoOrderByCriadoEmDesc(statusPedido);
+            pedidos = pedidoRepository.findByStatusPedido(statusPedido, pageable);
         } else {
-            pedidos = pedidoRepository.findAllByOrderByCriadoEmDesc();
+            pedidos = pedidoRepository.findAll(pageable);
         }
 
-        return pedidoAdminMapper.toResumoList(pedidos);
+        return PageResponse.from(pedidos.map(pedidoAdminMapper::toResumo));
     }
 
     @Transactional(readOnly = true)

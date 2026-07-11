@@ -216,17 +216,23 @@ class PedidoAdminIntegrationTest {
     }
 
     @Test
-    void superAdmin_deveListarPedidosDeTodosOsRestaurantes() throws Exception {
+    void superAdmin_deveListarPedidosDeTodosOsRestaurantesPaginado() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/admin/pedidos")
                         .header("Authorization", "Bearer " + tokenSuperAdmin))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(true))
                 .andReturn();
 
-        JsonNode pedidos = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertTrue(pedidos.isArray());
+        JsonNode content = objectMapper.readTree(result.getResponse().getContentAsString()).get("content");
+        assertTrue(content.isArray());
         boolean contemA = false;
         boolean contemB = false;
-        for (JsonNode pedido : pedidos) {
+        for (JsonNode pedido : content) {
             if (pedido.get("pedidoId").asLong() == pedidoIdRestauranteA) contemA = true;
             if (pedido.get("pedidoId").asLong() == pedidoIdRestauranteB) contemB = true;
         }
@@ -239,13 +245,44 @@ class PedidoAdminIntegrationTest {
         mockMvc.perform(get("/api/admin/pedidos?statusPedido=PAGO")
                         .header("Authorization", "Bearer " + tokenSuperAdmin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.pedidoId == " + pedidoIdRestauranteA + ")]").exists());
+                .andExpect(jsonPath("$.content[?(@.pedidoId == " + pedidoIdRestauranteA + ")]").exists());
 
         mockMvc.perform(get("/api/admin/pedidos?statusPedido=RETIRADO")
                         .header("Authorization", "Bearer " + tokenSuperAdmin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void superAdmin_devePaginarComSizePersonalizado() throws Exception {
+        mockMvc.perform(get("/api/admin/pedidos?page=0&size=1")
+                        .header("Authorization", "Bearer " + tokenSuperAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(false));
+
+        mockMvc.perform(get("/api/admin/pedidos?page=1&size=1")
+                        .header("Authorization", "Bearer " + tokenSuperAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.first").value(false))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    void superAdmin_sizeAcimaDoLimite_deveSerLimitadoA100() throws Exception {
+        mockMvc.perform(get("/api/admin/pedidos?size=500")
+                        .header("Authorization", "Bearer " + tokenSuperAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(100));
     }
 
     @Test
@@ -262,11 +299,11 @@ class PedidoAdminIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        JsonNode pedidos = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertTrue(pedidos.isArray());
-        assertEquals(1, pedidos.size());
-        assertEquals(pedidoIdRestauranteA, pedidos.get(0).get("pedidoId").asLong());
-        assertEquals(restauranteA.getId(), pedidos.get(0).get("restauranteId").asLong());
+        JsonNode content = objectMapper.readTree(result.getResponse().getContentAsString()).get("content");
+        assertTrue(content.isArray());
+        assertEquals(1, content.size());
+        assertEquals(pedidoIdRestauranteA, content.get(0).get("pedidoId").asLong());
+        assertEquals(restauranteA.getId(), content.get(0).get("restauranteId").asLong());
     }
 
     @Test

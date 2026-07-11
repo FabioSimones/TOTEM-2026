@@ -465,31 +465,42 @@ Response (`200 OK`) — mesmo formato de `UsuarioAdminResponse`, nunca inclui `s
 
 Somente leitura — não altera status, pagamento nem qualquer dado do pedido (isso continua exclusivo do fluxo operacional Totem/Caixa/Cozinha). Exige perfil `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`, com o mesmo escopo por restaurante da TASK-058: `SUPER_ADMIN` vê/lista tudo; `ADMIN_RESTAURANTE` só vê pedidos do próprio restaurante (`restauranteId` de outro restaurante, na listagem ou implícito no detalhe, retorna `403`).
 
-### Listar pedidos
+### Listar pedidos (paginado, TASK-072)
 
-`GET /api/admin/pedidos[?restauranteId=][&statusPedido=]`
+`GET /api/admin/pedidos[?restauranteId=][&statusPedido=][&page=][&size=]`
 
 - `restauranteId`: `SUPER_ADMIN` pode informar qualquer um ou omitir (retorna todos); `ADMIN_RESTAURANTE` só pode informar o próprio (ou omitir — sempre fica restrito ao próprio de qualquer forma).
 - `statusPedido`: filtra por um dos valores de `StatusPedido` (`CRIADO`, `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_PAGAMENTO_DINHEIRO`, `PAGO`, `ENVIADO_PARA_COZINHA`, `EM_PREPARO`, `PRONTO`, `RETIRADO`, `CANCELADO`, `EXPIRADO`). Valor inválido retorna `400`.
+- `page`: número da página, 0-indexed (padrão `0`).
+- `size`: tamanho da página (padrão `20`, limitado silenciosamente a `100` — valores maiores são reduzidos para `100`, sem erro `400`).
 - Resultado ordenado do mais recente para o mais antigo (`criadoEm desc`).
+- **Mudança de contrato (TASK-072)**: a resposta deixou de ser um array e passou a ser um objeto paginado (`PageResponse<PedidoAdminResumoResponse>`) — quebra de compatibilidade aceitável neste estágio do MVP.
 
 Response (`200 OK`):
 
 ```json
-[
-  {
-    "pedidoId": 42,
-    "numeroPedido": "A42",
-    "restauranteId": 1,
-    "restauranteNome": "Lanchonete Central",
-    "clienteNome": "Cliente Teste",
-    "tipoConsumo": "LOCAL",
-    "statusPedido": "PAGO",
-    "valorTotal": 51.80,
-    "criadoEm": "2026-07-10T18:51:53.268448",
-    "atualizadoEm": "2026-07-10T18:51:53.28396"
-  }
-]
+{
+  "content": [
+    {
+      "pedidoId": 42,
+      "numeroPedido": "A42",
+      "restauranteId": 1,
+      "restauranteNome": "Lanchonete Central",
+      "clienteNome": "Cliente Teste",
+      "tipoConsumo": "LOCAL",
+      "statusPedido": "PAGO",
+      "valorTotal": 51.80,
+      "criadoEm": "2026-07-10T18:51:53.268448",
+      "atualizadoEm": "2026-07-10T18:51:53.28396"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
 ```
 
 ### Consultar detalhes do pedido
@@ -540,7 +551,7 @@ Response (`200 OK`):
 
 `404` se o pedido não existir; `403` se pertencer a um restaurante fora do escopo do `ADMIN_RESTAURANTE` autenticado.
 
-**Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação (a listagem retorna todos os pedidos do escopo de uma vez — aceitável para o volume esperado do MVP; deve ser revisto se o histórico crescer muito).
+**Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação. **Paginação implementada na TASK-072** — ver acima.
 
 ## Admin — Expiração de pedidos (TASK-070)
 

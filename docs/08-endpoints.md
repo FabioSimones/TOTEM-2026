@@ -111,8 +111,8 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` (TASK-068). Somente lei
 
 | Método | Rota | Objetivo |
 |---|---|---|
-| GET | `/api/admin/pedidos` | Listar pedidos (filtros opcionais `restauranteId` e `statusPedido`) |
-| GET | `/api/admin/pedidos/{id}` | Consultar detalhes do pedido — itens, pagamentos e histórico de status |
+| GET | `/api/admin/pedidos` | Listar pedidos, paginado (TASK-072) — filtros opcionais `restauranteId`/`statusPedido`, `page`/`size` |
+| GET | `/api/admin/pedidos/{id}` | Consultar detalhes do pedido — itens, pagamentos e histórico de status (não paginado) |
 
 ### Expiração de pedidos não pagos (TASK-070)
 

@@ -2,6 +2,8 @@ package com.totem.fastfood.repository;
 
 import com.totem.fastfood.entity.Pedido;
 import com.totem.fastfood.enums.StatusPedido;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -16,13 +18,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> findByRestauranteIdAndStatusPedidoInOrderByCriadoEmAsc(
             Long restauranteId, Collection<StatusPedido> statusPedido);
 
-    List<Pedido> findAllByOrderByCriadoEmDesc();
+    Page<Pedido> findByRestauranteId(Long restauranteId, Pageable pageable);
 
-    List<Pedido> findByRestauranteIdOrderByCriadoEmDesc(Long restauranteId);
+    Page<Pedido> findByStatusPedido(StatusPedido statusPedido, Pageable pageable);
 
-    List<Pedido> findByStatusPedidoOrderByCriadoEmDesc(StatusPedido statusPedido);
-
-    List<Pedido> findByRestauranteIdAndStatusPedidoOrderByCriadoEmDesc(Long restauranteId, StatusPedido statusPedido);
+    Page<Pedido> findByRestauranteIdAndStatusPedido(Long restauranteId, StatusPedido statusPedido, Pageable pageable);
 
     /** Pedidos elegíveis para expiração (TASK-070): status não pago e criado antes do limite. */
     List<Pedido> findByStatusPedidoInAndCriadoEmBefore(Collection<StatusPedido> statusPedido, LocalDateTime limite);

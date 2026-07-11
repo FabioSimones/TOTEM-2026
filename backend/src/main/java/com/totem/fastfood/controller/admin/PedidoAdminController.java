@@ -1,5 +1,6 @@
 package com.totem.fastfood.controller.admin;
 
+import com.totem.fastfood.dto.PageResponse;
 import com.totem.fastfood.dto.pedido.admin.PedidoAdminDetalheResponse;
 import com.totem.fastfood.dto.pedido.admin.PedidoAdminResumoResponse;
 import com.totem.fastfood.enums.StatusPedido;
@@ -17,8 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 /**
  * Listagem administrativa de pedidos e consulta de detalhes/histórico (TASK-068). Somente
  * leitura: não altera status, pagamento nem qualquer dado do pedido — isso continua exclusivo
@@ -33,19 +32,24 @@ public class PedidoAdminController {
 
     private final PedidoAdminService pedidoAdminService;
 
-    @Operation(summary = "Listar pedidos",
+    @Operation(summary = "Listar pedidos (paginado)",
             description = "SUPER_ADMIN pode listar todos os restaurantes ou filtrar por um específico; "
-                    + "ADMIN_RESTAURANTE só vê pedidos do próprio restaurante (restauranteId diferente do seu retorna 403).")
-    @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
+                    + "ADMIN_RESTAURANTE só vê pedidos do próprio restaurante (restauranteId diferente do seu retorna 403). "
+                    + "Ordenado por criadoEm desc. size é limitado a 100.")
+    @ApiResponse(responseCode = "200", description = "Página retornada com sucesso")
     @ApiResponse(responseCode = "400", description = "statusPedido inválido")
     @ApiResponse(responseCode = "403", description = "restauranteId de outro restaurante (ADMIN_RESTAURANTE)")
     @GetMapping
-    public ResponseEntity<List<PedidoAdminResumoResponse>> listar(
+    public ResponseEntity<PageResponse<PedidoAdminResumoResponse>> listar(
             @Parameter(description = "Filtra pedidos de um restaurante específico")
             @RequestParam(required = false) Long restauranteId,
             @Parameter(description = "Filtra pedidos por status")
-            @RequestParam(required = false) StatusPedido statusPedido) {
-        return ResponseEntity.ok(pedidoAdminService.listarPedidos(restauranteId, statusPedido));
+            @RequestParam(required = false) StatusPedido statusPedido,
+            @Parameter(description = "Número da página (0-indexed)")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamanho da página (máximo 100)")
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(pedidoAdminService.listarPedidos(restauranteId, statusPedido, page, size));
     }
 
     @Operation(summary = "Consultar detalhes do pedido",

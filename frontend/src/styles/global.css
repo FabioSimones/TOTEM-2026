@@ -1090,6 +1090,26 @@ a:hover {
   gap: var(--spacing-lg);
 }
 
+/* ===== Admin Pedidos — paginação ===== */
+.admin-pedidos-paginacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+}
+
+.admin-pedidos-paginacao__resumo {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.admin-pedidos-paginacao__acoes {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
 .pedido-pendente-card {
   display: flex;
   flex-direction: column;

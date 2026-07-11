@@ -16,6 +16,8 @@ import type { StatusPedido } from "../../types/totem";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
 import { getPedidoStatusLabel } from "../../utils/pedidoStatus";
 
+const TAMANHO_PAGINA = 20;
+
 const STATUS_FILTRAVEIS: StatusPedido[] = [
   "CRIADO",
   "AGUARDANDO_PAGAMENTO_DINHEIRO",
@@ -39,6 +41,11 @@ export function AdminPedidosPage() {
   const [filtroStatus, setFiltroStatus] = useState<StatusPedido | null>(null);
 
   const [pedidos, setPedidos] = useState<PedidoAdminResumoResponse[]>([]);
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalElementos, setTotalElementos] = useState(0);
+  const [primeiraPagina, setPrimeiraPagina] = useState(true);
+  const [ultimaPagina, setUltimaPagina] = useState(true);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
@@ -62,17 +69,25 @@ export function AdminPedidosPage() {
   }, [adminRestaurante]);
 
   const carregarPedidos = useCallback(
-    async (restauranteId: number | null, statusPedido: StatusPedido | null) => {
+    async (restauranteId: number | null, statusPedido: StatusPedido | null, paginaAlvo: number) => {
       setLoading(true);
       setErro(null);
       setSemAutorizacao(false);
+      setPedidoDetalhe(null);
 
       try {
         const response = await listarPedidos({
           restauranteId: restauranteId ?? undefined,
           statusPedido: statusPedido ?? undefined,
+          page: paginaAlvo,
+          size: TAMANHO_PAGINA,
         });
-        setPedidos(response);
+        setPedidos(response.content);
+        setPagina(response.page);
+        setTotalPaginas(response.totalPages);
+        setTotalElementos(response.totalElements);
+        setPrimeiraPagina(response.first);
+        setUltimaPagina(response.last);
       } catch (error) {
         if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
           setSemAutorizacao(true);
@@ -100,17 +115,25 @@ export function AdminPedidosPage() {
       return;
     }
     void carregarRestaurantes();
-    void carregarPedidos(restauranteIdEscopo, null);
+    void carregarPedidos(restauranteIdEscopo, null, 0);
   }, [navigate, carregarRestaurantes, carregarPedidos, restauranteIdEscopo]);
 
   function handleFiltrarRestaurante(restauranteId: number | null) {
     setFiltroRestauranteId(restauranteId);
-    void carregarPedidos(restauranteId, filtroStatus);
+    void carregarPedidos(restauranteId, filtroStatus, 0);
   }
 
   function handleFiltrarStatus(statusPedido: StatusPedido | null) {
     setFiltroStatus(statusPedido);
-    void carregarPedidos(filtroRestauranteId, statusPedido);
+    void carregarPedidos(filtroRestauranteId, statusPedido, 0);
+  }
+
+  function handlePaginaAnterior() {
+    void carregarPedidos(filtroRestauranteId, filtroStatus, pagina - 1);
+  }
+
+  function handleProximaPagina() {
+    void carregarPedidos(filtroRestauranteId, filtroStatus, pagina + 1);
   }
 
   async function handleVerDetalhes(pedidoId: number) {
@@ -143,7 +166,7 @@ export function AdminPedidosPage() {
       <AdminVoltarLink />
 
       <div className="caixa-toolbar">
-        <Button type="button" onClick={() => void carregarPedidos(filtroRestauranteId, filtroStatus)} loading={loading}>
+        <Button type="button" onClick={() => void carregarPedidos(filtroRestauranteId, filtroStatus, pagina)} loading={loading}>
           Atualizar lista
         </Button>
       </div>
@@ -221,7 +244,7 @@ export function AdminPedidosPage() {
               Ir para login
             </Button>
           ) : (
-            <Button type="button" onClick={() => void carregarPedidos(filtroRestauranteId, filtroStatus)}>
+            <Button type="button" onClick={() => void carregarPedidos(filtroRestauranteId, filtroStatus, pagina)}>
               Tentar novamente
             </Button>
           )}
@@ -242,16 +265,32 @@ export function AdminPedidosPage() {
           {!loading && pedidos.length === 0 && <p className="totem-estado">Nenhum pedido encontrado.</p>}
 
           {!loading && pedidos.length > 0 && !pedidoDetalhe && (
-            <div className="caixa-lista">
-              {pedidos.map((pedido) => (
-                <PedidoAdminCard
-                  key={pedido.pedidoId}
-                  pedido={pedido}
-                  mostrarRestaurante={!adminRestaurante}
-                  onVerDetalhes={handleVerDetalhes}
-                />
-              ))}
-            </div>
+            <>
+              <div className="caixa-lista">
+                {pedidos.map((pedido) => (
+                  <PedidoAdminCard
+                    key={pedido.pedidoId}
+                    pedido={pedido}
+                    mostrarRestaurante={!adminRestaurante}
+                    onVerDetalhes={handleVerDetalhes}
+                  />
+                ))}
+              </div>
+
+              <div className="admin-pedidos-paginacao">
+                <span className="admin-pedidos-paginacao__resumo">
+                  Página {pagina + 1} de {Math.max(totalPaginas, 1)} — Total: {totalElementos} pedidos
+                </span>
+                <div className="admin-pedidos-paginacao__acoes">
+                  <Button type="button" onClick={handlePaginaAnterior} disabled={primeiraPagina || loading}>
+                    Anterior
+                  </Button>
+                  <Button type="button" onClick={handleProximaPagina} disabled={ultimaPagina || loading}>
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </>
       )}

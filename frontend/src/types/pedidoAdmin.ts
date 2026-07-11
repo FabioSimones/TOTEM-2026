@@ -1,6 +1,17 @@
 import type { FormaPagamento, StatusPagamento, StatusPedido, TipoConsumo } from "./totem";
 
-/** GET /api/admin/pedidos[?restauranteId=][&statusPedido=] */
+/** Envelope de paginação genérico usado por listagens administrativas paginadas. */
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+/** GET /api/admin/pedidos[?restauranteId=][&statusPedido=][&page=][&size=] */
 export interface PedidoAdminResumoResponse {
   pedidoId: number;
   numeroPedido: string;
