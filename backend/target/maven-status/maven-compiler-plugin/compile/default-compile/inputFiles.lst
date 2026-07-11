@@ -5,6 +5,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\CategoriaAdminController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\DispositivoAdminController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\PedidoAdminController.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\PedidoExpiracaoAdminController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\ProdutoAdminController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\RestauranteAdminController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\UploadAdminController.java
@@ -43,6 +44,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\CriarDispositivoRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\DispositivoAutenticadoResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\DispositivoResponse.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\ExpirarPedidosResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\HistoricoPedidoAdminResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\ItemPedidoAdminResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\PagamentoAdminResponse.java
@@ -94,6 +96,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\FieldErrorResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\GlobalExceptionHandler.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\LoginRateLimitExceededException.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\job\PedidoExpiracaoJob.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CaixaPagamentoMapper.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CaixaPedidoMapper.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CardapioTotemMapper.java
@@ -137,6 +140,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PagamentoTotemService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoAdminService.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoExpiracaoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoTotemService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\ProdutoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\RestauranteService.java

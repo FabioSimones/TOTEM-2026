@@ -68,9 +68,9 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 
 ## 8. Validações automatizadas
 
-- [ ] Backend: `cd backend && mvn test -Dtest=CaixaPedidoServiceTest,CozinhaPedidoServiceTest,PedidoExpiracaoServiceTest` — passando
+- [x] Backend: `mvn test -Dtest=CaixaPedidoServiceTest,CozinhaPedidoServiceTest,PedidoExpiracaoServiceTest` — passando (validado como parte do `mvn test` completo na TASK-071)
 - [x] Backend, teste de integração HTTP ponta a ponta (TASK-067): `cd backend && mvn test -Dtest=FluxoOperacionalMvpIntegrationTest` — `integration/FluxoOperacionalMvpIntegrationTest` exercita este mesmo fluxo (seção 3 deste checklist) via HTTP real/MockMvc contra H2 em memória, sem depender de backend/frontend rodando manualmente: cardápio → criar pedido → pagar Pix → Caixa envia à cozinha → Cozinha prepara/finaliza → Caixa retira, com verificação final no banco (status `RETIRADO`, pagamento `AUTORIZADO`, histórico de transições). Também cobre pedido em dinheiro (seção 4) e os cenários de permissão entre dispositivos (seção 6). 5/5 testes passando — ver `docs/testes-backend-mvp.md` para o detalhamento completo e a limitação conhecida (H2, não substitui PostgreSQL real/Testcontainers)
-- [ ] Backend completo: `cd backend && mvn test` — todos os testes devem passar, incluindo `TotemApplicationTests.contextLoads` (corrigido na TASK-057, ver `docs/testes-backend-mvp.md` seção 9)
+- [x] Backend completo: `cd backend && mvn test` — **193/193 testes, BUILD SUCCESS** (executado na TASK-071 com Maven 3.9.12 de `~/.m2/wrapper/dists`, já que `mvn` não estava no `PATH` do shell padrão), incluindo `TotemApplicationTests.contextLoads` (corrigido na TASK-057, ver `docs/testes-backend-mvp.md` seção 9) e os 27 testes novos de expiração de pedidos (`PedidoExpiracaoServiceTest` + casos `expirarVencidos_*` de `PedidoAdminIntegrationTest`). Complementado por validação manual contra PostgreSQL real (não só H2) — ver `docs/checklists/admin-mvp.md` seção 9h
 - [ ] Frontend: `cd frontend && npm run build` — sem erro TypeScript
 
 ## Fora do escopo deste checklist

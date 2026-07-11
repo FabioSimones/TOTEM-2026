@@ -191,17 +191,18 @@ Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta t
 
 **Fora do escopo desta task**: edição de pedido, alteração de status pelo Admin, cancelamento pelo Admin, exportação, paginação.
 
-## 9h. Expiração automática de pedidos não pagos (TASK-070)
+## 9h. Expiração automática de pedidos não pagos (TASK-070, validado com backend real na TASK-071)
 
-**Coberto por testes automatizados** (`PedidoExpiracaoServiceTest`, unitário com `Clock` controlado; `PedidoAdminIntegrationTest`, casos `expirarVencidos_*` via HTTP real). Ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos" para o contrato completo.
+**Coberto por testes automatizados** (`PedidoExpiracaoServiceTest`, unitário com `Clock` controlado, 14 testes; `PedidoAdminIntegrationTest`, casos `expirarVencidos_*` via HTTP real, H2) e **validado com backend real + PostgreSQL real na TASK-071** (2026-07-11). Ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos" e `docs/testes-backend-mvp.md` (seção "Pendências de produto") para o detalhamento completo.
 
-- [ ] Criar pedido no Totem e **não pagar** → status permanece `CRIADO`
-- [ ] Ajustar `PEDIDO_EXPIRACAO_MINUTOS` para um valor baixo (ex.: `1`) localmente, aguardar o job automático (padrão a cada 60s, `PEDIDO_EXPIRACAO_JOB_ENABLED=true`) → pedido vira `EXPIRADO`, com histórico registrado (`observacao="Pedido expirado automaticamente por falta de pagamento."`)
-- [ ] Chamar manualmente `POST /api/admin/pedidos/expirar-vencidos` como `SUPER_ADMIN` → `200`, `{"pedidosExpirados": N}`, mesmos pedidos vencidos afetados
-- [ ] Chamar o mesmo endpoint sem token → `401`; com `ADMIN_RESTAURANTE`/perfil operacional → `403` (só `SUPER_ADMIN` pode expirar)
-- [ ] Pedido `PAGO` (ou posterior) criado há muito tempo **nunca** vira `EXPIRADO`, nem pelo job nem pelo endpoint manual
-- [ ] `GET /api/admin/pedidos?statusPedido=EXPIRADO` retorna os pedidos expirados; o painel Admin Pedidos exibe o status normalmente (sem alteração de frontend necessária — a listagem já reflete qualquer valor de `StatusPedido`)
-- [ ] Reexecutar o endpoint manual/job em seguida → pedidos já `EXPIRADO` não são reprocessados (`pedidosExpirados` não conta o mesmo pedido duas vezes, sem histórico duplicado)
+- [x] Criar pedido no Totem e **não pagar** → status permanece `CRIADO` (pedido A5, restaurante 1)
+- [x] Job automático (`PEDIDO_EXPIRACAO_JOB_ENABLED=true`, padrão) expirou pedidos `CRIADO` e `AGUARDANDO_PAGAMENTO_DINHEIRO` envelhecidos sozinho, sem chamada manual — confirmado pelo histórico com timestamp coincidindo com o boot da aplicação (`fixedDelay` executa a primeira vez imediatamente na subida)
+- [x] `POST /api/admin/pedidos/expirar-vencidos` como `SUPER_ADMIN` → `200`, `{"pedidosExpirados": N}` (`N=0` quando o job já havia expirado tudo antes — resultado consistente com idempotência)
+- [x] Sem token → `401`; `ADMIN_RESTAURANTE` → `403`; `SUPER_ADMIN` → `200`
+- [x] Pedido `PAGO` (Pix, id 9) e pedido `ENVIADO_PARA_COZINHA` (id 7) envelhecidos **nunca** viraram `EXPIRADO`, nem pelo job nem pelo endpoint manual — histórico sem entrada de expiração para nenhum dos dois
+- [x] `GET /api/admin/pedidos?statusPedido=EXPIRADO` retornou os 4 pedidos expirados (incluindo um pré-existente de outra task, id 2); painel Admin Pedidos consome o mesmo contrato já validado por código na TASK-070 (não clicado diretamente na UI — sem automação de navegador disponível)
+- [x] Reexecutar o endpoint manual em seguida → `pedidosExpirados=0`, sem histórico duplicado (idempotência confirmada com dados reais)
+- [x] **Achado operacional, não é bug**: um processo de backend de longa duração (rodando desde antes das edições da TASK-070 serem salvas) respondeu `500` nesse endpoint especificamente, por estado inconsistente de hot-swap do IDE. Reproduzido em instância nova/limpa (mesmo código, mesmo banco) → `200` normalmente. Recomendação: **sempre reiniciar o backend depois de adicionar `@Component`/`@Service`/`@Scheduled` novos**, antes de validar manualmente.
 
 ## 10. Consistência visual
 
