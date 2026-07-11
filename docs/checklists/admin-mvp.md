@@ -204,17 +204,30 @@ Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta t
 - [x] Reexecutar o endpoint manual em seguida → `pedidosExpirados=0`, sem histórico duplicado (idempotência confirmada com dados reais)
 - [x] **Achado operacional, não é bug**: um processo de backend de longa duração (rodando desde antes das edições da TASK-070 serem salvas) respondeu `500` nesse endpoint especificamente, por estado inconsistente de hot-swap do IDE. Reproduzido em instância nova/limpa (mesmo código, mesmo banco) → `200` normalmente. Recomendação: **sempre reiniciar o backend depois de adicionar `@Component`/`@Service`/`@Scheduled` novos**, antes de validar manualmente.
 
-## 9i. Paginação simples em Admin Pedidos (TASK-072)
+## 9i. Paginação simples em Admin Pedidos (TASK-072, validado com backend real na TASK-073)
 
-**Coberto por testes automatizados** (`integration/PedidoAdminIntegrationTest`, 15 testes MockMvc via HTTP real, incluindo os novos casos de paginação). Ver `docs/09-contratos-api.md` seção "Admin — Pedidos" para o contrato completo do objeto paginado.
+**Coberto por testes automatizados** (`integration/PedidoAdminIntegrationTest`, 15 testes MockMvc via HTTP real, incluindo os casos de paginação) e **validado via `curl` contra o backend real + PostgreSQL real na TASK-073** (2026-07-11), com o banco já populado por tasks anteriores (9 pedidos no total, restaurante 1 com 5, distribuídos em `PAGO`/`EXPIRADO`/`ENVIADO_PARA_COZINHA`/outros). Ver `docs/09-contratos-api.md` seção "Admin — Pedidos" para o contrato completo do objeto paginado.
 
-- [ ] Login `SUPER_ADMIN`, acessar `/admin/pedidos` → lista paginada (20 por página), resumo "Página 1 de N — Total: N pedidos"
-- [ ] Clicar "Próxima" → avança para a página seguinte; "Anterior" desabilitado na primeira página
-- [ ] Clicar "Anterior" a partir da segunda página → volta corretamente; "Próxima" desabilitado na última página
-- [ ] Filtrar por status ou restaurante → volta automaticamente para a página 1
-- [ ] Trocar de página/filtro com um detalhe de pedido aberto → detalhe fecha automaticamente
-- [ ] Login `ADMIN_RESTAURANTE` → paginação restrita aos pedidos do próprio restaurante, mesmo comportamento de filtros/página
-- [ ] Abrir detalhe de um pedido → segue idêntico a antes da TASK-072 (não paginado)
+- [x] Login `SUPER_ADMIN`, `GET /api/admin/pedidos?page=0&size=2` → `200`, `content` com 2 itens, `page=0`, `size=2`, `totalElements=9`, `totalPages=5`, `first=true`, `last=false`
+- [x] `GET /api/admin/pedidos?page=1&size=2` → `page=1`, `content` diferente da página 0 (ids 7/6 vs. 9/8), `first=false`, `last=false`
+- [x] `GET /api/admin/pedidos?page=4&size=2` (última página, 9 itens/2 por página = 5 páginas) → 1 item só, `first=false`, `last=true`
+- [x] `GET /api/admin/pedidos?statusPedido=EXPIRADO&page=0&size=2` → paginação respeita o filtro (`totalElements=4`, `totalPages=2`, só pedidos `EXPIRADO` no `content`)
+- [x] `GET /api/admin/pedidos?restauranteId=1&page=0&size=2` → paginação respeita o filtro de restaurante (`totalElements=5`, `totalPages=3`, só pedidos do restaurante 1)
+- [x] `GET /api/admin/pedidos?page=0&size=999` → `size` no response vem `100` (limitado silenciosamente, sem `400`), `totalPages=1` (9 itens cabem numa página de 100)
+- [x] `GET /api/admin/pedidos?page=10&size=2` (página além do total) → `200`, `content=[]`, `last=true` — não quebra, mas ver pendência abaixo sobre a UI nesse cenário
+- [x] Login `ADMIN_RESTAURANTE` (restaurante 1) sem `restauranteId` → mesmo resultado do filtro `restauranteId=1` do SUPER_ADMIN (`totalElements=5`, `totalPages=3`), confirmando que o escopo por restaurante continua aplicado antes da paginação
+- [x] `ADMIN_RESTAURANTE` com `restauranteId=1` (próprio) → `200`; com `restauranteId=3` (outro restaurante existente no banco) → `403`
+- [x] Detalhe (`GET /api/admin/pedidos/{id}`) segue idêntico a antes da TASK-072 — testado com o pedido 9 (`PAGO`), retornou `itens`/`pagamentos`/`historico` completos e corretos, sem paginação
+- [x] Sem token → `401`; token inválido (`Bearer invalido`) → `401` — comportamento já validado em tasks anteriores, sem regressão
+- [x] Ordenação padrão (`criadoEm desc`) confirmada nos 3 requests de paginação acima: ids retornados em ordem estritamente decrescente de `criadoEm`
+- [x] (por revisão de código, cruzada com os resultados de `curl` acima) `AdminPedidosPage.tsx`: `carregarPedidos` sempre chama `setPedidoDetalhe(null)` antes de buscar a nova página — fecha o detalhe automaticamente ao trocar de página ou filtro; `handleFiltrarRestaurante`/`handleFiltrarStatus` sempre chamam `carregarPedidos(..., 0)` — reseta para a página 1 ao mudar qualquer filtro; botões "Anterior"/"Próxima" usam `disabled={primeiraPagina || loading}`/`disabled={ultimaPagina || loading}`, alimentados por `response.first`/`response.last` — mesma fonte de verdade do backend confirmada acima; resumo usa `pagina + 1`/`Math.max(totalPaginas, 1)`/`totalElementos`, consistente com os campos confirmados via `curl`
+- [x] Estado vazio: com `content=[]` (confirmado acima no cenário `page=10`), a tela mostra "Nenhum pedido encontrado." e o bloco de paginação não aparece — comportamento correto, mas ver pendência abaixo
+
+**Clique real na UI não foi realizado** — sem automação de navegador disponível neste ambiente (mesma limitação de todas as validações anteriores do projeto). A validação via `curl` exercita exatamente a mesma API que o frontend consome, e o código foi revisado linha a linha contra os resultados reais acima.
+
+**Nenhum bug encontrado** — nenhuma alteração de código foi necessária nesta task.
+
+**Pendência de UX identificada (não corrigida, fora do escopo desta task)**: se o usuário estiver numa página válida e os dados do escopo/filtro diminuírem entre o carregamento e um clique em "Atualizar lista" (ex.: outro admin cancela/expira pedidos concorrentemente), a página pode ficar além do total (`content=[]`, confirmado acima com `page=10`) — a tela mostra "Nenhum pedido encontrado." mas o bloco de paginação (que permitiria voltar) some junto, já que só renderiza com `pedidos.length > 0`. Não é alcançável pelos botões Anterior/Próxima em uso normal (ambos ficam desabilitados corretamente com base em `first`/`last`), só em cenários de dados mudando concorrentemente fora da aba atual — registrado como pendência conhecida, não como bug, já que corrigi-lo exigiria lógica nova (ex.: sempre mostrar os controles de paginação, ou reancorar automaticamente para a última página válida), fora do escopo de "somente validação" desta task.
 
 Clique real na UI não foi realizado nesta task — sem automação de navegador disponível neste ambiente. Validado via `mvn test` (195/195, incluindo os novos cenários de paginação) e `npm run build` sem erros de tipo.
 
