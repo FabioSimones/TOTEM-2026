@@ -590,6 +590,48 @@ Response (`200 OK`):
 
 **Fora do escopo desta task**: estorno de pagamento (nunca acontece — pedido `PAGO` não expira), exclusão do pedido/itens/pagamentos, fila externa (SQS/RabbitMQ), regras de expiração diferentes por restaurante, tela nova no frontend (o painel Admin Pedidos já exibe `EXPIRADO` por já listar qualquer valor de `StatusPedido`, sem alteração necessária).
 
+## Admin — Dashboard (TASK-074)
+
+Resumo administrativo básico — contadores simples de pedidos para dar uma visão rápida da operação. Somente leitura, sem gráficos, sem exportação, sem relatório financeiro completo. Exige perfil `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`, com o mesmo escopo por restaurante da listagem de pedidos: `SUPER_ADMIN` vê/filtra qualquer restaurante; `ADMIN_RESTAURANTE` só vê o próprio (`restauranteId` de outro restaurante retorna `403`).
+
+### Obter resumo
+
+`GET /api/admin/dashboard[?restauranteId=]`
+
+- `restauranteId`: `SUPER_ADMIN` pode informar qualquer um ou omitir (soma todos os restaurantes); `ADMIN_RESTAURANTE` só pode informar o próprio (ou omitir — sempre fica restrito ao próprio de qualquer forma).
+
+Response (`200 OK`):
+
+```json
+{
+  "restauranteId": 1,
+  "restauranteNome": "Lanchonete Central",
+  "dataReferencia": "2026-07-11",
+  "totalPedidosHoje": 4,
+  "pendentesPagamento": 1,
+  "pagosAguardandoCozinha": 1,
+  "emOperacao": 1,
+  "prontosRetirada": 0,
+  "retiradosHoje": 1,
+  "canceladosHoje": 0,
+  "expiradosHoje": 1,
+  "valorPagoHoje": 103.60
+}
+```
+
+`restauranteId`/`restauranteNome` vêm `null` quando `SUPER_ADMIN` consulta sem filtro (resumo somado de todos os restaurantes).
+
+**Definições dos contadores**:
+
+- `pendentesPagamento`, `pagosAguardandoCozinha`, `emOperacao`, `prontosRetirada`: **fila operacional atual** — contam pedidos pelo status vigente, **sem filtro de data** (um pedido pendente desde ontem continua contando hoje, igual à lista de pendências do Caixa/Cozinha). Mapeamento: `pendentesPagamento` = `CRIADO`/`AGUARDANDO_PAGAMENTO`/`AGUARDANDO_PAGAMENTO_DINHEIRO`; `pagosAguardandoCozinha` = `PAGO`; `emOperacao` = `ENVIADO_PARA_COZINHA`/`EM_PREPARO`; `prontosRetirada` = `PRONTO`.
+- `totalPedidosHoje`, `retiradosHoje`, `canceladosHoje`, `expiradosHoje`, `valorPagoHoje`: **filtrados por "hoje"** — ver definição abaixo.
+
+**Definição de "hoje" (decisão de MVP)**: todos os contadores/soma acima usam **`Pedido.criadoEm`** (data de criação do pedido), não a data em que o pedido mudou para o status terminal (`RETIRADO`/`CANCELADO`/`EXPIRADO`). Simplificação deliberada: evita depender de `HistoricoStatusPedido` para essa data, e é precisa o bastante já que, na prática, um pedido atinge um status terminal no mesmo dia em que foi criado. O dia é calculado via `LocalDate.now(clock)` com o `Clock` já usado por `PedidoExpiracaoService`/`LoginAttemptService` (`Clock.systemUTC()`) — **limitação conhecida**: o "dia" segue UTC, não o fuso horário local do Brasil (mesma limitação, deliberadamente não resolvida nesta task, já que o projeto não tem configuração de fuso horário).
+
+**Definição de `valorPagoHoje` (decisão de MVP)**: soma **`Pedido.valorTotal`** (não `Pagamento.valor`) dos pedidos criados hoje em qualquer status que implique pagamento confirmado (`PAGO`, `ENVIADO_PARA_COZINHA`, `EM_PREPARO`, `PRONTO`, `RETIRADO`). Optou-se por não somar `Pagamento.valor` para evitar juntar com a tabela de pagamentos e contar em duplicidade um pedido com mais de uma tentativa de pagamento (ex.: Pix falhou, tentou cartão em seguida) — `Pedido.valorTotal` já é a mesma fonte de verdade usada pelo resumo/detalhe de pedido (`GET /api/admin/pedidos`).
+
+**Fora do escopo desta task**: gráficos, exportação, relatório financeiro completo, comparação por período (semana/mês), filtro de data customizado, seletor de fuso horário.
+
 ## Admin — Uploads
 
 Implementado na TASK-053. Armazenamento local em disco (`app.uploads.dir`, padrão `uploads/`, configurável por variável de ambiente `UPLOAD_DIR`) — **em produção deve ser substituído por storage externo** (S3, Cloudinary ou equivalente). Os arquivos salvos ficam acessíveis publicamente sob `app.uploads.public-path` (padrão `/uploads`), ex.: `http://localhost:8080/uploads/produtos/<uuid>.png`.

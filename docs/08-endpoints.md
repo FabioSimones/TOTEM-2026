@@ -126,6 +126,16 @@ Permissão exigida: **somente `SUPER_ADMIN`** (mais restrito que a listagem — 
 
 Além do endpoint manual, um job agendado (`PedidoExpiracaoJob`, `@Scheduled(fixedDelayString = "${app.pedidos.expiracao.job-fixed-delay-ms}")`) executa a mesma regra automaticamente a cada `app.pedidos.expiracao.job-fixed-delay-ms` (padrão 60s), desde que `app.pedidos.expiracao.job-enabled=true` (padrão). Nunca afeta pedido `PAGO` em diante. Ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos" para o contrato completo.
 
+### Dashboard administrativo (TASK-074)
+
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` (mesmo escopo por restaurante da listagem de pedidos acima). Somente leitura — contadores simples para uma visão rápida da operação, sem gráficos nem relatório financeiro completo.
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| GET | `/api/admin/dashboard` | Resumo com contadores de pedidos (filtro opcional `restauranteId`) |
+
+Ver `docs/09-contratos-api.md` seção "Admin — Dashboard" para o contrato completo, definições de "hoje" e limitações do MVP.
+
 ## Administração de uploads
 
 Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` para envio; `SUPER_ADMIN` para limpeza de órfãos (TASK-056). Armazenamento local em disco — adequado para o MVP (ver `docs/09-contratos-api.md` para detalhes e limites). **Sem escopo por restaurante (TASK-058)**: o upload em si não tem vínculo direto com um restaurante (o arquivo só passa a pertencer a um restaurante indiretamente, quando referenciado por `Produto.imagemUrl`) — continua liberado para qualquer `ADMIN_RESTAURANTE` autenticado, e a limpeza de órfãos continua global (`SUPER_ADMIN`).

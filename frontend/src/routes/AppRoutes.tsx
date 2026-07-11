@@ -6,6 +6,7 @@ import { CaixaHomePage } from "../pages/caixa/CaixaHomePage";
 import { CozinhaHomePage } from "../pages/cozinha/CozinhaHomePage";
 import { AdminLoginPage } from "../pages/admin/AdminLoginPage";
 import { AdminHomePage } from "../pages/admin/AdminHomePage";
+import { AdminDashboardPage } from "../pages/admin/AdminDashboardPage";
 import { AdminDispositivosPage } from "../pages/admin/AdminDispositivosPage";
 import { AdminRestaurantesPage } from "../pages/admin/AdminRestaurantesPage";
 import { AdminCategoriasPage } from "../pages/admin/AdminCategoriasPage";
@@ -23,6 +24,7 @@ export function AppRoutes() {
       <Route path="/cozinha" element={<CozinhaHomePage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="/admin" element={<AdminHomePage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
       <Route path="/admin/dispositivos" element={<AdminDispositivosPage />} />
       <Route path="/admin/restaurantes" element={<AdminRestaurantesPage />} />
       <Route path="/admin/categorias" element={<AdminCategoriasPage />} />

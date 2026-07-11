@@ -233,6 +233,26 @@ Clique real na UI não foi realizado nesta task — sem automação de navegador
 
 **Fora do escopo desta task**: busca textual, ordenação avançada na UI, seletor de tamanho de página, infinite scroll.
 
+## 9j. Dashboard administrativo básico (TASK-074)
+
+**Coberto por teste automatizado** (`integration/DashboardAdminIntegrationTest`, 5 testes MockMvc via HTTP real) e **validado via `curl` contra o backend real + PostgreSQL real na própria TASK-074** (2026-07-11). Ver `docs/09-contratos-api.md` seção "Admin — Dashboard" para o contrato completo e as decisões de "hoje"/`valorPagoHoje`.
+
+- [x] `GET /api/admin/dashboard` (SUPER_ADMIN, sem filtro) → `200`, soma de todos os restaurantes (`pagosAguardandoCozinha=3`, `emOperacao=1` no banco real já populado por tasks anteriores)
+- [x] `GET /api/admin/dashboard?restauranteId=1` (SUPER_ADMIN) → `200`, `restauranteNome` preenchido, contadores isolados ao restaurante 1 (`pagosAguardandoCozinha=1`, `emOperacao=1`)
+- [x] `ADMIN_RESTAURANTE` (`admin.r1@totem.local`) sem filtro → resultado **idêntico** ao filtro `restauranteId=1` do SUPER_ADMIN, confirmando que o escopo é aplicado antes da agregação
+- [x] `ADMIN_RESTAURANTE` com `restauranteId=3` (outro restaurante) → `403`
+- [x] Sem token → `401`
+- [x] `totalPedidosHoje`/`retiradosHoje`/`canceladosHoje`/`expiradosHoje`/`valorPagoHoje` retornaram `0` no banco real (nenhum pedido foi criado no dia corrente durante esta validação, já que os pedidos de teste existentes foram criados em dias anteriores) — comportamento correto, confirma que o filtro por "hoje" (`Pedido.criadoEm`) está ativo e não conta pedidos antigos; os contadores de fila operacional (`pagosAguardandoCozinha`, `emOperacao`) não são filtrados por data e vieram corretos (> 0)
+- [x] (teste automatizado, dados controlados) contadores por status corretos: `pendentesPagamento`/`pagosAguardandoCozinha`/`emOperacao`/`prontosRetirada`/`retiradosHoje`/`canceladosHoje`/`expiradosHoje`/`valorPagoHoje` todos conferidos com valores exatos no `DashboardAdminIntegrationTest`, incluindo o caso de um pedido `CRIADO` retroagido para "ontem" (conta em `pendentesPagamento`, não conta em `totalPedidosHoje`)
+- [x] Card "Dashboard" aparece em `/admin` tanto para `SUPER_ADMIN` quanto para `ADMIN_RESTAURANTE` (sem `apenasSuperAdmin` no card, mesmo padrão de "Pedidos")
+- [x] (por revisão de código, cruzada com os resultados de `curl` acima) `AdminDashboardPage.tsx`: `ADMIN_RESTAURANTE` nunca chama `GET /api/admin/restaurantes` nem mostra seletor de restaurante; `SUPER_ADMIN` consulta sem filtro (mostra o resumo somado de todos, sem seletor visual — decisão de manter o escopo mínimo desta task); `401` limpa a sessão, `403` preserva a sessão e mostra mensagem amigável — igual ao padrão das demais telas administrativas; cards usam `formatCurrencyBRL` para `valorPagoHoje` e tokens do Design System (`.dashboard-admin__card`), sem CSS novo fora de tokens
+
+**Clique real na UI não foi realizado** — sem automação de navegador disponível neste ambiente, mesma limitação de todas as validações anteriores do projeto.
+
+**Nenhum bug encontrado.**
+
+**Fora do escopo desta task**: gráficos, exportação, relatório financeiro completo, comparação por período, seletor de restaurante para SUPER_ADMIN na UI, filtro de fuso horário (contadores "hoje" usam UTC via `Clock.systemUTC()`, mesma limitação já conhecida de `PedidoExpiracaoService`).
+
 ## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição

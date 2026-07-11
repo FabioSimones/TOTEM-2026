@@ -5,7 +5,10 @@ import com.totem.fastfood.enums.StatusPedido;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -26,4 +29,27 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     /** Pedidos elegíveis para expiração (TASK-070): status não pago e criado antes do limite. */
     List<Pedido> findByStatusPedidoInAndCriadoEmBefore(Collection<StatusPedido> statusPedido, LocalDateTime limite);
+
+    /**
+     * Contadores do dashboard administrativo (TASK-074): {@code restauranteId} nulo = todos os
+     * restaurantes (SUPER_ADMIN sem filtro); informado = restrito a um restaurante específico.
+     */
+    @Query("SELECT COUNT(p) FROM Pedido p WHERE (:restauranteId IS NULL OR p.restaurante.id = :restauranteId) "
+            + "AND p.statusPedido IN :status")
+    long contarPorStatus(@Param("restauranteId") Long restauranteId, @Param("status") Collection<StatusPedido> status);
+
+    @Query("SELECT COUNT(p) FROM Pedido p WHERE (:restauranteId IS NULL OR p.restaurante.id = :restauranteId) "
+            + "AND p.criadoEm BETWEEN :inicio AND :fim")
+    long contarPorPeriodo(@Param("restauranteId") Long restauranteId,
+            @Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(p) FROM Pedido p WHERE (:restauranteId IS NULL OR p.restaurante.id = :restauranteId) "
+            + "AND p.statusPedido IN :status AND p.criadoEm BETWEEN :inicio AND :fim")
+    long contarPorStatusEPeriodo(@Param("restauranteId") Long restauranteId, @Param("status") Collection<StatusPedido> status,
+            @Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COALESCE(SUM(p.valorTotal), 0) FROM Pedido p WHERE (:restauranteId IS NULL OR p.restaurante.id = :restauranteId) "
+            + "AND p.statusPedido IN :status AND p.criadoEm BETWEEN :inicio AND :fim")
+    BigDecimal somarValorTotalPorStatusEPeriodo(@Param("restauranteId") Long restauranteId, @Param("status") Collection<StatusPedido> status,
+            @Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 }
