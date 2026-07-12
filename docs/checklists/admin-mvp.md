@@ -253,6 +253,36 @@ Clique real na UI não foi realizado nesta task — sem automação de navegador
 
 **Fora do escopo desta task**: gráficos, exportação, relatório financeiro completo, comparação por período, seletor de restaurante para SUPER_ADMIN na UI, filtro de fuso horário (contadores "hoje" usam UTC via `Clock.systemUTC()`, mesma limitação já conhecida de `PedidoExpiracaoService`).
 
+## 9k. Validação visual manual do Dashboard Admin (TASK-075)
+
+**Coberto por teste automatizado já existente** (`integration/DashboardAdminIntegrationTest`, 5 testes) e **revalidado via `curl` contra o backend real + PostgreSQL real** (2026-07-12), reaproveitando dados já populados por tasks anteriores (`admin@totem.local` SUPER_ADMIN, `admin.r1@totem.local` ADMIN_RESTAURANTE vinculado ao restaurante 1). `npm run build` confirmado sem erro TypeScript nesta task; `mvn test` **não foi reexecutado** nesta task (executável `mvn` fora do `PATH` deste ambiente) — resultado anterior (200/200, BUILD SUCCESS) permanece a última validação registrada, sem qualquer alteração de código de backend nesta task que pudesse invalidá-lo.
+
+- [x] `GET /api/health` → `200`
+- [x] `GET /api/admin/dashboard` (SUPER_ADMIN, sem filtro) → `200`, `restauranteId`/`restauranteNome` nulos (resumo somado de todos os restaurantes)
+- [x] `GET /api/admin/dashboard?restauranteId=1` (SUPER_ADMIN) → `200`, contadores isolados ao restaurante 1
+- [x] `admin.r1@totem.local` (ADMIN_RESTAURANTE do restaurante 1) sem filtro → `200`, resultado idêntico ao filtro `restauranteId=1` do SUPER_ADMIN (escopo aplicado antes da agregação)
+- [x] `admin.r1@totem.local` com `restauranteId=2` (outro restaurante) → `403`, corpo `ApiError` padrão
+- [x] Mesmo token, chamada seguinte sem filtro → `200` novamente — sessão preservada após o `403` (não revogada/corrompida)
+- [x] Sem token → `401`, corpo `ApiError` padrão
+- [x] **Comparação com `/admin/pedidos`**: `pagosAguardandoCozinha=1` no dashboard do restaurante 1 bateu com 1 pedido `PAGO` retornado por `GET /api/admin/pedidos?statusPedido=PAGO&restauranteId=1`; `expiradosHoje=0` no dashboard, apesar de existirem pedidos `EXPIRADO` no restaurante 1 em `/admin/pedidos` — consistente, já que esses pedidos foram criados em `2026-07-10` (dias anteriores), não no dia corrente (`2026-07-12`), confirmando que o filtro de "hoje" por `Pedido.criadoEm` está funcionando como documentado, não como bug
+
+**Validação de UI**: sem automação de navegador disponível neste ambiente (mesma limitação de todas as validações anteriores do projeto, 9c a 9j) — feita por revisão de código linha a linha combinada com os resultados de `curl` acima, cobrindo o mesmo backend que o frontend consome:
+
+- [x] `AdminDashboardPage.tsx`: redireciona para `/admin/login` se não houver sessão salva (`getAccessToken`/`getStoredUsuario`); chama `obterDashboard({ restauranteId: restauranteIdEscopo ?? undefined })` — `ADMIN_RESTAURANTE` nunca envia `restauranteId` de outro restaurante, e `getRestauranteIdEscopo` já restringe ao próprio antes mesmo da chamada
+- [x] `401` → `clearSession()` + mensagem "Sessão expirada. Faça login novamente." + botão "Ir para login" (mesmo padrão de `AdminPedidosPage`/demais telas); `403` → sessão preservada, mensagem "Você não tem permissão para acessar o dashboard.", sem `clearSession()`
+- [x] Formatação: `valorPagoHoje` usa `formatCurrencyBRL` (BRL); `dataReferencia` exibida como string ISO (`YYYY-MM-DD`) vinda direto do backend — legível, sem texto técnico adicional
+- [x] Loading: `carregarResumo` seta `loading=true` antes da chamada e mostra "Carregando dashboard..." — não quebra a tela em nenhum estado intermediário
+- [x] Navegação: `AdminVoltarLink` presente (mesmo componente reaproveitado das demais telas administrativas) — "← Painel administrativo" funcional
+- [x] `ADMIN_RESTAURANTE`: aviso "Você está operando apenas no restaurante vinculado à sua conta." exibido (`adminRestaurante` check); nenhuma chamada a `GET /api/admin/restaurantes` no fluxo desta tela (não há seletor de restaurante nem código que a invoque)
+- [x] Tema claro/escuro: `.dashboard-admin__*` em `global.css` usa somente tokens (`--color-surface`, `--color-border`, `--color-text`, `--color-text-muted`, `--shadow-card`) — nenhuma cor fixa fora do Design System, mesmo padrão já validado nas demais telas
+- [x] Responsividade: `.dashboard-admin__grid` usa `grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr))` — quebra de linha automática por largura de card, sem overflow horizontal esperado em qualquer largura de tela
+
+**Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta task.**
+
+**Pendência mantida (não corrigida, decisão deliberada desta task)**: contadores "hoje" continuam em UTC (`Clock.systemUTC()`), não no fuso horário local do Brasil — mesma limitação documentada desde a TASK-074, fora do escopo de "somente validação" da TASK-075.
+
+**Pendência de ambiente**: clique real na UI (navegador) não foi realizado — sem automação de navegador disponível neste ambiente. `mvn test` também não foi reexecutado nesta task pelo mesmo motivo de ambiente (`mvn` fora do `PATH`); recomenda-se rodá-lo manualmente antes do próximo merge relevante para reconfirmar o 200/200 já registrado na TASK-074.
+
 ## 10. Consistência visual
 
 - [ ] Alternar tema (💡) em cada subtela do Admin, com formulário preenchido e em modo edição
