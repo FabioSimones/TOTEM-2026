@@ -357,9 +357,32 @@ Fluxo real executado: criação de dispositivo TOTEM novo (id 9, restaurante 1) 
 
 **Nenhum bug de código encontrado na feature de gestão operacional em si** — todos os comportamentos (throttle, revogação, escopo, status) se comportaram exatamente como documentado na TASK-077.
 
-**Achado real registrado como pendência técnica (não corrigido, fora do escopo desta task)**: durante a validação, um dispositivo criado e ativado com ~30 segundos de diferença mostrou `criadoEm=19:17:16` e `ativadoEm=22:17:47` — 3h de diferença aparente. Causa: `criadoEm`/`atualizadoEm` (Hibernate `@CreationTimestamp`/`@UpdateTimestamp`, presente em toda entidade do projeto) usam o fuso horário padrão da JVM (`America/Sao_Paulo`, sem `-Duser.timezone` configurado), enquanto `ultimoAcesso`/`ativadoEm`/`revogadoEm` (desde a correção da TASK-077) usam `Clock.systemUTC()`. **Não afeta a correção do `statusOperacional`** (comparação sempre dentro do mesmo relógio UTC), mas mistura fusos no mesmo registro ao exibir `criadoEm` ao lado de `ativadoEm`/`ultimoAcesso`. Mesma raiz da limitação de UTC já documentada para `Pedido.criadoEm` no Dashboard (TASK-074) — mas agora confirmado que `criadoEm` não está de fato em UTC, e sim no fuso local da JVM, o que os documentos anteriores não deixavam explícito. Ver `docs/testes-backend-mvp.md` seção "Pendências técnicas" para o detalhamento completo e a recomendação de uma task dedicada de padronização de fuso horário.
+**Achado real registrado como pendência técnica nesta task**: durante a validação, um dispositivo criado e ativado com ~30 segundos de diferença mostrou `criadoEm=19:17:16` e `ativadoEm=22:17:47` — 3h de diferença aparente. Causa: `criadoEm`/`atualizadoEm` (Hibernate `@CreationTimestamp`/`@UpdateTimestamp`, presente em toda entidade do projeto) usam o fuso horário padrão da JVM (`America/Sao_Paulo`, sem `-Duser.timezone` configurado), enquanto `ultimoAcesso`/`ativadoEm`/`revogadoEm` (desde a correção da TASK-077) usam `Clock.systemUTC()`. **Não afeta a correção do `statusOperacional`** (comparação sempre dentro do mesmo relógio UTC), mas mistura fusos no mesmo registro ao exibir `criadoEm` ao lado de `ativadoEm`/`ultimoAcesso`. Mesma raiz da limitação de UTC já documentada para `Pedido.criadoEm` no Dashboard (TASK-074) — mas agora confirmado que `criadoEm` não está de fato em UTC, e sim no fuso local da JVM, o que os documentos anteriores não deixavam explícito. **Corrigido na TASK-079** — ver seção 9n abaixo. A investigação da TASK-079 revelou que o impacto real ia muito além do cosmético: o mesmo problema fazia pedidos expirarem em segundos em vez de minutos (`PedidoExpiracaoService`).
 
 **Limitações mantidas (deliberadas, reafirmadas nesta validação)**: sem WebSocket, sem heartbeat, `statusOperacional` não é presença em tempo real — reflete só a última requisição autenticada já processada pelo backend. Clique real na UI não realizado — sem automação de navegador disponível neste ambiente.
+
+## 9n. Padronização de fuso horário do backend (TASK-079)
+
+**Coberto por teste automatizado novo** (`integration/TimezoneIntegrationTest`, 3 testes) — `mvn test` completo: **215/215, BUILD SUCCESS** (212 anteriores + 3 novos). **Validado ao vivo contra backend real + PostgreSQL real** (2026-07-12, backend reiniciado do zero para captar a correção). Ver `docs/09-contratos-api.md` seção "Padronização de fuso horário" para a regra oficial completa.
+
+**Achado crítico confirmado ao vivo, antes da correção**: pedido criado às `19:52:18` (hora local da JVM) apareceu `EXPIRADO` às `19:53:05` — **47 segundos depois**, com `app.pedidos.expiracao.minutos=30` configurado. Causa: `PedidoExpiracaoService` compara `Pedido.criadoEm` (Hibernate, fuso local `America/Sao_Paulo`) contra um limite calculado em UTC via `Clock` — como BRT está 3h atrás de UTC, a janela efetiva de expiração virava `30 - 180 = -150 minutos`, ou seja, elegível quase instantaneamente. Esse é o mesmo bug de fuso encontrado na TASK-078 para `Dispositivo`, mas com impacto funcional real (não só cosmético).
+
+**Correção**: fuso padrão da JVM fixado para UTC em `TotemApplication` (bloco estático, executado antes de qualquer geração de timestamp), complementado por `hibernate.jdbc.time_zone: UTC` e `jackson.time-zone: UTC` em `application.yml` (principal e teste).
+
+- [x] `mvn test` completo → 215/215, BUILD SUCCESS (nenhum teste existente quebrou)
+- [x] `npm run build` → sem erro TypeScript (frontend não alterado, só documentação)
+- [x] Backend reiniciado do zero com a correção aplicada
+- [x] Dispositivo criado e ativado em sequência → `criadoEm`/`ativadoEm` com diferença de frações de segundo (antes: ~3h) — confirmado contra `date -u` real
+- [x] **Pedido criado e aguardado por mais de um ciclo do job de expiração (75s+, job roda a cada 60s)** → permaneceu `CRIADO`, não expirou (antes da correção: expirava em 47s)
+- [x] `GET /api/admin/dashboard` → `200`, continua respondendo normalmente
+- [x] `GET /api/admin/pedidos` → `200`, continua respondendo normalmente
+- [x] `GET /api/admin/dispositivos` → `200`, continua respondendo normalmente
+
+**Nenhuma migration de dados criada** — ambiente de desenvolvimento, poucos registros de teste, sem necessidade justificada.
+
+**Fora do escopo desta task (deliberado)**: migração de `LocalDateTime` para `Instant`/`OffsetDateTime`; alteração de contratos REST; alteração do frontend (só documentação); correção do Dashboard "hoje" para `America/Sao_Paulo` (continua UTC).
+
+**Implicação documentada, não corrigida nesta task**: como `LocalDateTime` serializa sem sufixo `Z`/offset, o frontend (`new Date(valor)`) vai interpretar os valores UTC como hora local do navegador — os campos `criadoEm`/`atualizadoEm` (agora UTC, antes local) passam a exibir ~3h adiantado em um navegador configurado para `America/Sao_Paulo`, mesma limitação que já existia desde a TASK-077 para `ultimoAcesso`/`ativadoEm`/`revogadoEm`, agora estendida a todos os campos de data de forma consistente. Ver `frontend/README.md`.
 
 ## 10. Consistência visual
 

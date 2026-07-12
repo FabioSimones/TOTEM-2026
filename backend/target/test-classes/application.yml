@@ -27,6 +27,14 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+        # Mesma padronização de fuso do application.yml principal (TASK-079) — mantém os testes
+        # consistentes com produção; o fuso padrão da JVM já é fixado em UTC via bloco estático
+        # em TotemApplication, que roda também no bootstrap do @SpringBootTest.
+        jdbc:
+          time_zone: UTC
+
+  jackson:
+    time-zone: UTC
 
 # Este arquivo SUBSTITUI (não estende) o application.yml principal durante os testes —
 # por isso as propriedades abaixo, usadas via @Value no contexto Spring (JwtService,

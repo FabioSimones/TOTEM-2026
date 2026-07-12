@@ -2,6 +2,23 @@
 
 Revisado na TASK-041 para refletir os DTOs Java reais (antes desta revisão, este documento continha campos de um design inicial que nunca foram implementados — ver histórico do repositório). Os exemplos abaixo são representativos; para o contrato completo por campo, ver `docs/08-endpoints.md` e os próprios DTOs em `backend/src/main/java/com/totem/fastfood/dto/`.
 
+## Padronização de fuso horário (TASK-079)
+
+**Regra oficial: o backend opera inteiramente em UTC.** Todo campo de data/hora exposto pela API (`criadoEm`, `atualizadoEm`, `ativadoEm`, `revogadoEm`, `ultimoAcesso`, `dataAlteracao`, `pagoEm`, `canceladoEm`, `timestamp` de erro, etc.) é gravado e deve ser interpretado como **UTC**, independentemente de onde o backend estiver rodando.
+
+**Como isso é garantido**:
+- O fuso padrão da JVM é fixado para UTC em um bloco estático de `TotemApplication` (`TimeZone.setDefault(TimeZone.getTimeZone("UTC"))`), executado antes de qualquer código de aplicação — inclusive antes do Hibernate gerar o primeiro `@CreationTimestamp`/`@UpdateTimestamp`.
+- `Clock.systemUTC()` (bean único em `ClockConfig`, usado por `PedidoExpiracaoService`, `DashboardAdminService`, `LoginAttemptService`, `DispositivoMapper`, `DispositivoAcessoService`, `DispositivoService`) permanece a fonte oficial de "agora" para toda regra de negócio.
+- `spring.jpa.properties.hibernate.jdbc.time_zone: UTC` e `spring.jackson.time-zone: UTC` complementam a configuração (efeito prático limitado para os campos `LocalDateTime` atuais, que não carregam informação de fuso — mantidos por documentação explícita da intenção e por segurança caso o projeto passe a usar `Instant`/`OffsetDateTime` no futuro).
+
+**Bug real encontrado e corrigido nesta task**: antes da TASK-079, campos automáticos do Hibernate (`@CreationTimestamp`/`@UpdateTimestamp`, presentes em toda entidade) eram gravados no fuso padrão da JVM do processo (ex.: `America/Sao_Paulo`, confirmado em ambiente real), enquanto `Clock.systemUTC()` já era UTC desde tasks anteriores. Isso causava uma mistura de fusos dentro do mesmo registro — e, mais grave, **`PedidoExpiracaoService` comparava `Pedido.criadoEm` (fuso local) contra um limite calculado em UTC**, fazendo pedidos recém-criados serem elegíveis para expiração automática quase instantaneamente em vez de após `app.pedidos.expiracao.minutos` (30min por padrão). Validado ao vivo contra backend real + PostgreSQL real: um pedido criado às `19:52:18` (hora local da JVM) apareceu `EXPIRADO` às `19:53:05` — **47 segundos depois**, não 30 minutos. Após a correção, o mesmo cenário (pedido criado e aguardado por mais de um ciclo do job de expiração) manteve o pedido em `CRIADO`, como esperado. Ver `docs/testes-backend-mvp.md` para o detalhamento completo da investigação e validação.
+
+**Não migrado nesta task (deliberado)**: nenhuma entidade trocou `LocalDateTime` por `Instant`/`OffsetDateTime`; nenhum contrato de API mudou de formato; nenhuma migration de dados foi criada (ambiente de desenvolvimento, poucos registros de teste, sem necessidade). Os campos automáticos (`@CreationTimestamp`/`@UpdateTimestamp`) continuam `LocalDateTime` por simplicidade do MVP — a padronização de fuso já resolve a inconsistência sem exigir essa migração maior.
+
+**Implicação para o frontend (não alterado nesta task, só documentado)**: como `LocalDateTime` serializa em JSON sem sufixo `Z`/offset (ex.: `"2026-07-12T23:04:55.882065"`), o `new Date(valor)` do navegador interpreta essa string como **hora local do navegador**, não como UTC explícito. Isso significa que, em um navegador configurado para `America/Sao_Paulo`, os valores agora exibidos (`formatDateTimeBRL` em `frontend/src/utils/formatters.ts`) aparecerão ~3h **adiantados** em relação ao horário real de Brasília — mesma limitação que já existia desde a TASK-077 para `ultimoAcesso`/`ativadoEm`/`revogadoEm` (que já eram UTC), agora estendida de forma consistente a `criadoEm`/`atualizadoEm` também. Corrigir isso no frontend (ex.: fazer o backend serializar com offset explícito, ou converter no frontend) é uma decisão de produto separada, fora do escopo desta task — ver `frontend/README.md`.
+
+**Contadores "hoje" do Dashboard continuam em UTC nesta task** (não em `America/Sao_Paulo`) — mesma limitação já documentada desde a TASK-074. Corrigir isso, se desejado, deve ser uma task dedicada.
+
 ## Autenticação — login, refresh e logout administrativo
 
 ### Login
