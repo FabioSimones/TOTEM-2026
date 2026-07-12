@@ -64,11 +64,11 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Revogar dispositivo → `PATCH .../revogar`, status "Revogado"
 - [ ] Tentar reativar em `/ativar-dispositivo` com o mesmo código → falha (dispositivo revogado)
 - [ ] Reativar pelo Admin → `PATCH .../ativar`, status volta a "Ativo"
-- [ ] (TASK-077) Dispositivo recém-cadastrado, ainda não ativado → badge "Nunca usado", "Último acesso: Nunca acessou"
-- [ ] (TASK-077) Após ativar pelo `/ativar-dispositivo` → badge muda para "Usado recentemente", "Último acesso" preenchido com data/hora
-- [ ] (TASK-077) Usar o dispositivo (ex.: `/totem` consultando o cardápio) e voltar em `/admin/dispositivos` após alguns minutos sem novo uso → badge muda de "Usado recentemente" para "Ativo" (mesmo `ativo=true`, só não usado nos últimos 5 minutos)
-- [ ] (TASK-077) Revogar dispositivo → badge muda para "Revogado" (cor de erro), independente de quando foi o último acesso
-- [ ] (TASK-077) Filtros "Filtrar por tipo" e "Filtrar por status" (client-side, sobre a lista já carregada) — combinam corretamente, "Todos" limpa cada filtro independentemente
+- [x] (TASK-077, validado via API real na TASK-078) Dispositivo recém-cadastrado, ainda não ativado → `statusOperacional=NUNCA_USADO`, `ultimoAcesso=null` (badge "Nunca usado" / "Último acesso: Nunca acessou" no frontend, confirmado por revisão de código)
+- [x] (TASK-077, validado via API real na TASK-078) Após ativar → `statusOperacional=USADO_RECENTEMENTE`, `ultimoAcesso` preenchido com data/hora (dispositivo de teste criado e ativado na validação: `ultimoAcesso` passou de `null` para o timestamp da ativação)
+- [x] (TASK-077, validado via dados reais já existentes no banco na TASK-078) Dispositivo usado há mais de `online-recente-minutos` (5min) aparece como `ATIVO`, não `USADO_RECENTEMENTE`, mesmo com `ativo=true` — confirmado em 6 dispositivos de tasks anteriores (ativados há dias)
+- [x] (TASK-077, validado via API real na TASK-078) Revogar dispositivo → `statusOperacional=REVOGADO`; reativar → volta a `USADO_RECENTEMENTE`/`ATIVO` conforme o `ultimoAcesso`
+- [ ] (TASK-077) Filtros "Filtrar por tipo" e "Filtrar por status" (client-side, sobre a lista já carregada) — validados por revisão de código na TASK-078 (comparação exata com os valores de enum retornados pela API, sem duplicar lógica), clique real na UI não realizado — sem automação de navegador disponível neste ambiente
 
 ## 8. Usuário (`/admin/usuarios`, exige `SUPER_ADMIN`)
 
@@ -331,6 +331,35 @@ Resolve a pendência de UX registrada na seção 9i (TASK-072/073): quando `GET 
 **Validação de UI**: `npm run build` confirmado sem erro TypeScript. Sem automação de navegador disponível neste ambiente (mesma limitação de todas as validações anteriores do projeto) — feita por revisão de código: `DispositivoCard.tsx` agora renderiza um único badge de `statusOperacional` (4 estados, cores via tokens — `--color-success`/`--color-primary`/`--color-text-muted`/`--color-error`, sem cor nova fora do Design System) em vez do badge cadastral "Ativo/Revogado" anterior; "Último acesso" mostra "Nunca acessou" quando `null`; `AdminDispositivosPage.tsx` ganhou filtros client-side por tipo e por status operacional, sobre a lista já carregada (sem novo parâmetro de API, sem paginação — lista continua pequena o suficiente para o MVP).
 
 **Fora do escopo desta task (conforme instruído)**: WebSocket, heartbeat, presença em tempo real, refresh token de dispositivo, filtro por tipo/status no backend (fica só no frontend), dashboard complexo, tela pública nova.
+
+## 9m. Validação visual manual da gestão operacional de dispositivos (TASK-078)
+
+**Coberto por testes automatizados já existentes** (`DispositivoAcessoServiceTest`, `DispositivoMapperTest`, `DispositivoAcessoIntegrationTest`, ver seção 9l) e **revalidado via `curl` contra o backend real + PostgreSQL real** (2026-07-12) — reexecução completa de `mvn test` (**212/212, BUILD SUCCESS**) e `npm run build` (sem erro TypeScript) confirmadas antes da validação manual.
+
+Fluxo real executado: criação de dispositivo TOTEM novo (id 9, restaurante 1) → `POST /api/admin/dispositivos` → `statusOperacional=NUNCA_USADO`, `ultimoAcesso=null`. Ativação via `POST /api/auth/dispositivos/ativar` → `ultimoAcesso` preenchido, `statusOperacional=USADO_RECENTEMENTE`.
+
+- [x] `GET /api/admin/dispositivos` (SUPER_ADMIN) → `200`, todos os 9 dispositivos do banco (de tasks anteriores + o novo) trazem `statusOperacional`; dispositivos nunca ativados mostram `NUNCA_USADO` com `ultimoAcesso=null`; dispositivos ativados há dias (tasks anteriores, fora da janela de 5min) mostram `ATIVO`
+- [x] Dispositivo recém-ativado → `ultimoAcesso` preenchido, `statusOperacional=USADO_RECENTEMENTE`
+- [x] **Throttle de 1 minuto confirmado**: duas chamadas consecutivas a `GET /api/totem/cardapio` com o mesmo token (poucos segundos de diferença) → ambas `200`, sem erro, e `ultimoAcesso` permaneceu **idêntico** entre as duas (comparado byte a byte na resposta de `GET /api/admin/dispositivos`) — a segunda chamada não gerou `UPDATE`, conforme documentado
+- [x] **Revogação confirmada**: `PATCH /api/admin/dispositivos/9/revogar` → `200`, `statusOperacional=REVOGADO`; tentativa de reuso do token antigo em `GET /api/totem/cardapio` → `401` (não `403` — token deixa de autenticar, comportamento correto e consistente com o resto do projeto); `ultimoAcesso` **não avançou** após a tentativa (confirmado comparando o valor antes/depois)
+- [x] **Reativação confirmada**: `PATCH /api/admin/dispositivos/9/ativar` → `200`, `statusOperacional` volta a `USADO_RECENTEMENTE` (o `ultimoAcesso` anterior à revogação ainda estava dentro da janela recente)
+- [x] `ADMIN_RESTAURANTE` (`admin.r1@totem.local`, restaurante 1) → `GET /api/admin/dispositivos` retorna só os 4 dispositivos do restaurante 1 (incluindo o novo id 9), cada um com `ultimoAcesso`/`statusOperacional` corretos — nenhum dispositivo de outro restaurante aparece
+- [x] Sem token → `401`
+- [x] `ADMIN_RESTAURANTE` tentando revogar dispositivo de outro restaurante (`PATCH /api/admin/dispositivos/1/revogar`, restaurante 2) → `403`, sessão preservada (mesmo token continua `200` na chamada seguinte de listagem)
+
+**Validação de UI**: sem automação de navegador disponível neste ambiente (mesma limitação de todas as validações anteriores do projeto) — feita por revisão de código cruzada com os resultados de `curl` acima, que exercitam exatamente a mesma API que o frontend consome:
+
+- [x] `DispositivoCard.tsx`: badge usa `dispositivo.statusOperacional` diretamente (sem lógica duplicada no frontend), com `Record` mapeando os 4 valores de enum exatos retornados pela API (`USADO_RECENTEMENTE`/`ATIVO`/`NUNCA_USADO`/`REVOGADO`) para rótulo e classe CSS — nenhum valor órfão possível
+- [x] "Último acesso" usa `dispositivo.ultimoAcesso ? formatDateTimeBRL(...) : "Nunca acessou"` — coerente com o `null` observado nos dispositivos `NUNCA_USADO` da API
+- [x] `AdminDispositivosPage.tsx`: `dispositivosFiltrados` filtra por igualdade estrita com `filtroTipo`/`filtroStatusOperacional`, mesmos valores de enum da API — filtros combinam com `&&` (AND), "Todos" (`null`) desativa cada filtro independentemente; estado vazio distinto ("Nenhum dispositivo cadastrado" vs "Nenhum dispositivo encontrado para os filtros selecionados")
+- [x] Tema claro/escuro: `.dispositivo-card__status--*` usa só tokens (`--color-success`, `--color-primary`, `--color-text-muted`, `--color-error`, `--color-surface-elevated`) — nenhuma cor nova fora do Design System (mesmo padrão validado em todas as telas administrativas anteriores)
+- [x] Responsividade: `DispositivoCard` reutiliza a classe `pedido-pendente-card` (grid responsivo já usado por Caixa/Cozinha/Pedidos), sem CSS de layout novo
+
+**Nenhum bug de código encontrado na feature de gestão operacional em si** — todos os comportamentos (throttle, revogação, escopo, status) se comportaram exatamente como documentado na TASK-077.
+
+**Achado real registrado como pendência técnica (não corrigido, fora do escopo desta task)**: durante a validação, um dispositivo criado e ativado com ~30 segundos de diferença mostrou `criadoEm=19:17:16` e `ativadoEm=22:17:47` — 3h de diferença aparente. Causa: `criadoEm`/`atualizadoEm` (Hibernate `@CreationTimestamp`/`@UpdateTimestamp`, presente em toda entidade do projeto) usam o fuso horário padrão da JVM (`America/Sao_Paulo`, sem `-Duser.timezone` configurado), enquanto `ultimoAcesso`/`ativadoEm`/`revogadoEm` (desde a correção da TASK-077) usam `Clock.systemUTC()`. **Não afeta a correção do `statusOperacional`** (comparação sempre dentro do mesmo relógio UTC), mas mistura fusos no mesmo registro ao exibir `criadoEm` ao lado de `ativadoEm`/`ultimoAcesso`. Mesma raiz da limitação de UTC já documentada para `Pedido.criadoEm` no Dashboard (TASK-074) — mas agora confirmado que `criadoEm` não está de fato em UTC, e sim no fuso local da JVM, o que os documentos anteriores não deixavam explícito. Ver `docs/testes-backend-mvp.md` seção "Pendências técnicas" para o detalhamento completo e a recomendação de uma task dedicada de padronização de fuso horário.
+
+**Limitações mantidas (deliberadas, reafirmadas nesta validação)**: sem WebSocket, sem heartbeat, `statusOperacional` não é presença em tempo real — reflete só a última requisição autenticada já processada pelo backend. Clique real na UI não realizado — sem automação de navegador disponível neste ambiente.
 
 ## 10. Consistência visual
 
