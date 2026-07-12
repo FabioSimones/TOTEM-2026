@@ -229,9 +229,35 @@ Nenhum bug encontrado — nenhuma alteração de código foi necessária nesta t
 
 **Pendência de UX identificada (não corrigida, fora do escopo desta task)**: se o usuário estiver numa página válida e os dados do escopo/filtro diminuírem entre o carregamento e um clique em "Atualizar lista" (ex.: outro admin cancela/expira pedidos concorrentemente), a página pode ficar além do total (`content=[]`, confirmado acima com `page=10`) — a tela mostra "Nenhum pedido encontrado." mas o bloco de paginação (que permitiria voltar) some junto, já que só renderiza com `pedidos.length > 0`. Não é alcançável pelos botões Anterior/Próxima em uso normal (ambos ficam desabilitados corretamente com base em `first`/`last`), só em cenários de dados mudando concorrentemente fora da aba atual — registrado como pendência conhecida, não como bug, já que corrigi-lo exigiria lógica nova (ex.: sempre mostrar os controles de paginação, ou reancorar automaticamente para a última página válida), fora do escopo de "somente validação" desta task.
 
+**Resolvida na TASK-076**: `carregarPedidos` (`AdminPedidosPage.tsx`) agora detecta a resposta `content=[]` com `totalElements > 0` e `page > 0` e busca automaticamente a última página válida (`Math.max(0, totalPages - 1)`), sem intervenção do usuário. Ver seção 9i-bis abaixo.
+
 Clique real na UI não foi realizado nesta task — sem automação de navegador disponível neste ambiente. Validado via `mvn test` (195/195, incluindo os novos cenários de paginação) e `npm run build` sem erros de tipo.
 
 **Fora do escopo desta task**: busca textual, ordenação avançada na UI, seletor de tamanho de página, infinite scroll.
+
+## 9i-bis. Correção de página vazia fora do intervalo em Admin Pedidos (TASK-076)
+
+Resolve a pendência de UX registrada na seção 9i (TASK-072/073): quando `GET /api/admin/pedidos` retorna `content=[]` com `totalElements > 0` (página pedida além do total, ex.: dados diminuíram entre carregamentos ou um "Atualizar lista" concorrente), a tela ficava travada numa lista vazia sem forma de voltar pela UI (o bloco de paginação só renderiza com `pedidos.length > 0`).
+
+**Mudança**: `carregarPedidos` (`AdminPedidosPage.tsx`) ganhou um parâmetro interno `corrigindoPagina` (default `false`). Após receber a resposta, se `response.content.length === 0 && response.totalElements > 0 && paginaAlvo > 0 && !corrigindoPagina`, a função calcula `paginaValida = Math.max(0, response.totalPages - 1)` e chama a si mesma recursivamente com `corrigindoPagina=true`, retornando antes de tocar nos estados com a resposta vazia — sem passar pelo `useEffect` (não existe um reagindo a `pagina`, cada navegação já chama `carregarPedidos` explicitamente, então não há risco de disparo duplicado). O flag `corrigindoPagina=true` garante no máximo uma correção por chamada, sem loop: mesmo num cenário teórico anômalo em que a segunda busca também viesse vazia, a recursão não seria refeita.
+
+**Nenhuma mudança de backend, contrato de API, filtro ou regra de pedido** — o backend já retornava `content=[]`/`totalElements`/`totalPages` corretos (comportamento padrão do Spring Data `Pageable` para página além do total), não é um bug de backend.
+
+**Validado via `curl` contra o backend real** (2026-07-12), reproduzindo exatamente o cenário da pendência:
+
+- [x] `GET /api/admin/pedidos?page=0&size=2` → `200`, `content` com 2 itens, `totalElements=9`, `totalPages=5` (estado normal, baseline)
+- [x] `GET /api/admin/pedidos?page=50&size=2` (página muito além do total) → `200`, `content=[]`, `totalElements=9`, `totalPages=5`, `page=50` — confirma a resposta exata que o frontend precisa detectar
+- [x] `GET /api/admin/pedidos?page=4&size=2` (`paginaValida = Math.max(0, 5-1) = 4`, calculada pela mesma fórmula do frontend) → `200`, `content` com 1 item, `last=true` — confirma que a página calculada pelo fix sempre tem conteúdo real
+
+**Validação de UI**: sem automação de navegador disponível neste ambiente (mesma limitação registrada em todas as seções anteriores deste checklist). `npm run build` confirmado sem erro TypeScript. Teste manual recomendado para fechar 100%: logar como SUPER_ADMIN, forçar uma página inválida via chamada direta à API com `page` alto (ou reduzir artificialmente os dados de um filtro específico e clicar "Atualizar lista" numa página não-zero), e confirmar visualmente que a tela reancora sozinha na última página válida, sem piscar em "Nenhum pedido encontrado." nem exigir ação do usuário.
+
+**Casos preservados (por leitura de código, sem regressão)**:
+- Filtros (`filtroRestauranteId`/`filtroStatus`) continuam intactos — a correção reusa os mesmos parâmetros recebidos, nunca os reseta
+- `setPedidoDetalhe(null)` continua rodando em toda chamada (inclusive a recursiva) — detalhe sempre fecha
+- Estado vazio real (`totalElements === 0`, filtro genuinamente sem resultados) não aciona a correção (`totalElements > 0` é condição obrigatória) — continua mostrando "Nenhum pedido encontrado." normalmente
+- Paginação normal (botões Anterior/Próxima, `first`/`last`, resumo "Página X de Y") inalterada — a correção só entra no caminho anômalo
+
+**Nenhum bug de backend encontrado — nenhuma alteração de backend nesta task.**
 
 ## 9j. Dashboard administrativo básico (TASK-074)
 

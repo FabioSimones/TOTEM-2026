@@ -69,7 +69,12 @@ export function AdminPedidosPage() {
   }, [adminRestaurante]);
 
   const carregarPedidos = useCallback(
-    async (restauranteId: number | null, statusPedido: StatusPedido | null, paginaAlvo: number) => {
+    async (
+      restauranteId: number | null,
+      statusPedido: StatusPedido | null,
+      paginaAlvo: number,
+      corrigindoPagina = false,
+    ) => {
       setLoading(true);
       setErro(null);
       setSemAutorizacao(false);
@@ -82,6 +87,16 @@ export function AdminPedidosPage() {
           page: paginaAlvo,
           size: TAMANHO_PAGINA,
         });
+
+        // Página fora do intervalo válido (ex.: dados diminuíram entre o carregamento e um
+        // "Atualizar lista" concorrente): busca automaticamente a última página válida em vez de
+        // prender o usuário numa lista vazia sem forma de voltar pela UI (pendência da TASK-072/073).
+        if (response.content.length === 0 && response.totalElements > 0 && paginaAlvo > 0 && !corrigindoPagina) {
+          const paginaValida = Math.max(0, response.totalPages - 1);
+          await carregarPedidos(restauranteId, statusPedido, paginaValida, true);
+          return;
+        }
+
         setPedidos(response.content);
         setPagina(response.page);
         setTotalPaginas(response.totalPages);
