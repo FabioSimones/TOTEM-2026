@@ -64,6 +64,11 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [ ] Revogar dispositivo → `PATCH .../revogar`, status "Revogado"
 - [ ] Tentar reativar em `/ativar-dispositivo` com o mesmo código → falha (dispositivo revogado)
 - [ ] Reativar pelo Admin → `PATCH .../ativar`, status volta a "Ativo"
+- [ ] (TASK-077) Dispositivo recém-cadastrado, ainda não ativado → badge "Nunca usado", "Último acesso: Nunca acessou"
+- [ ] (TASK-077) Após ativar pelo `/ativar-dispositivo` → badge muda para "Usado recentemente", "Último acesso" preenchido com data/hora
+- [ ] (TASK-077) Usar o dispositivo (ex.: `/totem` consultando o cardápio) e voltar em `/admin/dispositivos` após alguns minutos sem novo uso → badge muda de "Usado recentemente" para "Ativo" (mesmo `ativo=true`, só não usado nos últimos 5 minutos)
+- [ ] (TASK-077) Revogar dispositivo → badge muda para "Revogado" (cor de erro), independente de quando foi o último acesso
+- [ ] (TASK-077) Filtros "Filtrar por tipo" e "Filtrar por status" (client-side, sobre a lista já carregada) — combinam corretamente, "Todos" limpa cada filtro independentemente
 
 ## 8. Usuário (`/admin/usuarios`, exige `SUPER_ADMIN`)
 
@@ -308,6 +313,24 @@ Resolve a pendência de UX registrada na seção 9i (TASK-072/073): quando `GET 
 **Pendência mantida (não corrigida, decisão deliberada desta task)**: contadores "hoje" continuam em UTC (`Clock.systemUTC()`), não no fuso horário local do Brasil — mesma limitação documentada desde a TASK-074, fora do escopo de "somente validação" da TASK-075.
 
 **Pendência de ambiente**: clique real na UI (navegador) não foi realizado — sem automação de navegador disponível neste ambiente. `mvn test` também não foi reexecutado nesta task pelo mesmo motivo de ambiente (`mvn` fora do `PATH`); recomenda-se rodá-lo manualmente antes do próximo merge relevante para reconfirmar o 200/200 já registrado na TASK-074.
+
+## 9l. Gestão operacional de dispositivos (TASK-077)
+
+**Coberto por testes automatizados novos** (`service/DispositivoAcessoServiceTest`, 4 testes; `mapper/DispositivoMapperTest`, 4 testes; `integration/DispositivoAcessoIntegrationTest`, 4 testes MockMvc via HTTP real) — `mvn test` completo: **212/212, BUILD SUCCESS** (Maven localizado via `~/.m2/wrapper/dists`, mesmo achado documentado na TASK-071/`docs/testes-backend-mvp.md`). Ver `docs/09-contratos-api.md` seção "Admin — Dispositivos (gestão operacional, TASK-077)" para o contrato completo.
+
+- [x] `ultimoAcesso` (campo já existente desde o início do projeto, nunca atualizado após a ativação) agora é atualizado a cada requisição autenticada de dispositivo, com throttle de 1 minuto (`DispositivoAcessoService`)
+- [x] `DispositivoResponse` ganhou `statusOperacional` derivado — `REVOGADO` (ativo=false, prioridade sobre os demais), `NUNCA_USADO` (ultimoAcesso nulo), `USADO_RECENTEMENTE` (dentro de `app.dispositivos.online-recente-minutos`, padrão 5min), `ATIVO` (fora da janela recente) — confirmado por `DispositivoMapperTest` nos 4 cenários
+- [x] Dispositivo revogado nunca registra novo acesso, mesmo com token ainda dentro da validade — o filtro só chama `registrarAcesso` depois de confirmar `ativo=true`/`ativado=true`; confirmado em `DispositivoAcessoIntegrationTest` (token emitido antes da revogação passa a receber `401`, e `ultimoAcesso` permanece no valor anterior à tentativa)
+- [x] Usuário admin (humano) autenticado nunca atualiza `ultimoAcesso` de nenhum dispositivo — `registrarAcesso` só é chamado no branch de autenticação de dispositivo do `JwtAuthenticationFilter`, nunca no de usuário
+- [x] Falha ao persistir `ultimoAcesso` (simulada com `save` lançando exceção) não derruba a autenticação da requisição em andamento — `DispositivoAcessoServiceTest.registrarAcesso_naoDeveLancarExcecao_quandoSaveFalha`
+- [x] `ADMIN_RESTAURANTE` continua vendo só dispositivos do próprio restaurante, cada um com `ultimoAcesso`/`statusOperacional` corretos (`DispositivoAcessoIntegrationTest.adminRestaurante_deveVerApenasDispositivosDoProprioRestaurante_comUltimoAcessoEStatus`)
+- [x] Nenhuma migration nova foi necessária — a coluna `ultimo_acesso` já existia desde a `V2__criar_entidades_base.sql` (TASK-002), só nunca tinha sido atualizada de fato após a ativação
+
+**Bug real encontrado e corrigido nesta task**: `DispositivoService.ativarComCodigo`/`revogar` usavam `LocalDateTime.now()` (fuso horário local da JVM) para `ultimoAcesso`/`ativadoEm`/`revogadoEm`, enquanto o restante do projeto (`PedidoExpiracaoService`, `LoginAttemptService`, `DashboardAdminService`, e o novo `DispositivoAcessoService`) usa o `Clock` injetado (`Clock.systemUTC()`). Em ambiente fora de UTC, isso fazia um dispositivo recém-ativado aparecer com `statusOperacional=ATIVO` em vez de `USADO_RECENTEMENTE` — encontrado pelo próprio `DispositivoAcessoIntegrationTest` desta task (falha reproduzida antes da correção, teste passando depois). Corrigido trocando as 3 chamadas por `LocalDateTime.now(clock)`.
+
+**Validação de UI**: `npm run build` confirmado sem erro TypeScript. Sem automação de navegador disponível neste ambiente (mesma limitação de todas as validações anteriores do projeto) — feita por revisão de código: `DispositivoCard.tsx` agora renderiza um único badge de `statusOperacional` (4 estados, cores via tokens — `--color-success`/`--color-primary`/`--color-text-muted`/`--color-error`, sem cor nova fora do Design System) em vez do badge cadastral "Ativo/Revogado" anterior; "Último acesso" mostra "Nunca acessou" quando `null`; `AdminDispositivosPage.tsx` ganhou filtros client-side por tipo e por status operacional, sobre a lista já carregada (sem novo parâmetro de API, sem paginação — lista continua pequena o suficiente para o MVP).
+
+**Fora do escopo desta task (conforme instruído)**: WebSocket, heartbeat, presença em tempo real, refresh token de dispositivo, filtro por tipo/status no backend (fica só no frontend), dashboard complexo, tela pública nova.
 
 ## 10. Consistência visual
 

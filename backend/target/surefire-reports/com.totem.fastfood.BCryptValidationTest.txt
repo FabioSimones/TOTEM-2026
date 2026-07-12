@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.totem.fastfood.BCryptValidationTest
 -------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.551 s -- in com.totem.fastfood.BCryptValidationTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.575 s -- in com.totem.fastfood.BCryptValidationTest

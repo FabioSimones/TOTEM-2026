@@ -6,12 +6,30 @@ import com.totem.fastfood.dto.dispositivo.DispositivoAutenticadoResponse;
 import com.totem.fastfood.dto.dispositivo.DispositivoResponse;
 import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.Restaurante;
+import com.totem.fastfood.enums.StatusOperacionalDispositivo;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * {@code statusOperacional} (TASK-077) é sempre derivado aqui, nunca persistido — ver
+ * {@link StatusOperacionalDispositivo} para a definição de cada valor.
+ */
 @Component
 public class DispositivoMapper {
+
+    private final Clock clock;
+    private final long onlineRecenteMinutos;
+
+    public DispositivoMapper(
+            Clock clock,
+            @Value("${app.dispositivos.online-recente-minutos}") long onlineRecenteMinutos) {
+        this.clock = clock;
+        this.onlineRecenteMinutos = onlineRecenteMinutos;
+    }
 
     public Dispositivo toEntity(CriarDispositivoRequest request, Restaurante restaurante) {
         return Dispositivo.builder()
@@ -35,8 +53,23 @@ public class DispositivoMapper {
                 dispositivo.getUltimoAcesso(),
                 dispositivo.getAtivadoEm(),
                 dispositivo.getCriadoEm(),
-                dispositivo.getAtualizadoEm()
+                dispositivo.getAtualizadoEm(),
+                resolverStatusOperacional(dispositivo)
         );
+    }
+
+    private StatusOperacionalDispositivo resolverStatusOperacional(Dispositivo dispositivo) {
+        if (!Boolean.TRUE.equals(dispositivo.getAtivo())) {
+            return StatusOperacionalDispositivo.REVOGADO;
+        }
+        if (dispositivo.getUltimoAcesso() == null) {
+            return StatusOperacionalDispositivo.NUNCA_USADO;
+        }
+        LocalDateTime limiteRecente = LocalDateTime.now(clock).minusMinutes(onlineRecenteMinutos);
+        if (dispositivo.getUltimoAcesso().isAfter(limiteRecente)) {
+            return StatusOperacionalDispositivo.USADO_RECENTEMENTE;
+        }
+        return StatusOperacionalDispositivo.ATIVO;
     }
 
     public List<DispositivoResponse> toResponseList(List<Dispositivo> dispositivos) {

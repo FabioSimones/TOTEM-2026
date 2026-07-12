@@ -20,6 +20,20 @@ const ROTULO_TIPO: Record<DispositivoAdminResponse["tipoDispositivo"], string> =
   ADMINISTRACAO: "Administração",
 };
 
+const ROTULO_STATUS_OPERACIONAL: Record<DispositivoAdminResponse["statusOperacional"], string> = {
+  USADO_RECENTEMENTE: "Usado recentemente",
+  ATIVO: "Ativo",
+  NUNCA_USADO: "Nunca usado",
+  REVOGADO: "Revogado",
+};
+
+const MODIFICADOR_STATUS_OPERACIONAL: Record<DispositivoAdminResponse["statusOperacional"], string> = {
+  USADO_RECENTEMENTE: "dispositivo-card__status--usado-recentemente",
+  ATIVO: "dispositivo-card__status--ativo",
+  NUNCA_USADO: "dispositivo-card__status--nunca-usado",
+  REVOGADO: "dispositivo-card__status--revogado",
+};
+
 export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRevogar, onReativar }: DispositivoCardProps) {
   const [copiado, setCopiado] = useState(false);
   const [erroCopia, setErroCopia] = useState<string | null>(null);
@@ -56,13 +70,8 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
     <article className="pedido-pendente-card">
       <div className="pedido-pendente-card__cabecalho">
         <h3 className="pedido-pendente-card__numero">{dispositivo.nome}</h3>
-        <span
-          className={
-            "dispositivo-card__status" +
-            (dispositivo.ativo ? " dispositivo-card__status--ativo" : " dispositivo-card__status--revogado")
-          }
-        >
-          {dispositivo.ativo ? "Ativo" : "Revogado"}
+        <span className={"dispositivo-card__status " + MODIFICADOR_STATUS_OPERACIONAL[dispositivo.statusOperacional]}>
+          {ROTULO_STATUS_OPERACIONAL[dispositivo.statusOperacional]}
         </span>
       </div>
 
@@ -89,12 +98,10 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
             <dd>{formatDateTimeBRL(dispositivo.ativadoEm)}</dd>
           </div>
         )}
-        {dispositivo.ultimoAcesso && (
-          <div>
-            <dt>Último acesso</dt>
-            <dd>{formatDateTimeBRL(dispositivo.ultimoAcesso)}</dd>
-          </div>
-        )}
+        <div>
+          <dt>Último acesso</dt>
+          <dd>{dispositivo.ultimoAcesso ? formatDateTimeBRL(dispositivo.ultimoAcesso) : "Nunca acessou"}</dd>
+        </div>
         <div>
           <dt>Criado em</dt>
           <dd>{formatDateTimeBRL(dispositivo.criadoEm)}</dd>

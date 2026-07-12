@@ -1,8 +1,10 @@
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\BCryptValidationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\GerarSenhaUtilTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\DashboardAdminIntegrationTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\DispositivoAcessoIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\FluxoOperacionalMvpIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\PedidoAdminIntegrationTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\mapper\DispositivoMapperTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\payment\FakePaymentProviderTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AdminScopeServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthLoginRateLimitTest.java
@@ -13,6 +15,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\CaixaPedidoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\CategoriaServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\CozinhaPedidoServiceTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\DispositivoAcessoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\DispositivoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\PedidoExpiracaoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\ProdutoServiceTest.java

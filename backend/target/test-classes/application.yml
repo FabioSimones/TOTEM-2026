@@ -56,6 +56,8 @@ app:
       minutos: 30
       job-enabled: false
       job-fixed-delay-ms: 60000
+  dispositivos:
+    online-recente-minutos: 5
 
 logging:
   level:

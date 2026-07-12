@@ -65,6 +65,10 @@ app:
       minutos: ${PEDIDO_EXPIRACAO_MINUTOS:30}
       job-enabled: ${PEDIDO_EXPIRACAO_JOB_ENABLED:true}
       job-fixed-delay-ms: ${PEDIDO_EXPIRACAO_JOB_DELAY_MS:60000}
+  dispositivos:
+    # Status operacional derivado (TASK-077, sem WebSocket/heartbeat): dispositivo com
+    # ultimoAcesso dentro dos últimos `online-recente-minutos` aparece como USADO_RECENTEMENTE.
+    online-recente-minutos: ${DISPOSITIVO_ONLINE_RECENTE_MINUTOS:5}
 
 springdoc:
   api-docs:

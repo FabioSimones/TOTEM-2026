@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -37,6 +38,7 @@ public class DispositivoService {
     private final DispositivoMapper dispositivoMapper;
     private final JwtService jwtService;
     private final AdminScopeService adminScopeService;
+    private final Clock clock;
 
     @Transactional
     public DispositivoResponse criar(CriarDispositivoRequest request) {
@@ -88,7 +90,7 @@ public class DispositivoService {
         Dispositivo dispositivo = buscarOuLancarExcecao(id);
         adminScopeService.validarAcessoRestaurante(dispositivo.getRestaurante().getId());
         dispositivo.setAtivo(false);
-        dispositivo.setRevogadoEm(LocalDateTime.now());
+        dispositivo.setRevogadoEm(LocalDateTime.now(clock));
         log.info("Dispositivo revogado: id={}", id);
         return dispositivoMapper.toResponse(dispositivoRepository.save(dispositivo));
     }
@@ -113,8 +115,9 @@ public class DispositivoService {
         }
 
         dispositivo.setAtivado(true);
-        dispositivo.setAtivadoEm(LocalDateTime.now());
-        dispositivo.setUltimoAcesso(LocalDateTime.now());
+        LocalDateTime agora = LocalDateTime.now(clock);
+        dispositivo.setAtivadoEm(agora);
+        dispositivo.setUltimoAcesso(agora);
         dispositivo.setCodigoAtivacao(null);
         Dispositivo ativado = dispositivoRepository.save(dispositivo);
 

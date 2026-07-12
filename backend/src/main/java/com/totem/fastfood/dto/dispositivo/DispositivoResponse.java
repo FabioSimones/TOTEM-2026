@@ -1,5 +1,6 @@
 package com.totem.fastfood.dto.dispositivo;
 
+import com.totem.fastfood.enums.StatusOperacionalDispositivo;
 import com.totem.fastfood.enums.TipoDispositivo;
 
 import java.time.LocalDateTime;
@@ -16,5 +17,7 @@ public record DispositivoResponse(
         LocalDateTime ultimoAcesso,
         LocalDateTime ativadoEm,
         LocalDateTime criadoEm,
-        LocalDateTime atualizadoEm
+        LocalDateTime atualizadoEm,
+        /** Derivado (TASK-077), nunca persistido — ver {@link StatusOperacionalDispositivo}. */
+        StatusOperacionalDispositivo statusOperacional
 ) {}

@@ -5,6 +5,7 @@ import com.totem.fastfood.dto.dispositivo.CriarDispositivoRequest;
 import com.totem.fastfood.dto.dispositivo.DispositivoResponse;
 import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.Restaurante;
+import com.totem.fastfood.enums.StatusOperacionalDispositivo;
 import com.totem.fastfood.enums.TipoDispositivo;
 import com.totem.fastfood.mapper.DispositivoMapper;
 import com.totem.fastfood.repository.DispositivoRepository;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -58,7 +60,8 @@ class DispositivoServiceTest {
     @BeforeEach
     void setUp() {
         dispositivoService = new DispositivoService(
-                dispositivoRepository, restauranteRepository, dispositivoMapper, jwtService, adminScopeService);
+                dispositivoRepository, restauranteRepository, dispositivoMapper, jwtService, adminScopeService,
+                Clock.systemUTC());
     }
 
     private static Restaurante restauranteComId(long id) {
@@ -74,7 +77,7 @@ class DispositivoServiceTest {
         when(dispositivoRepository.existsByCodigoIdentificacaoAndIdNot("TOTEM_02", 1L)).thenReturn(false);
         when(dispositivoRepository.save(any(Dispositivo.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(dispositivoMapper.toResponse(any(Dispositivo.class))).thenReturn(
-                new DispositivoResponse(1L, 1L, "Totem 02", "TOTEM_02", TipoDispositivo.CAIXA, true, false, null, null, null, null, null));
+                new DispositivoResponse(1L, 1L, "Totem 02", "TOTEM_02", TipoDispositivo.CAIXA, true, false, null, null, null, null, null, StatusOperacionalDispositivo.NUNCA_USADO));
 
         DispositivoResponse response = dispositivoService.atualizar(1L, request);
 
@@ -189,7 +192,7 @@ class DispositivoServiceTest {
                 Dispositivo.builder().restaurante(restaurante).nome("Totem 01").codigoIdentificacao("TOTEM_01").tipoDispositivo(TipoDispositivo.TOTEM).build());
         when(dispositivoRepository.save(any(Dispositivo.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(dispositivoMapper.toResponse(any(Dispositivo.class))).thenReturn(
-                new DispositivoResponse(1L, 2L, "Totem 01", "TOTEM_01", TipoDispositivo.TOTEM, true, false, null, null, null, null, null));
+                new DispositivoResponse(1L, 2L, "Totem 01", "TOTEM_01", TipoDispositivo.TOTEM, true, false, null, null, null, null, null, StatusOperacionalDispositivo.NUNCA_USADO));
 
         DispositivoResponse response = dispositivoService.criar(request);
 

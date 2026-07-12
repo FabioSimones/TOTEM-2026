@@ -92,6 +92,8 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Escopo por restauran
 | PATCH | `/api/admin/dispositivos/{id}/revogar` | Revogar dispositivo |
 | PATCH | `/api/admin/dispositivos/{id}/ativar` | Reativar dispositivo |
 
+**Gestão operacional (TASK-077)**: a resposta de `GET`/`POST`/`PUT`/`PATCH` (`DispositivoResponse`) ganhou `statusOperacional` (`USADO_RECENTEMENTE`, `ATIVO`, `NUNCA_USADO`, `REVOGADO`), derivado no backend a partir de `ativo`/`ultimoAcesso` — nunca persistido. `ultimoAcesso` (já existente desde o início do projeto) passa a ser atualizado de verdade a cada requisição autenticada de dispositivo (throttle de 1 minuto). Não é presença em tempo real — sem WebSocket/heartbeat. Ver `docs/09-contratos-api.md` seção "Admin — Dispositivos" para o contrato completo e as limitações.
+
 ## Administração de usuários
 
 Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senha na TASK-049). **Não recebeu escopo por restaurante na TASK-058** — continua exclusivo de `SUPER_ADMIN`, decisão deliberada (gestão de usuários, inclusive outros admins, é mais sensível que cardápio/dispositivos).

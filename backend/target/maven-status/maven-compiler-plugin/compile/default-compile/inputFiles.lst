@@ -91,6 +91,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\AcaoCaixa.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\FormaPagamento.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\PerfilUsuario.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\StatusOperacionalDispositivo.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\StatusPagamento.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\StatusPedido.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\TipoConsumo.java
@@ -141,6 +142,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CategoriaService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CozinhaPedidoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DashboardAdminService.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoAcessoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PagamentoTotemService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoAdminService.java

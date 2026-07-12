@@ -16,9 +16,29 @@ import {
 import { listarRestaurantes } from "../../services/adminRestauranteService";
 import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { AtualizarDispositivoRequest, CriarDispositivoRequest, DispositivoAdminResponse } from "../../types/dispositivo";
+import type { TipoDispositivo } from "../../types/auth";
+import type {
+  AtualizarDispositivoRequest,
+  CriarDispositivoRequest,
+  DispositivoAdminResponse,
+  StatusOperacionalDispositivo,
+} from "../../types/dispositivo";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
+
+const OPCOES_FILTRO_TIPO: { valor: TipoDispositivo; rotulo: string }[] = [
+  { valor: "TOTEM", rotulo: "Totem" },
+  { valor: "CAIXA", rotulo: "Caixa" },
+  { valor: "COZINHA", rotulo: "Cozinha" },
+  { valor: "ADMINISTRACAO", rotulo: "Administração" },
+];
+
+const OPCOES_FILTRO_STATUS: { valor: StatusOperacionalDispositivo; rotulo: string }[] = [
+  { valor: "USADO_RECENTEMENTE", rotulo: "Usado recentemente" },
+  { valor: "ATIVO", rotulo: "Ativo" },
+  { valor: "NUNCA_USADO", rotulo: "Nunca usado" },
+  { valor: "REVOGADO", rotulo: "Revogado" },
+];
 
 export function AdminDispositivosPage() {
   const navigate = useNavigate();
@@ -30,6 +50,8 @@ export function AdminDispositivosPage() {
   const [erroRestaurantes, setErroRestaurantes] = useState<string | null>(null);
 
   const [dispositivos, setDispositivos] = useState<DispositivoAdminResponse[]>([]);
+  const [filtroTipo, setFiltroTipo] = useState<TipoDispositivo | null>(null);
+  const [filtroStatusOperacional, setFiltroStatusOperacional] = useState<StatusOperacionalDispositivo | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
@@ -248,6 +270,12 @@ export function AdminDispositivosPage() {
     setDispositivoEmEdicao(null);
   }
 
+  const dispositivosFiltrados = dispositivos.filter(
+    (dispositivo) =>
+      (filtroTipo === null || dispositivo.tipoDispositivo === filtroTipo) &&
+      (filtroStatusOperacional === null || dispositivo.statusOperacional === filtroStatusOperacional),
+  );
+
   return (
     <AppLayout
       title="Dispositivos"
@@ -313,13 +341,78 @@ export function AdminDispositivosPage() {
 
           {loading && <p className="totem-estado">Carregando dispositivos...</p>}
 
+          {!loading && !erro && dispositivos.length > 0 && (
+            <>
+              <div className="dispositivo-form__tipo admin-filtro-restaurante">
+                <span className="dispositivo-form__tipo-rotulo">Filtrar por tipo</span>
+                <div className="dispositivo-form__tipo-opcoes">
+                  <button
+                    type="button"
+                    className={"dispositivo-form__tipo-botao" + (filtroTipo === null ? " dispositivo-form__tipo-botao--ativo" : "")}
+                    aria-pressed={filtroTipo === null}
+                    onClick={() => setFiltroTipo(null)}
+                  >
+                    Todos
+                  </button>
+                  {OPCOES_FILTRO_TIPO.map((opcao) => (
+                    <button
+                      key={opcao.valor}
+                      type="button"
+                      className={
+                        "dispositivo-form__tipo-botao" + (filtroTipo === opcao.valor ? " dispositivo-form__tipo-botao--ativo" : "")
+                      }
+                      aria-pressed={filtroTipo === opcao.valor}
+                      onClick={() => setFiltroTipo(opcao.valor)}
+                    >
+                      {opcao.rotulo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dispositivo-form__tipo admin-filtro-restaurante">
+                <span className="dispositivo-form__tipo-rotulo">Filtrar por status</span>
+                <div className="dispositivo-form__tipo-opcoes">
+                  <button
+                    type="button"
+                    className={
+                      "dispositivo-form__tipo-botao" + (filtroStatusOperacional === null ? " dispositivo-form__tipo-botao--ativo" : "")
+                    }
+                    aria-pressed={filtroStatusOperacional === null}
+                    onClick={() => setFiltroStatusOperacional(null)}
+                  >
+                    Todos
+                  </button>
+                  {OPCOES_FILTRO_STATUS.map((opcao) => (
+                    <button
+                      key={opcao.valor}
+                      type="button"
+                      className={
+                        "dispositivo-form__tipo-botao" +
+                        (filtroStatusOperacional === opcao.valor ? " dispositivo-form__tipo-botao--ativo" : "")
+                      }
+                      aria-pressed={filtroStatusOperacional === opcao.valor}
+                      onClick={() => setFiltroStatusOperacional(opcao.valor)}
+                    >
+                      {opcao.rotulo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           {!loading && !erro && dispositivos.length === 0 && (
             <p className="totem-estado">Nenhum dispositivo cadastrado.</p>
           )}
 
-          {!loading && !erro && dispositivos.length > 0 && (
+          {!loading && !erro && dispositivos.length > 0 && dispositivosFiltrados.length === 0 && (
+            <p className="totem-estado">Nenhum dispositivo encontrado para os filtros selecionados.</p>
+          )}
+
+          {!loading && !erro && dispositivosFiltrados.length > 0 && (
             <div className="caixa-lista">
-              {dispositivos.map((dispositivo) => (
+              {dispositivosFiltrados.map((dispositivo) => (
                 <DispositivoCard
                   key={dispositivo.id}
                   dispositivo={dispositivo}

@@ -2,6 +2,7 @@ package com.totem.fastfood.security;
 
 import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.repository.DispositivoRepository;
+import com.totem.fastfood.service.DispositivoAcessoService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
     private final DispositivoRepository dispositivoRepository;
+    private final DispositivoAcessoService dispositivoAcessoService;
 
     @Override
     protected void doFilterInternal(
@@ -94,6 +96,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (!autorizado) {
             return null;
         }
+
+        dispositivoAcessoService.registrarAcesso(dispositivo);
 
         List<SimpleGrantedAuthority> authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_DEVICE_" + dispositivo.getTipoDispositivo().name()));

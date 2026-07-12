@@ -377,6 +377,60 @@ Response (`200 OK`) — mesmo formato de `DispositivoResponse` usado em `POST`/`
 }
 ```
 
+## Admin — Dispositivos (gestão operacional, TASK-077)
+
+`ultimoAcesso` já existia na entidade `Dispositivo` desde a TASK-002/V2 (coluna `ultimo_acesso`), mas nunca era atualizado após a ativação — só refletia o momento em que o dispositivo trocou o código de ativação pelo token. A TASK-077 passou a atualizá-lo de verdade a cada requisição autenticada de dispositivo, e adicionou um status operacional derivado para o Admin ter uma visão rápida de uso — **não é presença em tempo real** (sem WebSocket, sem heartbeat): reflete apenas a última requisição autenticada já processada pelo backend.
+
+### Campo novo em `DispositivoResponse`
+
+`GET`/`POST`/`PUT`/`PATCH /api/admin/dispositivos*` — a resposta ganhou `statusOperacional`, sempre calculado, nunca persistido:
+
+```json
+{
+  "id": 3,
+  "restauranteId": 1,
+  "nome": "Totem 01",
+  "codigoIdentificacao": "TOTEM_01",
+  "tipoDispositivo": "TOTEM",
+  "ativo": true,
+  "ativado": true,
+  "codigoAtivacao": null,
+  "ultimoAcesso": "2026-07-12T18:40:00",
+  "ativadoEm": "2026-07-12T18:00:00",
+  "criadoEm": "2026-07-12T17:55:00",
+  "atualizadoEm": "2026-07-12T18:40:00",
+  "statusOperacional": "USADO_RECENTEMENTE"
+}
+```
+
+**Regra de derivação** (`DispositivoMapper`, ordem de avaliação):
+
+1. `ativo=false` → **`REVOGADO`** (revogado administrativamente — independe de `ultimoAcesso`).
+2. `ultimoAcesso=null` → **`NUNCA_USADO`** (habilitado, mas nunca autenticou uma requisição).
+3. `ultimoAcesso` dentro dos últimos `app.dispositivos.online-recente-minutos` (padrão **5 minutos**, `${DISPOSITIVO_ONLINE_RECENTE_MINUTOS:5}`) → **`USADO_RECENTEMENTE`**.
+4. Caso contrário → **`ATIVO`** (habilitado, já usado alguma vez, mas não recentemente).
+
+### Atualização de `ultimoAcesso`
+
+- Feita em `DispositivoAcessoService.registrarAcesso`, chamado só de `JwtAuthenticationFilter.autenticarDispositivo` — **nunca** no caminho de autenticação de usuário humano (admin não atualiza `ultimoAcesso` de nenhum dispositivo).
+- Só grava quando o dispositivo já foi considerado autorizado (`ativo=true` e `ativado=true`) — um token de dispositivo revogado nunca registra novo acesso, mesmo que a tentativa de autenticação chegue ao filtro.
+- **Throttle de 1 minuto**: só persiste se `ultimoAcesso` for `null` ou tiver mais de 1 minuto — evita um `UPDATE` a cada requisição autenticada (ex.: polling do Totem a cada 15s). Decisão de MVP: dentro dessa janela de até 1 minuto, o horário exibido pode ficar levemente desatualizado.
+- Nunca lança exceção — uma falha ao gravar (ex.: erro pontual de conexão) é logada e ignorada, nunca derruba a autenticação da requisição em andamento.
+
+### Correção de bug encontrada nesta task
+
+`DispositivoService.ativarComCodigo`/`revogar` usavam `LocalDateTime.now()` (fuso horário local do sistema/JVM) para `ultimoAcesso`/`ativadoEm`/`revogadoEm`, enquanto o restante do projeto (`PedidoExpiracaoService`, `LoginAttemptService`, `DashboardAdminService`, e o novo `DispositivoAcessoService`) usa o `Clock` injetado (`Clock.systemUTC()`, bean único em `ClockConfig`). Em qualquer ambiente cuja JVM não rode em UTC, isso fazia `ultimoAcesso` da ativação divergir do relógio usado para calcular `statusOperacional`, produzindo um status incorreto (ex.: dispositivo recém-ativado aparecendo como `ATIVO` em vez de `USADO_RECENTEMENTE`) — encontrado pelo teste de integração desta própria task. Corrigido trocando as 3 chamadas por `LocalDateTime.now(clock)`.
+
+### Configuração (`application.yml`)
+
+```yaml
+app:
+  dispositivos:
+    online-recente-minutos: ${DISPOSITIVO_ONLINE_RECENTE_MINUTOS:5}
+```
+
+**Fora do escopo desta task**: WebSocket, heartbeat, presença em tempo real, refresh token para dispositivo, filtro por tipo/status no backend (o filtro em `/admin/dispositivos` é só no frontend, sobre a lista já carregada — não há paginação nem novo query param nesta listagem).
+
 ## Admin — Usuários
 
 Implementado na TASK-048. Todos os endpoints exigem perfil `SUPER_ADMIN`.

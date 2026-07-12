@@ -1,5 +1,8 @@
 import type { TipoDispositivo } from "./auth";
 
+/** Derivado no backend (TASK-077), nunca persistido — não é presença em tempo real. */
+export type StatusOperacionalDispositivo = "USADO_RECENTEMENTE" | "ATIVO" | "NUNCA_USADO" | "REVOGADO";
+
 /** POST /api/admin/dispositivos — o frontend nunca envia ativo/ativado/codigoAtivacao. */
 export interface CriarDispositivoRequest {
   restauranteId: number;
@@ -29,4 +32,5 @@ export interface DispositivoAdminResponse {
   ativadoEm: string | null;
   criadoEm: string;
   atualizadoEm: string;
+  statusOperacional: StatusOperacionalDispositivo;
 }
