@@ -6,6 +6,8 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 **TASK-081 (Fase 13 — Consolidação de testes e qualidade)**: auditoria completa da coerência entre este checklist, `docs/08-endpoints.md`/`09-contratos-api.md` e o código real — nenhuma divergência de endpoint encontrada. Cobertura de teste ausente encontrada e corrigida em `RestauranteService` (nunca tinha teste dedicado). Ver `docs/status-mvp.md` para o relatório consolidado do estado do MVP e a lista completa de pendências (críticas/importantes/melhorias).
 
+**TASK-082**: fechou a pendência importante de `/api/admin/uploads/**` sem teste HTTP de autorização, registrada na TASK-081. `integration/UploadAdminIntegrationTest` (9 testes) cobre via MockMvc real: upload sem token (`401`), `SUPER_ADMIN`/`ADMIN_RESTAURANTE` com PNG válido (`201`, arquivo gravado em disco), `OPERADOR_CAIXA`/`OPERADOR_COZINHA` (`403`), magic bytes inválidos (`400`), acesso público ao arquivo salvo em `/uploads/**` sem token (`200`), e a autorização de `limpar-orfas` (`SUPER_ADMIN` apenas). Nenhum bug de produção encontrado — a cadeia de autorização/multipart/acesso público já funcionava exatamente como documentado.
+
 ## 1. Preparação
 
 - [ ] Backend rodando: `cd backend && mvn spring-boot:run`

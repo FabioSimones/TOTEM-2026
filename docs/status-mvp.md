@@ -19,7 +19,7 @@ Sistema de autoatendimento para fast food: Totem (cliente monta pedido e paga), 
 | Produtos | `ProdutoAdminController` | `ProdutoService` | ✅ | ✅ (`ProdutoServiceTest`) | ✅ |
 | Usuários | `UsuarioAdminController` | `UsuarioService` | ✅ | ✅ (`UsuarioServiceTest`) | ✅ |
 | Dispositivos (cadastro/status operacional) | `DispositivoAdminController` | `DispositivoService`, `DispositivoAcessoService` | ✅ | ✅ (`DispositivoServiceTest`, `DispositivoAcessoServiceTest`, `DispositivoMapperTest`, `DispositivoAcessoIntegrationTest`) | ✅ |
-| Upload de imagem | `UploadAdminController` | `UploadImagemService` | ✅ | ⚠️ só unitário do service — **sem teste HTTP de autorização** (`@PreAuthorize`), ver Pendências | ✅ |
+| Upload de imagem | `UploadAdminController` | `UploadImagemService` | ✅ | ✅ (`UploadImagemServiceTest` + `UploadAdminIntegrationTest`, **HTTP/autorização adicionado na TASK-082**) | ✅ |
 | Pedidos (listagem/detalhe paginado) | `PedidoAdminController` | `PedidoAdminService` | ✅ | ✅ (`PedidoAdminIntegrationTest`) | ✅ |
 | Expiração de pedidos | `PedidoExpiracaoAdminController` | `PedidoExpiracaoService` | ✅ | ✅ (`PedidoExpiracaoServiceTest`, casos em `PedidoAdminIntegrationTest`) | ✅ |
 | Dashboard | `DashboardAdminController` | `DashboardAdminService` | ✅ | ✅ (`DashboardAdminIntegrationTest`) | ✅ |
@@ -36,14 +36,21 @@ Padronização de fuso horário (UTC) implementada e validada na TASK-079 (`Tote
 - Escopo por restaurante refletido visualmente (sem duplicar a segurança real, que é 100% backend).
 - Utilitário central de data/hora (`utils/dateTime.ts`, TASK-080) — corrige a interpretação de `LocalDateTime` UTC do backend em todas as telas administrativas, Caixa e Cozinha.
 
-## Validações executadas nesta consolidação (TASK-081)
+## Validações executadas
 
+**TASK-081 (consolidação inicial)**:
 - `mvn test` completo (Maven via `~/.m2/wrapper/dists`, `mvn` não está no `PATH` deste ambiente): **224/224 testes, BUILD SUCCESS** (215 herdados + 9 novos de `RestauranteServiceTest`).
 - `npm run build`: sem erro TypeScript.
 - `npx oxlint` (via `./node_modules/.bin/oxlint`): **1 warning pré-existente**, não relacionado a esta task — `src/contexts/ThemeContext.tsx:28` (`react/only-export-components`, Fast Refresh) — não corrigido por exigir separar o hook em outro arquivo, uma mudança de arquitetura fora do escopo de "ajuste pequeno e objetivo".
 - Inventário completo de endpoints (`grep` de `@*Mapping` em todos os controllers) comparado contra `docs/08-endpoints.md` — **nenhuma divergência encontrada** (nenhum endpoint documentado ausente no código, nenhum endpoint implementado sem documentação).
 - Busca por `new Date(`/`toLocaleDateString`/`toLocaleString`/`toLocaleTimeString` no frontend — **só existe dentro de `utils/dateTime.ts`**, confirmando que a correção da TASK-080 não deixou nenhum ponto direto remanescente.
 - Busca por `TODO`/`FIXME`/`XXX` em backend e frontend — nenhuma ocorrência.
+
+**TASK-082 (fecha a pendência de uploads)**:
+- `mvn test -Dtest=UploadAdminIntegrationTest` → 9/9 testes.
+- `mvn test` completo → **233/233 testes, BUILD SUCCESS** (224 anteriores + 9 novos).
+- Confirmado que nenhum arquivo de teste vazou para `backend/target/test-uploads` ou `backend/uploads` reais — o teste isola `app.uploads.dir` num `@TempDir` próprio via `@DynamicPropertySource`.
+- Nenhum bug de produção encontrado — autorização, multipart e acesso público já se comportavam exatamente como documentado.
 
 ## Pendências
 
@@ -53,7 +60,7 @@ Nenhuma identificada nesta consolidação.
 
 ### Importantes (devem entrar nas próximas tasks)
 
-- **Sem teste HTTP de autorização para `/api/admin/uploads/**`** (encontrado na TASK-081) — `UploadImagemServiceTest` cobre a lógica de negócio, mas nenhum teste confirma que `ADMIN_RESTAURANTE` recebe `403` em `limpar-orfas` (exclusivo de `SUPER_ADMIN`) ou que o upload em si exige autenticação. Requer um teste de integração com `multipart/form-data` real.
+- ~~Sem teste HTTP de autorização para `/api/admin/uploads/**`~~ **fechada na TASK-082** — `UploadAdminIntegrationTest` (9 testes) cobre autorização, multipart real e acesso público.
 - **Clique real em UI sem automação de navegador** — pendência repetida desde a TASK-060 (todas as validações manuais de frontend desde então foram feitas via `curl` contra a API real + revisão de código, nunca clicando de fato na interface). Nenhuma automação de navegador disponível neste ambiente.
 - **Sem Testcontainers/PostgreSQL real automatizado** — `mvn test` roda inteiramente contra H2 em memória; validações contra PostgreSQL real são sempre manuais (`curl`), registradas nos checklists mas não repetíveis em CI.
 - **Sem testes frontend automatizados** — não há Jest/Vitest/Testing Library configurado; toda validação de frontend é `npm run build` (TypeScript) + `oxlint` + validação manual via API.
@@ -70,6 +77,5 @@ Nenhuma identificada nesta consolidação.
 
 ## Próximas tasks recomendadas
 
-1. Teste de integração HTTP para `/api/admin/uploads/**` (fecha a pendência importante encontrada nesta task).
-2. Validação visual manual em navegador real, se/quando houver ambiente disponível — consolidaria todas as pendências de "clique real" acumuladas desde a TASK-060.
-3. Avaliar Testcontainers para pelo menos um teste de integração contra PostgreSQL real em CI, reduzindo a dependência de validação manual para confirmar comportamento específico do Postgres (ex.: os bugs de fuso horário das TASK-078/079 só foram descobertos em validação manual, não em `mvn test`).
+1. Validação visual manual em navegador real, se/quando houver ambiente disponível — consolidaria todas as pendências de "clique real" acumuladas desde a TASK-060.
+2. Avaliar Testcontainers para pelo menos um teste de integração contra PostgreSQL real em CI, reduzindo a dependência de validação manual para confirmar comportamento específico do Postgres (ex.: os bugs de fuso horário das TASK-078/079 só foram descobertos em validação manual, não em `mvn test`).
