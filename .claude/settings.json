@@ -7,7 +7,9 @@
       "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\\\\.m2\",\"$env:USERPROFILE\\\\AppData\\\\Local\\\\Programs\",\"C:\\\\tools\",\"C:\\\\ProgramData\" -Filter \"mvn.cmd\" -Recurse -ErrorAction SilentlyContinue -Depth 4 2>$null | Select-Object -First 5 FullName)",
       "Bash(/c/Users/fsimones/.m2/wrapper/dists/apache-maven-3.9.14-bin/1cb7fhup6b5n3bed6kckbrnspv/apache-maven-3.9.14/bin/mvn.cmd -v)",
       "Bash(curl.exe -s -o /dev/null -w \"backend HTTP %{http_code}\\\\n\" \"http://localhost:8080/api/health\")",
-      "Bash(rtk grep *)"
+      "Bash(rtk grep *)",
+      "Bash(rtk read *)",
+      "Bash(rtk ls *)"
     ]
   }
 }

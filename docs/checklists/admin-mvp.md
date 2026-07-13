@@ -4,6 +4,8 @@ Criado na TASK-047 (revisão do frontend administrativo). Complementa [`checklis
 
 Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o porquê desta ordem — cada cadastro depende do anterior.
 
+**TASK-081 (Fase 13 — Consolidação de testes e qualidade)**: auditoria completa da coerência entre este checklist, `docs/08-endpoints.md`/`09-contratos-api.md` e o código real — nenhuma divergência de endpoint encontrada. Cobertura de teste ausente encontrada e corrigida em `RestauranteService` (nunca tinha teste dedicado). Ver `docs/status-mvp.md` para o relatório consolidado do estado do MVP e a lista completa de pendências (críticas/importantes/melhorias).
+
 ## 1. Preparação
 
 - [ ] Backend rodando: `cd backend && mvn spring-boot:run`

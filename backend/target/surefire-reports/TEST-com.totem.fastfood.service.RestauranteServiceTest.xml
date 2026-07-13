@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.totem.fastfood.BCryptValidationTest" time="0.574" tests="2" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.totem.fastfood.service.RestauranteServiceTest" time="0.104" tests="9" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -10,6 +10,7 @@
     <property name="user.variant" value=""/>
     <property name="java.vendor.url" value="https://adoptium.net/"/>
     <property name="user.timezone" value="America/Sao_Paulo"/>
+    <property name="org.jboss.logging.provider" value="slf4j"/>
     <property name="os.name" value="Windows 11"/>
     <property name="java.vm.specification.version" value="21"/>
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
@@ -30,6 +31,8 @@
     <property name="line.separator" value="&#10;"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
+    <property name="FILE_LOG_CHARSET" value="UTF-8"/>
+    <property name="java.awt.headless" value="true"/>
     <property name="surefire.real.class.path" value="C:\Users\fsimones\AppData\Local\Temp\surefire3374266725892078038\surefirebooter-20260712213713548_3.jar"/>
     <property name="user.script" value=""/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
@@ -45,11 +48,14 @@
     <property name="localRepository" value="C:\Users\fsimones\.m2\repository"/>
     <property name="java.vendor.url.bug" value="https://github.com/adoptium/adoptium-support/issues"/>
     <property name="java.io.tmpdir" value="C:\Users\fsimones\AppData\Local\Temp\"/>
+    <property name="com.zaxxer.hikari.pool_number" value="1"/>
     <property name="java.version" value="21.0.11"/>
     <property name="user.dir" value="C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend"/>
     <property name="os.arch" value="amd64"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+    <property name="PID" value="11364"/>
     <property name="sun.os.patch.level" value=""/>
+    <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
     <property name="native.encoding" value="Cp1252"/>
     <property name="java.library.path" value="C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\Users\fsimones\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\local\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\fsimones\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot\bin;C:\Python314\Scripts;C:\Python314;C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\Microsoft SQL Server\150\Tools\Binn;C:\Program Files\dotnet;C:\Program Files\Microsoft SQL Server\130\Tools\Binn;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn;C:\Program Files\Docker\Docker\resources\bin;C:\ProgramData\chocolatey\bin;C:\Program Files\nodejs;C:\Program Files\Microsoft SQL Server\170\Tools\Binn;C:\Program Files\Git\cmd;C:\php-7.4.6;C:\php-8.5.4;C:\ProgramData\ComposerSetup\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot\bin;C:\Python314\Scripts;C:\Python314;C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\Microsoft SQL Server\150\Tools\Binn;C:\Program Files\dotnet;C:\Program Files\Microsoft SQL Server\130\Tools\Binn;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn;C:\Program Files\Docker\Docker\resources\bin;C:\ProgramData\chocolatey\bin;C:\Program Files\nodejs;C:\Program Files\Microsoft SQL Server\170\Tools\Binn;C:\Program Files\Git\cmd;C:\php-7.4.6;C:\php-8.5.4;C:\ProgramData\ComposerSetup\bin;C:\Users\fsimones\AppData\Local\Microsoft\WindowsApps;C:\Users\fsimones\.dotnet\tools;C:\Users\fsimones\AppData\Roaming\npm;C:\Users\fsimones\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\fsimones\AppData\Roaming\Composer\vendor\bin;C:\.local\bin;C:\Users\fsimones\.local\bin;C:\Users\fsimones\.local\bin;C:\Users\fsimones\AppData\Local\Programs\Microsoft VS Code\bin;C:\Program Files\Git\usr\bin\vendor_perl;C:\Program Files\Git\usr\bin\core_perl;."/>
     <property name="java.vm.info" value="mixed mode, sharing"/>
@@ -59,6 +65,13 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="hashCorrigidoPelaV5DeveBaterComASenhaDocumentada" classname="com.totem.fastfood.BCryptValidationTest" time="0.249"/>
-  <testcase name="hashOriginalDaV4NaoBateComASenhaDocumentada" classname="com.totem.fastfood.BCryptValidationTest" time="0.215"/>
+  <testcase name="ativar_deveLancarExcecao_quandoRestauranteInexistente" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.075"/>
+  <testcase name="atualizar_deveLancarExcecao_quandoCnpjJaPertenceAOutroRestaurante" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.005"/>
+  <testcase name="desativar_deveMarcarComoInativo" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.006"/>
+  <testcase name="listar_deveRetornarTodosOsRestaurantes" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.003"/>
+  <testcase name="ativar_deveMarcarComoAtivo" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.001"/>
+  <testcase name="atualizar_deveLancarExcecao_quandoRestauranteInexistente" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.003"/>
+  <testcase name="buscarPorId_deveLancarExcecao_quandoInexistente" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.002"/>
+  <testcase name="criar_deveLancarExcecao_quandoCnpjJaCadastrado" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.004"/>
+  <testcase name="criar_devePersistir_quandoCnpjNaoDuplicado" classname="com.totem.fastfood.service.RestauranteServiceTest" time="0.002"/>
 </testsuite>
