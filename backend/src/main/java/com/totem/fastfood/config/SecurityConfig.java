@@ -97,7 +97,10 @@ public class SecurityConfig {
                 "http://localhost:5174"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // X-Operador-Token (TASK-092): header custom enviado nas ações de Caixa/Cozinha quando há
+        // operador identificado — sem estar aqui, o preflight do navegador rejeita silenciosamente
+        // qualquer requisição que o inclua (achado real na validação da TASK-093).
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Operador-Token"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

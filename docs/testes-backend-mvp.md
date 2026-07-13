@@ -566,6 +566,60 @@ Dispositivo continua sendo a autenticação principal e única exigida por `/api
 
 **Fora do escopo desta task**: PIN de operador, refresh token de operador, preenchimento de `alteradoPorUsuario` no fluxo do Totem, WebSocket.
 
+## 7-decies. TASK-093 — validação funcional da auditoria de operador (backend real)
+
+Revalidação da TASK-092 contra o backend rodando de verdade (não só a suíte automatizada), com PostgreSQL local — restaurante 1, dispositivos TOTEM/CAIXA/COZINHA novos ativados via `POST /api/auth/dispositivos/ativar`, usuários `OPERADOR_CAIXA`/`OPERADOR_COZINHA`/`ADMIN_RESTAURANTE` do mesmo restaurante e um `OPERADOR_CAIXA` de outro restaurante para o teste negativo.
+
+**Login operacional** (`POST /api/auth/operador/login`):
+- CAIXA+`OPERADOR_CAIXA`, COZINHA+`OPERADOR_COZINHA`, CAIXA+`ADMIN_RESTAURANTE`, COZINHA+`ADMIN_RESTAURANTE` (mesmo restaurante) → `200`, `operadorToken` + `operador.restauranteId` igual ao do dispositivo.
+- `SUPER_ADMIN` → `403`; `OPERADOR_CAIXA` em dispositivo COZINHA → `403`; `OPERADOR_COZINHA` em dispositivo CAIXA → `403`; operador de outro restaurante → `403`; dispositivo TOTEM → `403`; senha errada → `401`; usuário inativo → `401` (mesmo padrão do `/api/auth/login`).
+
+**Fluxo ponta a ponta sem operador** (pedido `#12`): Totem cria e paga em dinheiro → Caixa confirma pagamento/envia à cozinha → Cozinha marca `EM_PREPARO`/`PRONTO` → Caixa marca `RETIRADO`, nenhuma chamada com `X-Operador-Token`. `GET /api/admin/pedidos/12` confirmou as 7 entradas de histórico com `alteradoPorDispositivoNome` correto (Totem/Caixa/Cozinha) e `alteradoPorUsuarioNome: null` em todas — comportamento idêntico ao anterior à TASK-092.
+
+**Fluxo ponta a ponta com operador** (pedido `#13`): mesmo roteiro, mas Caixa/Cozinha identificados (`OPERADOR_CAIXA`/`OPERADOR_COZINHA`) e todas as ações com `X-Operador-Token`. Histórico confirmado: entradas do Totem com `alteradoPorUsuarioNome: null`; entradas do Caixa (confirmar pagamento, enviar à cozinha, retirar) com `alteradoPorUsuarioNome: "Operador Caixa T093"`; entradas da Cozinha (`EM_PREPARO`, `PRONTO`) com `alteradoPorUsuarioNome: "Operador Cozinha T093"` — em todos os casos `alteradoPorDispositivoNome` também presente. `PedidoAdminMapper`/`HistoricoPedidoAdminResponse` (já existentes, nunca alterados) exibem o nome corretamente, sem `undefined`.
+
+**Troca de operador** (pedido `#14`): identificado operador A (`OPERADOR_CAIXA`) para uma ação, depois operador B (`ADMIN_RESTAURANTE`) para a próxima, mesmo dispositivo CAIXA — histórico registrou A na primeira e B na segunda corretamente, confirmando que múltiplos operadores podem se revezar no mesmo terminal dentro da janela de validade dos tokens (sem revogação — cada `operadorToken` expira sozinho).
+
+**Token de operador inválido numa ação de escrita** → `401` ("Token de operador inválido ou expirado"), e uma chamada seguinte **sem** o header no mesmo dispositivo retornou `200` normalmente — confirma que o token de dispositivo não é afetado. Token de operador de tipo incompatível com o dispositivo atual (emitido na Cozinha, reenviado numa ação do Caixa) → `403`, mesmo padrão de `OperadorContextServiceTest`.
+
+**CORS**: preflight de `POST /api/auth/operador/login` e das ações de Caixa com `Access-Control-Request-Headers: Authorization, X-Operador-Token` → `200` com `Access-Control-Allow-Headers` incluindo `X-Operador-Token` (após a correção abaixo).
+
+**Bug real encontrado e corrigido**: `SecurityConfig.corsConfigurationSource()` — `allowedHeaders` continha só `Authorization`/`Content-Type`, sem `X-Operador-Token`. Reproduzido via `curl` simulando o preflight do navegador: `Access-Control-Allow-Headers: Authorization` (sem o header novo) antes da correção — num navegador real, isso bloquearia toda ação de Caixa/Cozinha com operador identificado (o preflight nega o header que a requisição real tentaria enviar). Corrigido adicionando `"X-Operador-Token"` à lista em `SecurityConfig.java`. Backend precisou ser reiniciado para a mudança surtir efeito (arquivo `application.yml`/beans de segurança só são lidos na inicialização) — `mvn test` → **320/320, BUILD SUCCESS** depois da correção, sem regressão.
+
+**Nenhum outro bug encontrado.** `npm run build`/`npx oxlint` sem erro (nenhuma alteração de frontend nesta task).
+
+## 7-undecies. TASK-094 — validação operacional completa (cobertura estendida, backend real)
+
+Continuação da TASK-093 contra o mesmo backend real + PostgreSQL local, restaurante 1 (mais um segundo restaurante e um operador dele, já preparados, para o teste de escopo cruzado), cobrindo cenários que a TASK-093 ainda não tinha exercitado.
+
+**`ADMIN_RESTAURANTE` como operador**: login `200` tanto no dispositivo CAIXA quanto no COZINHA; ação executada com sucesso em ambos; histórico do pedido (`#16`) confirmou a cadeia completa: Totem sem operador → Caixa com `OPERADOR_CAIXA` → Cozinha com `OPERADOR_COZINHA` → última ação (retirar) corretamente atribuída ao `ADMIN_RESTAURANTE` que assumiu o papel de operador no Caixa.
+
+**Matriz completa de perfis incompatíveis** (todos `403`, login operacional não efetivado): `OPERADOR_CAIXA` tentando logar operacionalmente na Cozinha; `OPERADOR_COZINHA` tentando logar no Caixa; `SUPER_ADMIN` em qualquer dispositivo; operador de **outro restaurante** (`restauranteId` diferente do dispositivo); dispositivo TOTEM (bloqueado antes mesmo da lógica de perfil, via `@PreAuthorize`).
+
+**Credenciais inválidas**: senha errada e usuário inativo retornam ambos `401` com a mensagem genérica idêntica ("Email ou senha inválidos") — não vaza se o e-mail existe ou está desativado, mesmo padrão de segurança do login administrativo. Sessão do dispositivo confirmada válida (`200`) em chamada subsequente após ambas as falhas.
+
+**Pedido sem operador, revalidado** (pedido `#12`, reaproveitado da TASK-093 — mesmo código, sem mudança): as 7 entradas de histórico confirmadas novamente com `alteradoPorUsuarioNome: null` em todas.
+
+**Troca de operador no mesmo dispositivo** (pedido `#17`, Caixa): operador A (`OPERADOR_CAIXA` T094) confirma pagamento, depois operador B (`OPERADOR_CAIXA` T093, distinto) envia à cozinha na ação seguinte — histórico atribuiu corretamente cada ação ao operador que estava identificado no momento, ambas sob o mesmo dispositivo `Caixa TASK094`, sem mistura de tokens.
+
+**Token de operador inválido numa ação real** (assinatura corrompida): `401` "Token de operador inválido ou expirado"; ação **não** persistida (pedido permaneceu no status anterior); dispositivo confirmado ainda autenticado (listagem retornou `200` na sequência). Revisão de código (`CaixaHomePage.tsx`/`CozinhaHomePage.tsx`, função `tratarErroAcao`) confirma que o frontend, ao receber esse `401` com um `operadorToken` presente no storage, chama **apenas** `clearOperadorSession()`, preservando a sessão do dispositivo — comportamento já existente desde a TASK-092, não alterado.
+
+**Token de operador de perfil incompatível usado cross-context**: operador logado no dispositivo COZINHA usando o próprio token numa ação do CAIXA → `403` (validado por `OperadorEscopoValidator`, que roda antes de qualquer regra de negócio do pedido); pedido não alterado; dispositivo Caixa permanece autenticado.
+
+**Token de operador expirado**: não reproduzido esperando os 30 minutos reais nem alterando `jwt.operador-expiration-minutes` (evitaria alteração de configuração fora do escopo da validação) — confirmado por revisão de código que `JwtService.isTokenValido()` envolve `parseClaims()` num `catch (Exception ex)` genérico, o mesmo caminho que já trata assinatura inválida (testado empiricamente acima) tratando `ExpiredJwtException` de forma idêntica, com a mesma resposta `401`.
+
+**Token de dispositivo genuinamente inválido com operador identificado**: chamando `POST /api/auth/refresh` com um refresh token inexistente/inválido confirma `401` ("Refresh token inválido ou expirado") — o gatilho que, dentro de `api.ts` (`tentarRenovarSessao()` falhando), aciona `clearSession()` completo (dispositivo + usuário + operador) diretamente no cliente HTTP central, **antes** de qualquer tela decidir com base em `getOperadorToken()`. Diferente do caso anterior (só o token de operador inválido), onde o dispositivo permanece intacto — os dois caminhos coexistem corretamente no mesmo código (`api.ts` + `tratarErroAcao`), sem alteração nesta task.
+
+**Separação de storage**: revisão completa de `tokenStorage.ts` confirma que `totem.operadorToken`/`totem.operador` são chaves de `localStorage` totalmente separadas de `totem.accessToken`/`totem.refreshToken`/`totem.dispositivo`/`totem.usuario`; `clearOperadorSession()` só remove as duas primeiras, `clearSession()` remove todas.
+
+**Nenhum bug encontrado. Nenhuma alteração de código nesta task** — `git status`/`git diff` confirmaram que o único arquivo de código com alteração pendente no repositório continua sendo `SecurityConfig.java` (correção da TASK-093, não tocada novamente). `mvn test`/`npm run build` não foram reexecutados por não haver nenhuma alteração de código a validar (último resultado conhecido, TASK-093: **320/320, BUILD SUCCESS**; `npm run build`/`npx oxlint` sem erro).
+
+**Limitação de ambiente, reconfirmada**: sem `chromium-cli`/Playwright/Cypress/computer-use disponíveis nesta sessão — toda a validação acima é equivalente funcional via `curl` reproduzindo exatamente as chamadas que o frontend faria (mesmos headers, mesma ordem), não clique real no navegador. Escolha confirmada explicitamente pelo solicitante diante da limitação.
+
+## 7-duodecies. TASK-094.1 — tentativa de homologação visual (bloqueada por ambiente)
+
+Nova checagem de disponibilidade de `chromium-cli`/Playwright/Cypress neste ambiente: continuam ausentes; instalar ferramenta nova estava fora do escopo desta tentativa. Nenhuma alteração de código no repositório desde o fechamento da TASK-094 (`git status` confirmado). Suíte de regressão reexecutada por precaução: `mvn test` → **320/320, BUILD SUCCESS**; `npm run build` sem erro; `npx oxlint` sem erro (mesmo warning cosmético pré-existente em `ThemeContext.tsx` — `npm run lint` ficou com saída inesperada por interceptação de um hook local do ambiente, não relacionada ao projeto; `npx oxlint` direto confirma o resultado real). **Nenhum bug encontrado — pendência de clique real permanece aberta, dependente de testador humano ou ferramenta de automação de navegador.**
+
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
 
 **Limitação conhecida, deliberada**: H2 em memória (`MODE=PostgreSQL`, schema via `ddl-auto: create-drop`) valida a integração HTTP + JPA + regras de transição de status num único processo, mas **não substitui** um teste contra PostgreSQL real — não exercita comportamento específico do driver/dialeto Postgres (ex.: `SERIAL`/`BIGSERIAL`, locks de linha reais como os usados em `RefreshTokenService.revogarSeAtivo`, tipos específicos). Migrar para Testcontainers (subir um PostgreSQL real em container durante o teste) continua como pendência técnica caso se queira essa cobertura mais fiel — deliberadamente fora do escopo da TASK-067.

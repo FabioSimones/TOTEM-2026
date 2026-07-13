@@ -101,18 +101,34 @@ Validação da TASK-088 (refresh token para dispositivos + regeneração de cód
 
 Implementa o Modelo C decidido na TASK-091. Dispositivo continua sendo a autenticação principal e única exigida — o operador é uma camada adicional e opcional de auditoria.
 
-- [ ] Criar `OPERADOR_CAIXA` e `OPERADOR_COZINHA` pelo `ADMIN_RESTAURANTE` (TASK-090) do restaurante do dispositivo
-- [ ] Em `/caixa`, sem operador identificado: aviso "Operador não identificado. As ações serão registradas apenas pelo dispositivo." e formulário de identificação
-- [ ] Identificar operador com email/senha corretos → `POST /api/auth/operador/login` retorna `200`, painel passa a mostrar "Operador: {nome}" e botão "Trocar operador"
-- [ ] Confirmar pagamento/enviar à cozinha com operador identificado → ação funciona normalmente; no Admin — Pedidos, o detalhe do pedido mostra o histórico com o nome do operador (`alteradoPorUsuarioNome`) além do dispositivo
-- [ ] Repetir identificação e ação em `/cozinha` (operador `OPERADOR_COZINHA`, iniciar preparo/marcar pronto) — histórico também registra o operador
-- [ ] "Trocar operador" limpa a identificação sem afetar a sessão do dispositivo (a tela continua funcionando, só com o aviso de operador não identificado)
-- [ ] Tentar identificar um operador de **outro restaurante** → `403` "Usuário não pertence a este restaurante", formulário permanece
-- [ ] Tentar identificar `OPERADOR_CAIXA` em `/cozinha` (ou `OPERADOR_COZINHA` em `/caixa`) → `403` "Este usuário não pode operar este terminal."
-- [ ] Usar o Caixa/Cozinha **sem** identificar operador → fluxo completo continua funcionando normalmente, histórico só com dispositivo (`alteradoPorUsuario=null`)
+- [x] Criar `OPERADOR_CAIXA` e `OPERADOR_COZINHA` pelo `ADMIN_RESTAURANTE` (TASK-090) do restaurante do dispositivo — validado na TASK-093
+- [x] Em `/caixa`, sem operador identificado: aviso "Operador não identificado. As ações serão registradas apenas pelo dispositivo." e formulário de identificação — confirmado por revisão de código (`OperadorPainel.tsx`) na TASK-093
+- [x] Identificar operador com email/senha corretos → `POST /api/auth/operador/login` retorna `200`, painel passa a mostrar "Operador: {nome}" e botão "Trocar operador" — validado via `curl` na TASK-093 para `OPERADOR_CAIXA`+CAIXA, `OPERADOR_COZINHA`+COZINHA, `ADMIN_RESTAURANTE`+CAIXA, `ADMIN_RESTAURANTE`+COZINHA (todos `200`, `restauranteId` correto)
+- [x] Confirmar pagamento/enviar à cozinha com operador identificado → ação funciona normalmente; no Admin — Pedidos, o detalhe do pedido mostra o histórico com o nome do operador (`alteradoPorUsuarioNome`) além do dispositivo — validado via `curl` na TASK-093, pedido de ponta a ponta (Totem→Caixa→Cozinha→Caixa) com `GET /api/admin/pedidos/{id}`
+- [x] Repetir identificação e ação em `/cozinha` (operador `OPERADOR_COZINHA`, iniciar preparo/marcar pronto) — histórico também registra o operador — validado na TASK-093
+- [x] "Trocar operador" limpa a identificação sem afetar a sessão do dispositivo (a tela continua funcionando, só com o aviso de operador não identificado) — validado na TASK-093 (duas ações no mesmo pedido, cada uma com um operador diferente identificado sequencialmente no mesmo dispositivo CAIXA — histórico registrou operador A na primeira e operador B na segunda) e por revisão de código de `OperadorPainel.tsx`/`tokenStorage.ts` (chaves de operador nunca tocam nas de dispositivo)
+- [x] Tentar identificar um operador de **outro restaurante** → `403` "Usuário não pertence a este restaurante", formulário permanece — validado na TASK-093
+- [x] Tentar identificar `OPERADOR_CAIXA` em `/cozinha` (ou `OPERADOR_COZINHA` em `/caixa`) → `403` "Este usuário não pode operar este terminal." — validado na TASK-093, nos dois sentidos
+- [x] Usar o Caixa/Cozinha **sem** identificar operador → fluxo completo continua funcionando normalmente, histórico só com dispositivo (`alteradoPorUsuario=null`) — validado na TASK-093, pedido de ponta a ponta sem nenhum header de operador
 - [x] `mvn test` → **320/320, BUILD SUCCESS**, incluindo `OperadorAuthServiceTest`, `OperadorContextServiceTest`, `OperadorLoginIntegrationTest` (ver `docs/testes-backend-mvp.md`); `npm run build`/`npx oxlint` sem erro
 
-Os itens acima (104–112) foram exercitados via `integration/OperadorLoginIntegrationTest` (mesmos cenários HTTP: identificação por combinação dispositivo×perfil×restaurante, ação com/sem operador, histórico preenchido) — equivalente funcional ao clique real, que não foi executado neste ambiente (sem automação de navegador disponível).
+**TASK-093 (validação funcional)**: os itens acima foram revalidados via `curl` contra o backend real rodando (não só os testes automatizados da TASK-092) — equivalente funcional ao clique real, que não foi executado neste ambiente (sem automação de navegador disponível). Cobertura adicional: token de operador inválido numa ação → `401` sem afetar o dispositivo (confirmado que uma chamada seguinte sem o header continua `200`); token de operador de tipo incompatível (emitido num dispositivo, usado em outro) → `403`; usuário inativo tentando login operacional → `401` (mesmo padrão do login administrativo); preflight CORS de `POST /api/auth/operador/login` e das ações de Caixa com `X-Operador-Token` → `200` com os headers corretos.
+
+**Bug real encontrado e corrigido na TASK-093**: `SecurityConfig.corsConfigurationSource()` não incluía `X-Operador-Token` em `allowedHeaders` — o preflight do navegador teria rejeitado silenciosamente qualquer requisição com esse header (confirmado via `curl` simulando o preflight antes da correção: `Access-Control-Allow-Headers: Authorization` sem o header novo). Corrigido adicionando `X-Operador-Token` à lista.
+
+**TASK-094 (validação operacional completa — cobertura estendida)**: mesma abordagem (equivalente funcional via `curl`, sem automação de navegador neste ambiente), cobrindo o que a TASK-093 ainda não tinha exercitado:
+- [x] `ADMIN_RESTAURANTE` como operador tanto no Caixa quanto na Cozinha (login `200` nos dois, ação executada com sucesso, histórico atribuindo a ação a ele corretamente)
+- [x] Todos os 5 casos de perfil incompatível com `403`: `OPERADOR_CAIXA` na Cozinha, `OPERADOR_COZINHA` no Caixa, `SUPER_ADMIN`, operador de outro restaurante, dispositivo TOTEM
+- [x] Senha errada e usuário inativo → ambos `401` com a mesma mensagem genérica ("Email ou senha inválidos"), sessão do dispositivo permanece válida em ambos os casos
+- [x] Troca de operador no mesmo dispositivo (Caixa) entre duas ações consecutivas do mesmo pedido — histórico atribuiu corretamente cada ação ao operador que estava identificado no momento, sem mistura de tokens
+- [x] Token de operador com perfil incompatível usado deliberadamente na ação errada (emitido na Cozinha, usado numa ação do Caixa) → `403`, pedido não alterado, dispositivo Caixa permanece autenticado
+- [x] Token de operador expirado — validado por revisão de código (`JwtService.isTokenValido`) em vez de aguardar 30 minutos reais: o `catch (Exception ex)` genérico trata `ExpiredJwtException` pelo mesmo caminho já confirmado empiricamente para assinatura inválida
+- [x] Token de dispositivo genuinamente inválido (refresh token também rejeitado) com operador ainda identificado → `401`, e por revisão de código (`api.ts`) confirmado que `clearSession()` é chamado de forma completa (dispositivo + usuário + operador) nesse caso — diferente do caso de só o token de operador falhar, onde só `clearOperadorSession()` é chamado
+- [x] Separação de chaves de `localStorage` confirmada por revisão de código (`tokenStorage.ts`): `totem.operadorToken`/`totem.operador` nunca são tocadas por `clearSession()` seletivamente nem se misturam com as chaves de dispositivo/usuário
+
+**Nenhum bug adicional encontrado na TASK-094. Nenhuma alteração de código** — `git status` confirmou que o único arquivo de código modificado no repositório é `SecurityConfig.java` (correção da TASK-093, pré-existente).
+
+**TASK-094.1 (tentativa de homologação visual)**: reconfirmado que `chromium-cli`/Playwright/Cypress continuam ausentes neste ambiente — pendência de clique real segue aberta, sem bug encontrado. Suíte de regressão reexecutada sem nenhuma alteração de código: `mvn test` → 320/320 BUILD SUCCESS; `npm run build`/`npx oxlint` sem erro.
 
 **Fora do escopo desta task**: PIN de operador, refresh token de operador, login de operador em dispositivo TOTEM/ADMINISTRACAO, WebSocket. Ver `frontend/README.md` para o roteiro detalhado de teste manual.
 
