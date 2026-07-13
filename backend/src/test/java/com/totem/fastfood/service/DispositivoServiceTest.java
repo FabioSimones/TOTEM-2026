@@ -12,6 +12,7 @@ import com.totem.fastfood.repository.DispositivoRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
 import com.totem.fastfood.security.AdminScopeService;
 import com.totem.fastfood.security.JwtService;
+import com.totem.fastfood.security.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,12 +56,16 @@ class DispositivoServiceTest {
     @Mock
     private AdminScopeService adminScopeService;
 
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
     private DispositivoService dispositivoService;
 
     @BeforeEach
     void setUp() {
         dispositivoService = new DispositivoService(
-                dispositivoRepository, restauranteRepository, dispositivoMapper, jwtService, adminScopeService,
+                dispositivoRepository, restauranteRepository, dispositivoMapper, jwtService, refreshTokenService,
+                adminScopeService,
                 Clock.systemUTC());
     }
 

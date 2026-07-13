@@ -475,7 +475,36 @@ A TASK-084 adicionou `.github/workflows/ci.yml`, rodando em `pull_request` e em 
 
 **Validado nesta task** (localmente, simulando os três jobs): `mvn test` → **233/233, BUILD SUCCESS**; `mvn verify -Ppostgres-it` → **5/5, BUILD SUCCESS**; `npm run build` → sem erro TypeScript; `npx oxlint` → exit code `0`, 1 warning pré-existente (mesmo comportamento esperado dentro do job `frontend`). O workflow em si (`ci.yml`) não pôde ser executado de fato nesta sessão (exigiria push/PR real no GitHub), mas cada comando que ele invoca foi validado localmente com o mesmo resultado esperado.
 
+## 7-quater. CORS para o frontend em desenvolvimento (TASK-085)
+
+**Bug real encontrado e corrigido nesta task**: `SecurityConfig` nunca teve nenhuma configuração de CORS (nem `http.cors(...)`, nem `CorsConfigurationSource`, nem `@CrossOrigin` em nenhum controller) — confirmado por busca no projeto inteiro. Isso não é uma questão de porta errada (5173 vs. 5174); nenhuma origem jamais foi liberada, então **qualquer** chamada feita pelo navegador contra a API era bloqueada no preflight, independente da porta do Vite. Só não tinha sido percebido antes porque toda validação de frontend anterior no projeto usa `curl`/Postman direto contra o backend (sem CORS) — nunca clique real no navegador (pendência documentada desde a TASK-060, ver `docs/status-mvp.md`).
+
+**Diagnóstico** (login SUPER_ADMIN "não funcionando" pelo frontend): `POST /api/auth/login` via `curl` retornava `200` com `accessToken`/`refreshToken` corretos (credencial, seed e rate limit OK); o mesmo POST pelo navegador falhava no console com `blocked by CORS policy` — confirma que a causa era exclusivamente CORS, não autenticação/backend.
+
+**Correção**: adicionado `corsConfigurationSource()` (bean `CorsConfigurationSource`/`UrlBasedCorsConfigurationSource`) em `SecurityConfig`, habilitado via `.cors(Customizer.withDefaults())` na `SecurityFilterChain`. Origens liberadas: `http://localhost:5173` e `http://localhost:5174` (as duas portas que o Vite usa em desenvolvimento local — 5174 quando 5173 já está ocupada por outra instância). Deliberadamente **não** usa `allowedOriginPatterns`/`"*"` — lista fixa e explícita de origens de desenvolvimento, evitando abrir a API para qualquer origem externa.
+
+**Validado nesta task**:
+- `curl` direto (sem `Origin`): `POST /api/auth/login` → `200`, tokens corretos (confirma que credencial/seed/rate-limit não eram o problema).
+- `curl -H "Origin: http://localhost:5174"`: preflight `OPTIONS /api/auth/login` → `200` com `Access-Control-Allow-Origin: http://localhost:5174`; `POST /api/auth/login` com o mesmo header → `200` com o mesmo `Access-Control-Allow-Origin`.
+- `mvn test` → **233/233, BUILD SUCCESS**, inalterado.
+- `npm run build` → sem erro TypeScript.
+- **Login SUPER_ADMIN confirmado funcionando pelo navegador real** (`http://localhost:5174/admin/login`) após reiniciar o backend — sem erro de CORS no console, tokens salvos, redirecionamento para `/admin`.
+
+**Melhoria de UX incluída** (não é a causa do bug): `autoComplete="email"`/`autoComplete="current-password"` adicionados aos campos de `AdminLoginPage.tsx`, resolvendo o warning "Input elements should have autocomplete attributes" do DevTools.
+
+**Fora do escopo desta task (deliberado)**: script `npm run dev` não foi alterado para forçar porta fixa (`--port 5173 --strictPort`) — a correção no backend já cobre as duas portas que o Vite usa naturalmente, tornando essa mudança desnecessária para o objetivo desta task. Se o time preferir uma porta sempre previsível (ex.: para scripts externos), isso pode ser avaliado separadamente.
+
+## 7-quinquies. Validação real no navegador (TASK-086)
+
+Com o CORS corrigido na TASK-085, a TASK-086 finalmente executou clique real (não `curl`) nas principais telas do painel Admin: login SUPER_ADMIN, Admin Home, Dashboard, Pedidos (lista/paginação/filtro/detalhe), Dispositivos (lista/filtros/revogar/reativar), Produtos (lista/CRUD/upload/preview/disponibilidade), Categorias (lista/CRUD/inativar), Restaurantes (lista/CRUD/ativar/desativar), Usuários (lista/CRUD/alterar senha), login `ADMIN_RESTAURANTE` (escopo preservado, 403 sem derrubar sessão) e renovação automática de sessão via refresh token. **Nenhum bug encontrado** — nenhuma alteração de código de produção foi necessária. Ver `docs/checklists/admin-mvp.md` seção 11 para o detalhamento completo.
+
 ### Pendência de teste de integração
+
+## 7-sexies. TASK-088 — refresh de dispositivos
+
+`integration/DispositivoRefreshIntegrationTest` cobre ativação com `accessToken` e `refreshToken`, rotação de dispositivo (reuso do token antigo retorna `401`), independência do refresh administrativo, regeneração de código e revogação das renovações anteriores, além de `401` sem token e `403` para `ADMIN_RESTAURANTE` fora do próprio restaurante. `RefreshTokenServiceTest` cobre associação, revogação e validação de titulares de dispositivo.
+
+Limitação conhecida: a revogação de refresh não invalida access tokens JWT stateless já emitidos; eles permanecem válidos até a expiração configurada.
 
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
 

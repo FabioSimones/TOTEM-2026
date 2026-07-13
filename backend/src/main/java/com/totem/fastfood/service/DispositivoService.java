@@ -12,6 +12,7 @@ import com.totem.fastfood.repository.DispositivoRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
 import com.totem.fastfood.security.AdminScopeService;
 import com.totem.fastfood.security.JwtService;
+import com.totem.fastfood.security.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,6 +38,7 @@ public class DispositivoService {
     private final RestauranteRepository restauranteRepository;
     private final DispositivoMapper dispositivoMapper;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final AdminScopeService adminScopeService;
     private final Clock clock;
 
@@ -91,6 +93,7 @@ public class DispositivoService {
         adminScopeService.validarAcessoRestaurante(dispositivo.getRestaurante().getId());
         dispositivo.setAtivo(false);
         dispositivo.setRevogadoEm(LocalDateTime.now(clock));
+        refreshTokenService.revogarPorDispositivo(dispositivo);
         log.info("Dispositivo revogado: id={}", id);
         return dispositivoMapper.toResponse(dispositivoRepository.save(dispositivo));
     }
@@ -122,14 +125,29 @@ public class DispositivoService {
         Dispositivo ativado = dispositivoRepository.save(dispositivo);
 
         String token = jwtService.gerarTokenDispositivo(ativado);
+        String refreshToken = refreshTokenService.criarParaDispositivo(ativado);
         log.info("Dispositivo ativado: id={}, tipoDispositivo={}", ativado.getId(), ativado.getTipoDispositivo());
 
         return new AtivarDispositivoResponse(
                 token,
+                refreshToken,
                 "Bearer",
                 jwtService.getExpirationSeconds(),
+                refreshTokenService.getRefreshExpirationSeconds(),
                 dispositivoMapper.toAutenticadoResponse(ativado)
         );
+    }
+
+    /** Gera novo código sem alterar o estado ativo e revoga renovações emitidas anteriormente. */
+    @Transactional
+    public DispositivoResponse regenerarCodigoAtivacao(Long id) {
+        Dispositivo dispositivo = buscarOuLancarExcecao(id);
+        adminScopeService.validarAcessoRestaurante(dispositivo.getRestaurante().getId());
+        dispositivo.setCodigoAtivacao(gerarCodigoAtivacaoUnico());
+        refreshTokenService.revogarPorDispositivo(dispositivo);
+        Dispositivo atualizado = dispositivoRepository.save(dispositivo);
+        log.info("Código de ativação regenerado: dispositivoId={}", id);
+        return dispositivoMapper.toResponse(atualizado);
     }
 
     private Dispositivo buscarOuLancarExcecao(Long id) {

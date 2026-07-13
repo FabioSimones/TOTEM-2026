@@ -24,6 +24,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LoginResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LogoutRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\RefreshRequest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\RefreshResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\UsuarioAutenticadoResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pagamento\ConfirmarPagamentoDinheiroRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pagamento\ConfirmarPagamentoDinheiroResponse.java

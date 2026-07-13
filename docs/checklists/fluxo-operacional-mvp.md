@@ -20,6 +20,9 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 - [ ] Dispositivo CAIXA cadastrado e ativado em `/ativar-dispositivo` → redireciona para `/caixa`
 - [ ] Dispositivo COZINHA cadastrado e ativado em `/ativar-dispositivo` → redireciona para `/cozinha`
 - [ ] Cada dispositivo ativado numa aba/sessão diferente (o token é único por `localStorage`)
+- [ ] Ativação salva `totem.accessToken` e `totem.refreshToken`; após `401`, `/api/auth/refresh` gira ambos sem nova ativação
+- [ ] Refresh token antigo falha (`401`) após rotação
+- [ ] Admin pode regenerar o código em `/admin/dispositivos`; o novo código revoga renovações anteriores
 
 ## 3. Fluxo A — pedido Pix/cartão (aprovação imediata)
 

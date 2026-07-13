@@ -27,7 +27,8 @@ export interface DispositivoAdminResponse {
   tipoDispositivo: TipoDispositivo;
   ativo: boolean;
   ativado: boolean;
-  codigoAtivacao: string;
+  /** Null quando o dispositivo já foi ativado (código de uso único, zerado após o uso). */
+  codigoAtivacao: string | null;
   ultimoAcesso: string | null;
   ativadoEm: string | null;
   criadoEm: string;

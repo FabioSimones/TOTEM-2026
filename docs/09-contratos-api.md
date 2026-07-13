@@ -21,7 +21,7 @@ Revisado na TASK-041 para refletir os DTOs Java reais (antes desta revisão, est
 
 **Contadores "hoje" do Dashboard continuam em UTC nesta task** (não em `America/Sao_Paulo`) — mesma limitação já documentada desde a TASK-074. Corrigir isso, se desejado, deve ser uma task dedicada.
 
-## Autenticação — login, refresh e logout administrativo
+## Autenticação — login, refresh e logout
 
 ### Login
 
@@ -60,7 +60,7 @@ Response (`200 OK`):
 
 ### Refresh token (TASK-063)
 
-`POST /api/auth/refresh` — endpoint público (`permitAll`), mas a validação real é do `refreshToken` no corpo, não de um Bearer token. **Rotação**: o `refreshToken` informado é sempre revogado (uso único), mesmo em caso de sucesso — a resposta traz um `refreshToken` novo, que deve substituir o anterior no cliente.
+`POST /api/auth/refresh` — endpoint público (`permitAll`), mas a validação real é do `refreshToken` no corpo, não de um Bearer token. **Rotação**: o `refreshToken` informado é sempre revogado (uso único), mesmo em caso de sucesso — a resposta traz um `refreshToken` novo, que deve substituir o anterior no cliente. O titular pode ser usuário ou dispositivo; para dispositivo, `usuario` é `null` e `dispositivo` é preenchido.
 
 Request:
 
@@ -101,11 +101,11 @@ Response: `204 No Content`, sem corpo.
 
 ### Regras e limitações do MVP (TASK-063)
 
-- **Um refresh token ativo por usuário.** Login novo revoga qualquer refresh token anterior do mesmo usuário — logar em uma segunda aba/dispositivo invalida a sessão da primeira na próxima tentativa de refresh (não afeta o `accessToken` já emitido, que continua válido até expirar por tempo; só o próximo `/refresh` da sessão antiga falhará).
+- **Um refresh token ativo por titular.** Login/ativação novos revogam qualquer refresh token anterior do mesmo usuário/dispositivo — isso não afeta o `accessToken` já emitido, que continua válido até expirar por tempo.
 - **Refresh token bruto nunca é persistido.** Só o hash SHA-256 (`RefreshToken.tokenHash`, coluna já existente desde a migration `V3`/TASK-010) fica no banco — o valor bruto existe apenas no cliente e na resposta HTTP no momento da emissão.
 - **Refresh token não é JWT** — é uma string aleatória (`SecureRandom`, 32 bytes, Base64 URL-safe), sem claims, sem assinatura própria; só serve para ser trocada por um `accessToken` novo via `/refresh`.
-- **Escopo**: só sessão de usuário humano administrativo. Dispositivos (Totem/Caixa/Cozinha) não têm refresh token — continuam com token único de longa duração e revogação via `ativo=false` no dispositivo (TASK-010 em diante).
-- **Fora do escopo desta task** (deliberado): cookie HttpOnly, múltiplas sessões simultâneas por usuário, tela de "sessões ativas", "remember me", CSRF, refresh token para dispositivos.
+- **Escopo**: refresh tokens de dispositivo são revogados ao regenerar o código de ativação. O access token JWT antigo é stateless e pode continuar válido até expirar; a próxima renovação exigirá o código novo.
+- **Fora do escopo** (deliberado): cookie HttpOnly, múltiplas sessões simultâneas por titular, tela de "sessões ativas", "remember me", CSRF.
 
 ## Rate limiting do login administrativo (TASK-065)
 
@@ -448,7 +448,7 @@ app:
     online-recente-minutos: ${DISPOSITIVO_ONLINE_RECENTE_MINUTOS:5}
 ```
 
-**Fora do escopo desta task**: WebSocket, heartbeat, presença em tempo real, refresh token para dispositivo, filtro por tipo/status no backend (o filtro em `/admin/dispositivos` é só no frontend, sobre a lista já carregada — não há paginação nem novo query param nesta listagem).
+**Fora do escopo desta task**: WebSocket, heartbeat, presença em tempo real e filtro por tipo/status no backend (o filtro em `/admin/dispositivos` é só no frontend, sobre a lista já carregada — não há paginação nem novo query param nesta listagem). Refresh token de dispositivo foi implementado na TASK-088.
 
 ## Admin — Usuários
 

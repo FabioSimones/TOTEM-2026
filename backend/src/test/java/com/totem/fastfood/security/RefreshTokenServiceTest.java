@@ -1,6 +1,7 @@
 package com.totem.fastfood.security;
 
 import com.totem.fastfood.entity.RefreshToken;
+import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,10 @@ class RefreshTokenServiceTest {
         return Usuario.builder().id(id).nome("Usuario " + id).email("usuario" + id + "@totem.local").build();
     }
 
+    private static Dispositivo dispositivoComId(long id) {
+        return Dispositivo.builder().id(id).nome("Dispositivo " + id).build();
+    }
+
     @Test
     void criarParaUsuario_deveRevogarAtivosExistentes_eEmitirNovoToken() {
         Usuario usuario = usuarioComId(1L);
@@ -77,6 +82,45 @@ class RefreshTokenServiceTest {
         refreshTokenService.criarParaUsuario(usuario);
 
         verify(refreshTokenRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void criarParaDispositivo_deveRevogarAtivosEAssociarNovoTokenAoDispositivo() {
+        Dispositivo dispositivo = dispositivoComId(2L);
+        RefreshToken tokenAntigo = RefreshToken.builder().id(20L).dispositivo(dispositivo).revogado(false).build();
+        when(refreshTokenRepository.findByDispositivoIdAndRevogadoFalse(2L)).thenReturn(List.of(tokenAntigo));
+
+        String tokenBruto = refreshTokenService.criarParaDispositivo(dispositivo);
+
+        assertTrue(tokenAntigo.getRevogado());
+        ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(captor.capture());
+        assertEquals(dispositivo, captor.getValue().getDispositivo());
+        assertFalse(captor.getValue().getTokenHash().equals(tokenBruto));
+    }
+
+    @Test
+    void validarERevogarTitular_deveAceitarTokenDeDispositivo() {
+        Dispositivo dispositivo = dispositivoComId(2L);
+        RefreshToken refreshToken = RefreshToken.builder().dispositivo(dispositivo).revogado(true).build();
+        when(refreshTokenRepository.revogarSeAtivo(any(), any())).thenReturn(1);
+        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(refreshToken));
+
+        RefreshToken resultado = refreshTokenService.validarERevogarTitular("token-dispositivo");
+
+        assertEquals(dispositivo, resultado.getDispositivo());
+    }
+
+    @Test
+    void revogarPorDispositivo_deveRevogarTodosOsTokensAtivos() {
+        Dispositivo dispositivo = dispositivoComId(2L);
+        RefreshToken refreshToken = RefreshToken.builder().dispositivo(dispositivo).revogado(false).build();
+        when(refreshTokenRepository.findByDispositivoIdAndRevogadoFalse(2L)).thenReturn(List.of(refreshToken));
+
+        refreshTokenService.revogarPorDispositivo(dispositivo);
+
+        assertTrue(refreshToken.getRevogado());
+        verify(refreshTokenRepository).saveAll(List.of(refreshToken));
     }
 
     @Test

@@ -17,6 +17,9 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     /** Usado para revogar todos os refresh tokens ativos de um usuário (política de 1 sessão ativa por vez). */
     List<RefreshToken> findByUsuarioIdAndRevogadoFalse(Long usuarioId);
 
+    /** Usado para manter um único refresh token ativo por dispositivo. */
+    List<RefreshToken> findByDispositivoIdAndRevogadoFalse(Long dispositivoId);
+
     /**
      * Revoga o token em uma única instrução atômica (TASK-064) — evita a corrida de duas requisições
      * concorrentes usando o mesmo refresh token (ex.: duas abas) lerem "não revogado" antes de

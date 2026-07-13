@@ -28,3 +28,8 @@ export function revogarDispositivo(id: number): Promise<DispositivoAdminResponse
 export function reativarDispositivo(id: number): Promise<DispositivoAdminResponse> {
   return api.patch<DispositivoAdminResponse>(`/api/admin/dispositivos/${id}/ativar`);
 }
+
+/** PATCH /api/admin/dispositivos/{id}/regenerar-codigo — revoga refresh tokens anteriores. */
+export function regenerarCodigoDispositivo(id: number): Promise<DispositivoAdminResponse> {
+  return api.patch<DispositivoAdminResponse>(`/api/admin/dispositivos/${id}/regenerar-codigo`);
+}

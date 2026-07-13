@@ -22,7 +22,7 @@ public class DispositivoAuthController {
 
     private final DispositivoService dispositivoService;
 
-    @Operation(summary = "Ativar dispositivo", description = "Endpoint público. Valida o código de ativação gerado no cadastro e retorna um access token JWT de dispositivo")
+    @Operation(summary = "Ativar dispositivo", description = "Endpoint público. Valida o código de ativação gerado no cadastro e retorna access token JWT e refresh token de dispositivo")
     @ApiResponse(responseCode = "200", description = "Dispositivo ativado com sucesso")
     @ApiResponse(responseCode = "401", description = "Código de ativação inválido ou dispositivo revogado")
     @PostMapping("/ativar")

@@ -1,6 +1,6 @@
 import { ApiError, type ApiErrorResponse } from "../types/api";
 import type { RefreshResponse } from "../types/auth";
-import { clearSession, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from "./tokenStorage";
+import { clearSession, getAccessToken, getRefreshToken, saveRefreshedSession } from "./tokenStorage";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
@@ -13,9 +13,8 @@ interface ApiFetchOptions extends Omit<RequestInit, "body"> {
 /**
  * Renovação automática de sessão (TASK-063). Só é acionada para chamadas com `withAuth: true`
  * (o padrão) — chamadas com `withAuth: false` (login/refresh/logout/ativar-dispositivo) nunca
- * disparam isso, então não há risco de recursão nelas. Sessões de dispositivo (Totem/Caixa/Cozinha)
- * não têm refreshToken salvo, então `getRefreshToken()` retorna null e a renovação é pulada
- * silenciosamente — comportamento idêntico ao anterior à TASK-063 para esses casos.
+ * disparam isso, então não há risco de recursão nelas. A renovação funciona para sessões de usuário
+ * e dispositivo; o backend identifica o titular pelo refresh token persistido.
  *
  * `refreshEmAndamento` evita que requisições 401 concorrentes disparem múltiplas renovações em
  * paralelo (o refresh token é de uso único — duas chamadas simultâneas desperdiçariam uma rotação
@@ -39,9 +38,7 @@ async function tentarRenovarSessao(): Promise<boolean> {
         { method: "POST", body: { refreshToken }, withAuth: false },
         true,
       );
-      setAccessToken(response.accessToken);
-      setRefreshToken(response.refreshToken);
-      return true;
+      return saveRefreshedSession(response);
     } catch {
       return false;
     }

@@ -9,7 +9,15 @@
       "Bash(curl.exe -s -o /dev/null -w \"backend HTTP %{http_code}\\\\n\" \"http://localhost:8080/api/health\")",
       "Bash(rtk grep *)",
       "Bash(rtk read *)",
-      "Bash(rtk ls *)"
+      "Bash(rtk ls *)",
+      "Bash(echo eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbkB0b3RlbS5sb2NhbCIsInRpcG8iOiJVU0VSIiwicGVyZmlsIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE3ODM5NTA1MDksImV4cCI6MTc4Mzk1NDEwOX0.W_QwIK-MDnvbiZFeJBgu6XGf8O4xKQ4L8uYglW0wPMakLKaOlQ68tRz3AW7as82l04UxPxK6CiuzZ75l7pDe8w)",
+      "Bash(curl -s http://localhost:8080/api/admin/restaurantes -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbkB0b3RlbS5sb2NhbCIsInRpcG8iOiJVU0VSIiwicGVyZmlsIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE3ODM5NTA1MDksImV4cCI6MTc4Mzk1NDEwOX0.W_QwIK-MDnvbiZFeJBgu6XGf8O4xKQ4L8uYglW0wPMakLKaOlQ68tRz3AW7as82l04UxPxK6CiuzZ75l7pDe8w')",
+      "Bash(curl -s http://localhost:8080/api/admin/categorias?restauranteId=1 -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -s 'http://localhost:8080/api/admin/produtos?restauranteId=1&disponivel=true' -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -s http://localhost:8080/api/admin/dispositivos?restauranteId=1 -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -s -X POST http://localhost:8080/api/admin/dispositivos -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"restauranteId\":__TRACKED_VAR__,\"nome\":\"Totem TASK087\",\"codigoIdentificacao\":\"TOTEM_TASK087\",\"tipoDispositivo\":\"TOTEM\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/admin/dispositivos -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"restauranteId\":__TRACKED_VAR__,\"nome\":\"Caixa TASK087\",\"codigoIdentificacao\":\"CAIXA_TASK087\",\"tipoDispositivo\":\"CAIXA\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/admin/dispositivos -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"restauranteId\":__TRACKED_VAR__,\"nome\":\"Cozinha TASK087\",\"codigoIdentificacao\":\"COZINHA_TASK087\",\"tipoDispositivo\":\"COZINHA\"}')"
     ]
   }
 }

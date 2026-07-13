@@ -56,6 +56,7 @@ export function AdminLoginPage() {
           placeholder="admin@totem.local"
           disabled={loading}
           autoFocus
+          autoComplete="email"
         />
 
         <Input
@@ -66,6 +67,7 @@ export function AdminLoginPage() {
           onChange={(event) => setSenha(event.target.value)}
           placeholder="Sua senha"
           disabled={loading}
+          autoComplete="current-password"
         />
 
         <ErrorMessage message={erro} />

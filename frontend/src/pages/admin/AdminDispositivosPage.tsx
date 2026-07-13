@@ -10,6 +10,7 @@ import {
   atualizarDispositivo,
   criarDispositivo,
   listarDispositivos,
+  regenerarCodigoDispositivo,
   reativarDispositivo,
   revogarDispositivo,
 } from "../../services/adminDispositivoService";
@@ -260,6 +261,27 @@ export function AdminDispositivosPage() {
     [carregarDispositivos, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  const handleRegenerarCodigo = useCallback(
+    async (id: number) => {
+      setErrosAcao((atual) => ({ ...atual, [id]: null }));
+      marcarAcaoEmAndamento(id, true);
+
+      try {
+        const response = await regenerarCodigoDispositivo(id);
+        await carregarDispositivos();
+        setMensagemSucesso(
+          `Novo código de ativação de "${response.nome}": ${response.codigoAtivacao}. ` +
+            "Renovações anteriores deste dispositivo foram revogadas.",
+        );
+      } catch (error) {
+        tratarErroAcao(id, error, "Não foi possível regenerar o código. Tente novamente.");
+      } finally {
+        marcarAcaoEmAndamento(id, false);
+      }
+    },
+    [carregarDispositivos, marcarAcaoEmAndamento, tratarErroAcao],
+  );
+
   function handleEditar(dispositivo: DispositivoAdminResponse) {
     setErroSalvar(null);
     setDispositivoEmEdicao(dispositivo);
@@ -421,6 +443,7 @@ export function AdminDispositivosPage() {
                   onEditar={handleEditar}
                   onRevogar={handleRevogar}
                   onReativar={handleReativar}
+                  onRegenerarCodigo={handleRegenerarCodigo}
                 />
               ))}
             </div>

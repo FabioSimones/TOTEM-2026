@@ -31,8 +31,16 @@ export interface RefreshRequest {
   refreshToken: string;
 }
 
-/** Mesmo formato de LoginResponse — resposta de POST /api/auth/refresh. */
-export type RefreshResponse = LoginResponse;
+/** Resposta de refresh: exatamente um entre usuario e dispositivo é preenchido. */
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  refreshExpiresIn: number;
+  usuario: UsuarioAutenticadoResponse | null;
+  dispositivo: DispositivoAutenticadoResponse | null;
+}
 
 /** POST /api/auth/logout — revoga o refreshToken informado. Idempotente. */
 export interface LogoutRequest {
@@ -56,7 +64,9 @@ export interface DispositivoAutenticadoResponse {
 
 export interface AtivarDispositivoResponse {
   accessToken: string;
+  refreshToken: string;
   tokenType: string;
   expiresIn: number;
+  refreshExpiresIn: number;
   dispositivo: DispositivoAutenticadoResponse;
 }

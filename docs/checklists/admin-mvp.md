@@ -415,6 +415,34 @@ Resolve a implicação registrada na TASK-079 (seção 9n acima): o frontend int
 - [ ] Nenhum link aparece com a cor azul padrão do navegador (bug corrigido na TASK-047 — `<Link>` sem classe própria)
 - [ ] Todas as subtelas têm: título + descrição, link "← Painel administrativo", botão "Atualizar lista", loading, erro amigável, estado vazio
 
+## 11. Validação real no navegador (TASK-086)
+
+A TASK-085 corrigiu a causa raiz que impedia qualquer clique real até então: CORS nunca configurado no backend (`SecurityConfig` sem `CorsConfigurationSource`), bloqueando toda chamada feita por um navegador (não `curl`). Com a correção (origens `http://localhost:5173`/`5174` liberadas), a TASK-086 finalmente executou clique real, no navegador, das principais telas administrativas — fechando a maior parte das pendências de "clique real na UI" registradas ao longo deste checklist desde a TASK-060.
+
+Validado por você diretamente no navegador (dois lotes de perguntas, sem intervenção de código):
+
+- [x] Login SUPER_ADMIN (`admin@totem.local`/`Admin@2026!`) — sem erro de CORS no console, `POST /api/auth/login` `200`, tokens/usuário salvos no LocalStorage, redirecionado para `/admin`.
+- [x] Admin Home — cards corretos para o perfil, logout funcional, tema claro/escuro sem quebra visual.
+- [x] Dashboard — cards carregam, valores monetários e data de referência legíveis.
+- [x] Pedidos — lista carrega, paginação "Anterior"/"Próxima" funciona, filtro por status funciona, abrir detalhe funciona.
+- [x] Dispositivos — cards carregam, status operacional exibido, filtros por tipo/status funcionam, revogar/reativar funcionam.
+- [x] Produtos — lista, cadastro/edição, upload de imagem, preview, toggle de disponibilidade — todos funcionais.
+- [x] Categorias — lista, criar/editar, inativar — funcionais.
+- [x] Restaurantes — lista, criar/editar, ativar/inativar — funcionais.
+- [x] Usuários — lista, criar/editar, alterar senha — funcionais.
+- [x] Login `ADMIN_RESTAURANTE` — Home mostra só os cards permitidos (sem Restaurantes/Usuários); Dashboard/Pedidos/Dispositivos/Produtos/Categorias escopados ao restaurante vinculado; acesso direto por URL a `/admin/restaurantes`/`/admin/usuarios` não derruba a sessão (mostra erro de permissão, sessão preservada) — fecha definitivamente a pendência registrada na linha 125 deste arquivo (antes só validada por `curl`/revisão de código).
+- [x] Renovação automática de sessão (refresh token) — `accessToken` inválido + `refreshToken` válido: sessão renovada automaticamente, sem pedir novo login (fecha a pendência da linha 166/197). `accessToken` e `refreshToken` ambos inválidos: sessão limpa, usuário volta para `/admin/login`.
+
+**Nenhum bug encontrado** em nenhuma das telas/fluxos acima — nenhuma alteração de código de produção foi necessária além da correção de CORS já feita na TASK-085.
+
+**Telas/fluxos não cobertos nesta rodada** (fora do escopo desta task, permanecem como pendência): rate limit (`429`) não testado no navegador para não bloquear o usuário durante a validação; consistência visual detalhada (seção 10 acima) não percorrida tela a tela; Totem/Caixa/Cozinha (fora do escopo — esta task era só Admin).
+
+## 12. TASK-088 — operação de dispositivos
+
+- [x] Ação “Regenerar código” no card de dispositivo, com confirmação e exibição do novo código.
+- [x] Regeneração mantém `ativo=true` e revoga refresh tokens anteriores; access tokens já emitidos seguem até expirar.
+- [x] `SUPER_ADMIN` pode operar qualquer restaurante; `ADMIN_RESTAURANTE` fica restrito ao próprio restaurante; perfis operacionais não acessam o endpoint.
+
 ## Fora do escopo (ainda não implementado)
 
-Upload de imagem de produto, refresh token, seletor visual de restaurante em Dispositivos, proteção de rota por perfil no frontend — ver "Limitações atuais do Admin" em `frontend/README.md`.
+Proteção de rota por perfil no frontend (o bloqueio real é 100% backend via `@PreAuthorize`; o frontend só oculta cards/mostra erro amigável em 403) — ver "Limitações atuais do Admin" em `frontend/README.md`. Nota: upload de imagem de produto (TASK-053) e refresh token (TASK-063) já foram implementados e validados por clique real (ver seção 11); esta linha ficou desatualizada desde então e foi corrigida na TASK-086.

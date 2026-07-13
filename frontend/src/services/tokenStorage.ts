@@ -1,4 +1,10 @@
-import type { DispositivoAutenticadoResponse, LoginResponse, UsuarioAutenticadoResponse } from "../types/auth";
+import type {
+  AtivarDispositivoResponse,
+  DispositivoAutenticadoResponse,
+  LoginResponse,
+  RefreshResponse,
+  UsuarioAutenticadoResponse,
+} from "../types/auth";
 
 /**
  * Armazenamento simples de sessão em localStorage — aceitável para este
@@ -12,9 +18,8 @@ import type { DispositivoAutenticadoResponse, LoginResponse, UsuarioAutenticadoR
  * `totem.accessToken` é compartilhado entre os dois tipos de sessão
  * (dispositivo Totem/Caixa/Cozinha OU usuário humano administrativo) — só
  * um dos dois (`totem.dispositivo` ou `totem.usuario`) deve estar
- * preenchido por vez, nunca os dois ao mesmo tempo. `totem.refreshToken`
- * (TASK-063) só é preenchido para sessão de usuário humano — dispositivos
- * não têm refresh token nesta task.
+ * preenchido por vez, nunca os dois ao mesmo tempo. Ambos os tipos de sessão
+ * usam `totem.refreshToken`, com o titular identificado pela resposta da API.
  */
 const ACCESS_TOKEN_KEY = "totem.accessToken";
 const REFRESH_TOKEN_KEY = "totem.refreshToken";
@@ -90,6 +95,33 @@ export function saveUserSession(response: LoginResponse): void {
   setAccessToken(response.accessToken);
   setRefreshToken(response.refreshToken);
   setStoredUsuario(response.usuario);
+  clearStoredDispositivo();
+}
+
+/** Salva uma sessão operacional criada pela ativação do dispositivo. */
+export function saveDeviceSession(response: AtivarDispositivoResponse): void {
+  setAccessToken(response.accessToken);
+  setRefreshToken(response.refreshToken);
+  setStoredDispositivo(response.dispositivo);
+  clearStoredUsuario();
+}
+
+/** Atualiza tokens e dados do titular após a rotação automática. */
+export function saveRefreshedSession(response: RefreshResponse): boolean {
+  setAccessToken(response.accessToken);
+  setRefreshToken(response.refreshToken);
+  if (response.usuario) {
+    setStoredUsuario(response.usuario);
+    clearStoredDispositivo();
+    return true;
+  }
+  if (response.dispositivo) {
+    setStoredDispositivo(response.dispositivo);
+    clearStoredUsuario();
+    return true;
+  }
+  clearSession();
+  return false;
 }
 
 /** Limpa toda a sessão local (tokens + dispositivo + usuário). Uso básico de "logout". */

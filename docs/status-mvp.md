@@ -63,7 +63,26 @@ Padronização de fuso horário (UTC) implementada e validada na TASK-079 (`Tote
 - Validado localmente (o workflow em si não roda fora do GitHub): `mvn test` → 233/233; `mvn verify -Ppostgres-it` → 5/5; `npm run build` → sem erro TypeScript; `npx oxlint` → exit code 0, mesmo warning pré-existente de `ThemeContext.tsx`.
 - Nenhum bug de produção encontrado — task de DevOps/CI pura, nenhum código de produção alterado.
 
+**TASK-085 (bug de CORS — login SUPER_ADMIN pelo frontend)**:
+- **Bug real de produção encontrado e corrigido**: `SecurityConfig` nunca teve configuração de CORS — nenhuma origem de frontend era liberada, bloqueando toda chamada feita pelo navegador (não só uma porta específica). Corrigido com `corsConfigurationSource()` liberando `http://localhost:5173`/`5174` (portas de desenvolvimento do Vite), habilitado via `.cors(Customizer.withDefaults())`.
+- `curl` sem `Origin` já retornava `200` com tokens corretos antes da correção — confirmou que credencial/seed/rate-limit nunca foram o problema.
+- Após a correção: preflight `OPTIONS` e `POST /api/auth/login` com `Origin: http://localhost:5174` → `200` com `Access-Control-Allow-Origin` correto; `mvn test` → 233/233; `npm run build` → sem erro TypeScript.
+- **Login SUPER_ADMIN confirmado funcionando pelo navegador real** (primeira validação de clique real desde a TASK-060 — ver pendência abaixo).
+- Melhoria de UX incluída: `autoComplete="email"`/`autoComplete="current-password"` em `AdminLoginPage.tsx`.
+
+**TASK-086 (validação real da UI Admin no navegador)**:
+- Com o CORS corrigido na TASK-085, executado o roteiro completo de clique real (não `curl`) nas 7 telas administrativas principais: login SUPER_ADMIN, Admin Home, Dashboard, Pedidos, Dispositivos, Produtos, Categorias, Restaurantes, Usuários — mais login `ADMIN_RESTAURANTE` (escopo preservado, 403 sem derrubar sessão) e renovação automática de sessão via refresh token (accessToken inválido + refreshToken válido → renova sozinho; ambos inválidos → limpa sessão e volta ao login).
+- Revisão de código de todas as 7 páginas Admin antes do clique real, sem encontrar bugs.
+- `mvn test` → 233/233; `npm run build` → sem erro TypeScript. **Nenhum bug de produção encontrado** — nenhuma alteração de código nesta task.
+- Ver `docs/checklists/admin-mvp.md` seção 11 para o detalhamento completo por tela.
+
 ## Pendências
+
+**TASK-088 (refresh de dispositivos e regeneração de ativação)**:
+- Dispositivos agora recebem refresh token na ativação; `/api/auth/refresh` aceita titulares `Usuario` e `Dispositivo`, com rotação de uso único e um token ativo por titular.
+- `api.ts` renova sessões de dispositivo após `401`, preservando o tipo de sessão no `localStorage`.
+- `PATCH /api/admin/dispositivos/{id}/regenerar-codigo` respeita escopo `SUPER_ADMIN`/`ADMIN_RESTAURANTE`, gera código seguro e revoga refresh tokens anteriores sem invalidar access tokens JWT já emitidos.
+- Testes de serviço e integração cobrem ativação, rotação, reutilização rejeitada, isolamento entre usuário/dispositivo e escopo administrativo.
 
 ### Críticas (impedem uso do MVP)
 
@@ -72,7 +91,7 @@ Nenhuma identificada nesta consolidação.
 ### Importantes (devem entrar nas próximas tasks)
 
 - ~~Sem teste HTTP de autorização para `/api/admin/uploads/**`~~ **fechada na TASK-082** — `UploadAdminIntegrationTest` (9 testes) cobre autorização, multipart real e acesso público.
-- **Clique real em UI sem automação de navegador** — pendência repetida desde a TASK-060 (todas as validações manuais de frontend desde então foram feitas via `curl` contra a API real + revisão de código, nunca clicando de fato na interface). Nenhuma automação de navegador disponível neste ambiente.
+- ~~Clique real em UI sem automação de navegador~~ **fechada em grande parte na TASK-086** — com o CORS corrigido (TASK-085), login SUPER_ADMIN, Admin Home, Dashboard, Pedidos, Dispositivos, Produtos, Categorias, Restaurantes, Usuários, login `ADMIN_RESTAURANTE` (escopo) e refresh token foram todos clicados de verdade no navegador, sem nenhum bug encontrado. Ainda não coberto por clique real: Totem/Caixa/Cozinha (fora do escopo da TASK-086), rate limit (`429`) no navegador, consistência visual detalhada tela a tela. Segue sem automação repetível neste ambiente — cada rodada de validação depende de alguém disponível para testar manualmente.
 - ~~Sem Testcontainers/PostgreSQL real automatizado~~ **fechada parcialmente na TASK-083** — `mvn verify -Ppostgres-it` cobre fuso horário e expiração de pedidos (os dois pontos onde bugs reais já apareceram) contra Postgres 16 real, migrations Flyway reais. Ainda não cobre o fluxo operacional completo nem os demais módulos administrativos contra Postgres real — ver Melhorias.
 - **Sem testes frontend automatizados** — não há Jest/Vitest/Testing Library configurado; toda validação de frontend é `npm run build` (TypeScript) + `oxlint` + validação manual via API.
 
@@ -90,5 +109,5 @@ Nenhuma identificada nesta consolidação.
 
 ## Próximas tasks recomendadas
 
-1. Validação visual manual em navegador real, se/quando houver ambiente disponível — consolidaria todas as pendências de "clique real" acumuladas desde a TASK-060.
+1. Validação visual manual em navegador real do fluxo operacional Totem→Caixa→Cozinha (a TASK-086 cobriu só o painel Admin) — última fatia relevante da pendência histórica de "clique real" desde a TASK-060.
 2. Considerar badge de status do CI no `README.md` e, se o time adotar branch protection no GitHub, exigir os 3 jobs de `ci.yml` como check obrigatório antes de merge em `main` (fora de escopo da TASK-084, que só criou o pipeline).

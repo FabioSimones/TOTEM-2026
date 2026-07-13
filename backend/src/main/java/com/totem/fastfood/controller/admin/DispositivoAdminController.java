@@ -69,4 +69,15 @@ public class DispositivoAdminController {
     public ResponseEntity<DispositivoResponse> reativar(@PathVariable Long id) {
         return ResponseEntity.ok(dispositivoService.reativar(id));
     }
+
+    @Operation(summary = "Regenerar código de ativação",
+            description = "Gera um novo código para reativação física e revoga refresh tokens anteriores. "
+                    + "O estado ativo do dispositivo não é alterado; access tokens JWT já emitidos seguem válidos até expirar.")
+    @ApiResponse(responseCode = "200", description = "Novo código de ativação retornado")
+    @ApiResponse(responseCode = "403", description = "Dispositivo pertence a outro restaurante")
+    @ApiResponse(responseCode = "404", description = "Dispositivo não encontrado")
+    @PatchMapping("/{id}/regenerar-codigo")
+    public ResponseEntity<DispositivoResponse> regenerarCodigo(@PathVariable Long id) {
+        return ResponseEntity.ok(dispositivoService.regenerarCodigoAtivacao(id));
+    }
 }

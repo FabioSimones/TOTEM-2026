@@ -4,6 +4,7 @@ import com.totem.fastfood.dto.auth.LoginRequest;
 import com.totem.fastfood.dto.auth.LoginResponse;
 import com.totem.fastfood.dto.auth.LogoutRequest;
 import com.totem.fastfood.dto.auth.RefreshRequest;
+import com.totem.fastfood.dto.auth.RefreshResponse;
 import com.totem.fastfood.security.LoginAttemptService;
 import com.totem.fastfood.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Autenticação", description = "Login, refresh e logout de usuários administrativos")
+@Tag(name = "Autenticação", description = "Login, refresh e logout de usuários e dispositivos")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -49,17 +50,17 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "Renovar sessão administrativa",
+    @Operation(summary = "Renovar sessão",
             description = "Troca um refreshToken válido por um novo par accessToken/refreshToken. "
-                    + "Rotação: o refreshToken informado é revogado, mesmo em caso de sucesso.")
+                    + "Aceita tokens de usuário ou dispositivo. Rotação: o token informado é de uso único.")
     @ApiResponse(responseCode = "200", description = "Sessão renovada com sucesso")
     @ApiResponse(responseCode = "401", description = "Refresh token inválido, expirado ou revogado")
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(@RequestBody @Valid RefreshRequest request) {
+    public ResponseEntity<RefreshResponse> refresh(@RequestBody @Valid RefreshRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
     }
 
-    @Operation(summary = "Logout administrativo",
+    @Operation(summary = "Logout",
             description = "Revoga o refreshToken informado. Idempotente — token já revogado ou inexistente não é erro.")
     @ApiResponse(responseCode = "204", description = "Logout processado")
     @PostMapping("/logout")

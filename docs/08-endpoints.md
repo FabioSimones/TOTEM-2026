@@ -22,11 +22,11 @@ Todos os 4 endpoints abaixo são públicos (`permitAll`) — `/login`, `/refresh
 | Método | Rota | Objetivo |
 |---|---|---|
 | POST | `/api/auth/login` | Autenticar usuário humano — retorna `accessToken` (JWT) + `refreshToken` (implementado desde o início; `refreshToken` na resposta a partir da TASK-063). **Protegido por rate limiting desde a TASK-065** — pode retornar `429` após várias falhas consecutivas para a mesma combinação email+IP |
-| POST | `/api/auth/refresh` | **Implementado na TASK-063.** Renova a sessão administrativa: troca um `refreshToken` válido por um novo par `accessToken`/`refreshToken` (rotação — o informado é revogado mesmo em caso de sucesso) |
+| POST | `/api/auth/refresh` | **Implementado na TASK-063/TASK-088.** Renova sessão de usuário ou dispositivo: troca um `refreshToken` válido por novo par `accessToken`/`refreshToken` (rotação — o informado é revogado mesmo em caso de sucesso) |
 | POST | `/api/auth/logout` | **Implementado na TASK-063.** Revoga o `refreshToken` informado. Idempotente — token já revogado ou inexistente não é erro, sempre `204` |
 | POST | `/api/auth/dispositivos/ativar` | Ativar dispositivo por código |
 
-**Escopo do refresh token (TASK-063)**: só para sessão de usuário humano administrativo (`Usuario`). Dispositivos (Totem/Caixa/Cozinha) continuam com token único de longa duração e revogação via `PATCH /api/admin/dispositivos/{id}/revogar` (`ativo=false`) — não receberam refresh token nesta task. Ver `docs/09-contratos-api.md` seção "Refresh token e logout administrativo" para o contrato completo.
+**Escopo do refresh token (TASK-088)**: o token é associado a exatamente um `Usuario` ou `Dispositivo`; ambos usam rotação de uso único. A ativação de dispositivo retorna o refresh token e o cliente o renova automaticamente após `401`.
 
 **Rate limiting do login (TASK-065)**: `POST /api/auth/login` bloqueia temporariamente (`429`) após `app.security.login-rate-limit.max-failures` falhas consecutivas (padrão 5) para a mesma chave email normalizado + IP remoto, por `app.security.login-rate-limit.block-minutes` minutos (padrão 15). Implementação em memória (`LoginAttemptService`) — reiniciar a aplicação limpa os contadores; não substitui um WAF/proxy/rate limiting de borda em produção. Ver `docs/09-contratos-api.md` seção "Rate limiting do login administrativo" para o contrato completo do `429`.
 
@@ -91,6 +91,7 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Escopo por restauran
 | PUT | `/api/admin/dispositivos/{id}` | Atualizar nome, código de identificação e tipo (implementado na TASK-051; não altera restaurante, ativo/ativado nem código de ativação) |
 | PATCH | `/api/admin/dispositivos/{id}/revogar` | Revogar dispositivo |
 | PATCH | `/api/admin/dispositivos/{id}/ativar` | Reativar dispositivo |
+| PATCH | `/api/admin/dispositivos/{id}/regenerar-codigo` | Gerar novo código de ativação e revogar refresh tokens anteriores (mantém o estado `ativo`) |
 
 **Gestão operacional (TASK-077)**: a resposta de `GET`/`POST`/`PUT`/`PATCH` (`DispositivoResponse`) ganhou `statusOperacional` (`USADO_RECENTEMENTE`, `ATIVO`, `NUNCA_USADO`, `REVOGADO`), derivado no backend a partir de `ativo`/`ultimoAcesso` — nunca persistido. `ultimoAcesso` (já existente desde o início do projeto) passa a ser atualizado de verdade a cada requisição autenticada de dispositivo (throttle de 1 minuto). Não é presença em tempo real — sem WebSocket/heartbeat. Ver `docs/09-contratos-api.md` seção "Admin — Dispositivos" para o contrato completo e as limitações.
 

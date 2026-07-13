@@ -11,6 +11,7 @@ interface DispositivoCardProps {
   onEditar: (dispositivo: DispositivoAdminResponse) => void;
   onRevogar: (id: number) => void;
   onReativar: (id: number) => void;
+  onRegenerarCodigo: (id: number) => void;
 }
 
 const ROTULO_TIPO: Record<DispositivoAdminResponse["tipoDispositivo"], string> = {
@@ -34,11 +35,14 @@ const MODIFICADOR_STATUS_OPERACIONAL: Record<DispositivoAdminResponse["statusOpe
   REVOGADO: "dispositivo-card__status--revogado",
 };
 
-export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRevogar, onReativar }: DispositivoCardProps) {
+export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRevogar, onReativar, onRegenerarCodigo }: DispositivoCardProps) {
   const [copiado, setCopiado] = useState(false);
   const [erroCopia, setErroCopia] = useState<string | null>(null);
 
   async function handleCopiar() {
+    if (!dispositivo.codigoAtivacao) {
+      return;
+    }
     setErroCopia(null);
     try {
       if (!navigator.clipboard) {
@@ -64,6 +68,15 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
       }
       onReativar(dispositivo.id);
     }
+  }
+
+  function handleRegenerarCodigo() {
+    if (!window.confirm(
+      `Regenerar o código de ${dispositivo.nome}? As renovações anteriores serão revogadas.`,
+    )) {
+      return;
+    }
+    onRegenerarCodigo(dispositivo.id);
   }
 
   return (
@@ -108,13 +121,15 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
         </div>
       </dl>
 
-      <div className="dispositivo-card__codigo-ativacao">
-        <span className="dispositivo-card__codigo-ativacao-rotulo">Código de ativação</span>
-        <code className="dispositivo-card__codigo-ativacao-valor">{dispositivo.codigoAtivacao}</code>
-        <button type="button" className="dispositivo-card__copiar" onClick={() => void handleCopiar()}>
-          {copiado ? "Copiado!" : "Copiar"}
-        </button>
-      </div>
+      {dispositivo.codigoAtivacao && (
+        <div className="dispositivo-card__codigo-ativacao">
+          <span className="dispositivo-card__codigo-ativacao-rotulo">Código de ativação</span>
+          <code className="dispositivo-card__codigo-ativacao-valor">{dispositivo.codigoAtivacao}</code>
+          <button type="button" className="dispositivo-card__copiar" onClick={() => void handleCopiar()}>
+            {copiado ? "Copiado!" : "Copiar"}
+          </button>
+        </div>
+      )}
       <ErrorMessage message={erroCopia} />
 
       <ErrorMessage message={erro} />
@@ -136,6 +151,15 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
           onClick={handleClicarAcao}
         >
           {executando ? "Aguarde..." : dispositivo.ativo ? "Revogar" : "Reativar"}
+        </button>
+
+        <button
+          type="button"
+          className="restaurante-card__acao-secundaria"
+          disabled={executando}
+          onClick={handleRegenerarCodigo}
+        >
+          Regenerar código
         </button>
       </div>
     </article>

@@ -1,6 +1,7 @@
 package com.totem.fastfood.security;
 
 import com.totem.fastfood.entity.RefreshToken;
+import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,14 +20,14 @@ import java.util.Base64;
 import java.util.List;
 
 /**
- * Gera, valida e revoga refresh tokens de sessão administrativa (TASK-063). Só o hash (SHA-256) do
+ * Gera, valida e revoga refresh tokens de usuário e dispositivo. Só o hash (SHA-256) do
  * token fica no banco (campo {@code tokenHash}, já previsto na entidade {@link RefreshToken} desde
  * a TASK-010) — o valor bruto só existe no cliente e na resposta HTTP no momento da emissão. SHA-256
  * (não BCrypt) porque aqui precisamos de busca determinística por igualdade de hash, diferente de
  * senha — BCrypt é intencionalmente não determinístico (salt) e lento, adequado para senha, não para
  * um token que já é aleatoriamente forte por construção.
  *
- * Política de MVP: um único refresh token ativo por usuário — login novo revoga os anteriores, e
+ * Política de MVP: um único refresh token ativo por titular — login/ativação novos revogam os anteriores, e
  * cada uso de {@code /api/auth/refresh} rotaciona o token (o informado é revogado, um novo é emitido).
  */
 @Slf4j
@@ -60,6 +61,23 @@ public class RefreshTokenService {
         return tokenBruto;
     }
 
+    /** Revoga qualquer refresh token ativo do dispositivo e emite um novo. */
+    @Transactional
+    public String criarParaDispositivo(Dispositivo dispositivo) {
+        revogarPorDispositivo(dispositivo);
+
+        String tokenBruto = gerarTokenBruto();
+        RefreshToken refreshToken = RefreshToken.builder()
+                .dispositivo(dispositivo)
+                .tokenHash(hash(tokenBruto))
+                .expiraEm(LocalDateTime.now().plusDays(refreshExpirationDays))
+                .revogado(false)
+                .build();
+
+        refreshTokenRepository.save(refreshToken);
+        return tokenBruto;
+    }
+
     /**
      * Valida o refresh token informado (existe, não revogado, não expirado, vinculado a um usuário)
      * e já o revoga como parte da rotação — o chamador é responsável por emitir um novo em seguida.
@@ -73,6 +91,19 @@ public class RefreshTokenService {
      */
     @Transactional
     public Usuario validarERevogar(String tokenBruto) {
+        RefreshToken refreshToken = validarERevogarTitular(tokenBruto);
+        if (refreshToken.getUsuario() == null) {
+            throw new BadCredentialsException(MENSAGEM_INVALIDO);
+        }
+        return refreshToken.getUsuario();
+    }
+
+    /**
+     * Rotaciona atomicamente um token e devolve seu titular. Exatamente um entre usuário e
+     * dispositivo deve estar preenchido; registros inconsistentes são rejeitados.
+     */
+    @Transactional
+    public RefreshToken validarERevogarTitular(String tokenBruto) {
         String tokenHash = hash(tokenBruto);
         LocalDateTime agora = LocalDateTime.now();
 
@@ -84,12 +115,12 @@ public class RefreshTokenService {
         RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new BadCredentialsException(MENSAGEM_INVALIDO));
 
-        if (refreshToken.getUsuario() == null) {
-            // Reservado para refresh de dispositivo no futuro — fora do escopo da TASK-063.
+        boolean possuiUsuario = refreshToken.getUsuario() != null;
+        boolean possuiDispositivo = refreshToken.getDispositivo() != null;
+        if (possuiUsuario == possuiDispositivo) {
             throw new BadCredentialsException(MENSAGEM_INVALIDO);
         }
-
-        return refreshToken.getUsuario();
+        return refreshToken;
     }
 
     /** Logout: revoga o refresh token informado. Idempotente — token já revogado ou inexistente não é erro. */
@@ -108,8 +139,19 @@ public class RefreshTokenService {
         return refreshExpirationDays * 24 * 60 * 60;
     }
 
+    /** Revoga todas as renovações ainda ativas do dispositivo. */
+    @Transactional
+    public void revogarPorDispositivo(Dispositivo dispositivo) {
+        List<RefreshToken> ativos = refreshTokenRepository.findByDispositivoIdAndRevogadoFalse(dispositivo.getId());
+        revogarTodos(ativos);
+    }
+
     private void revogarTodosDoUsuario(Long usuarioId) {
         List<RefreshToken> ativos = refreshTokenRepository.findByUsuarioIdAndRevogadoFalse(usuarioId);
+        revogarTodos(ativos);
+    }
+
+    private void revogarTodos(List<RefreshToken> ativos) {
         if (ativos.isEmpty()) {
             return;
         }

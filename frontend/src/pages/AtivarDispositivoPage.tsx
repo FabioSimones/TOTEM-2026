@@ -5,7 +5,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { ErrorMessage } from "../components/ui/ErrorMessage";
 import { ativarDispositivo } from "../services/authService";
-import { setAccessToken, setStoredDispositivo } from "../services/tokenStorage";
+import { saveDeviceSession } from "../services/tokenStorage";
 import { ApiError } from "../types/api";
 import type { TipoDispositivo } from "../types/auth";
 
@@ -37,8 +37,7 @@ export function AtivarDispositivoPage() {
     try {
       const response = await ativarDispositivo(codigo);
 
-      setAccessToken(response.accessToken);
-      setStoredDispositivo(response.dispositivo);
+      saveDeviceSession(response);
       setSucesso(true);
 
       const destino = ROTA_POR_TIPO_DISPOSITIVO[response.dispositivo.tipoDispositivo] ?? "/";
