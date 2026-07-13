@@ -443,6 +443,19 @@ Validado por você diretamente no navegador (dois lotes de perguntas, sem interv
 - [x] Regeneração mantém `ativo=true` e revoga refresh tokens anteriores; access tokens já emitidos seguem até expirar.
 - [x] `SUPER_ADMIN` pode operar qualquer restaurante; `ADMIN_RESTAURANTE` fica restrito ao próprio restaurante; perfis operacionais não acessam o endpoint.
 
+## 13. TASK-089 — validação de escopo da regeneração de código
+
+Validado via `curl` contra backend real (usuários `ADMIN_RESTAURANTE` novos criados para o teste, um por restaurante, já que as senhas dos usuários existentes não eram conhecidas):
+
+- [x] `SUPER_ADMIN` regenera código de dispositivo de qualquer restaurante → `200`, `codigoAtivacao` novo e diferente do anterior.
+- [x] `ADMIN_RESTAURANTE` regenera código de dispositivo do **próprio** restaurante → `200`.
+- [x] `ADMIN_RESTAURANTE` tenta regenerar dispositivo de **outro** restaurante → `403` (`"Você não tem permissão para executar esta ação"`), sessão preservada (mesmo padrão das demais ações administrativas).
+- [x] Requisição sem `Authorization` → `401`.
+- [x] Após regenerar, o `refreshToken` anterior do dispositivo é revogado (`401` em `/api/auth/refresh`); o `accessToken` JWT já emitido continua válido até expirar — limitação JWT stateless, documentada.
+- [x] Reativar o dispositivo com o código novo funciona e emite um novo par `accessToken`/`refreshToken`.
+
+**Nenhum bug encontrado** — nenhuma alteração de código nesta task. Clique real no botão "Regenerar código" em `/admin/dispositivos` (DevTools, confirmação, exibição do código) segue como pendência de validação manual — ambiente sem automação de navegador.
+
 ## Fora do escopo (ainda não implementado)
 
 Proteção de rota por perfil no frontend (o bloqueio real é 100% backend via `@PreAuthorize`; o frontend só oculta cards/mostra erro amigável em 403) — ver "Limitações atuais do Admin" em `frontend/README.md`. Nota: upload de imagem de produto (TASK-053) e refresh token (TASK-063) já foram implementados e validados por clique real (ver seção 11); esta linha ficou desatualizada desde então e foi corrigida na TASK-086.

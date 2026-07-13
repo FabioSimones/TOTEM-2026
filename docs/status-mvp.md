@@ -84,6 +84,12 @@ Padronização de fuso horário (UTC) implementada e validada na TASK-079 (`Tote
 - `PATCH /api/admin/dispositivos/{id}/regenerar-codigo` respeita escopo `SUPER_ADMIN`/`ADMIN_RESTAURANTE`, gera código seguro e revoga refresh tokens anteriores sem invalidar access tokens JWT já emitidos.
 - Testes de serviço e integração cobrem ativação, rotação, reutilização rejeitada, isolamento entre usuário/dispositivo e escopo administrativo.
 
+**TASK-089 (validação real do refresh de dispositivos)**:
+- Validado via `curl` contra backend real (equivalente funcional ao clique no navegador — sem automação disponível neste ambiente) para os três tipos de dispositivo: ativação retorna `accessToken`+`refreshToken`; `401` com token inválido dispara renovação via `/api/auth/refresh`; novo par de tokens permite repetir a chamada original com sucesso; refresh antigo (uso único) falha após rotação; refresh totalmente inválido falha sem loop.
+- Regeneração de código validada para `SUPER_ADMIN` (qualquer restaurante) e `ADMIN_RESTAURANTE` (só o próprio restaurante, `403` para outro, `401` sem token); confirmado que o `refreshToken` anterior é revogado enquanto o `accessToken` JWT antigo segue válido até expirar (limitação stateless).
+- `mvn test` → 240/240, BUILD SUCCESS; `npm run build` sem erro TypeScript; `npx oxlint` só o warning pré-existente. **Nenhum bug encontrado — nenhuma alteração de código nesta task.**
+- Ver `docs/checklists/fluxo-operacional-mvp.md` seção 9 e `docs/checklists/admin-mvp.md` seção 13 para o detalhamento completo.
+
 ### Críticas (impedem uso do MVP)
 
 Nenhuma identificada nesta consolidação.
@@ -91,7 +97,7 @@ Nenhuma identificada nesta consolidação.
 ### Importantes (devem entrar nas próximas tasks)
 
 - ~~Sem teste HTTP de autorização para `/api/admin/uploads/**`~~ **fechada na TASK-082** — `UploadAdminIntegrationTest` (9 testes) cobre autorização, multipart real e acesso público.
-- ~~Clique real em UI sem automação de navegador~~ **fechada em grande parte na TASK-086** — com o CORS corrigido (TASK-085), login SUPER_ADMIN, Admin Home, Dashboard, Pedidos, Dispositivos, Produtos, Categorias, Restaurantes, Usuários, login `ADMIN_RESTAURANTE` (escopo) e refresh token foram todos clicados de verdade no navegador, sem nenhum bug encontrado. Ainda não coberto por clique real: Totem/Caixa/Cozinha (fora do escopo da TASK-086), rate limit (`429`) no navegador, consistência visual detalhada tela a tela. Segue sem automação repetível neste ambiente — cada rodada de validação depende de alguém disponível para testar manualmente.
+- ~~Clique real em UI sem automação de navegador~~ **fechada em grande parte na TASK-086** — com o CORS corrigido (TASK-085), login SUPER_ADMIN, Admin Home, Dashboard, Pedidos, Dispositivos, Produtos, Categorias, Restaurantes, Usuários, login `ADMIN_RESTAURANTE` (escopo) e refresh token foram todos clicados de verdade no navegador, sem nenhum bug encontrado. A TASK-089 cobriu o refresh de dispositivo (Totem/Caixa/Cozinha) e a regeneração de código, mas só via `curl` (equivalente funcional) — ainda não coberto por clique real de fato: fluxo Totem/Caixa/Cozinha completo, rate limit (`429`) no navegador, consistência visual detalhada tela a tela. Segue sem automação repetível neste ambiente — cada rodada de validação depende de alguém disponível para testar manualmente.
 - ~~Sem Testcontainers/PostgreSQL real automatizado~~ **fechada parcialmente na TASK-083** — `mvn verify -Ppostgres-it` cobre fuso horário e expiração de pedidos (os dois pontos onde bugs reais já apareceram) contra Postgres 16 real, migrations Flyway reais. Ainda não cobre o fluxo operacional completo nem os demais módulos administrativos contra Postgres real — ver Melhorias.
 - **Sem testes frontend automatizados** — não há Jest/Vitest/Testing Library configurado; toda validação de frontend é `npm run build` (TypeScript) + `oxlint` + validação manual via API.
 
@@ -109,5 +115,5 @@ Nenhuma identificada nesta consolidação.
 
 ## Próximas tasks recomendadas
 
-1. Validação visual manual em navegador real do fluxo operacional Totem→Caixa→Cozinha (a TASK-086 cobriu só o painel Admin) — última fatia relevante da pendência histórica de "clique real" desde a TASK-060.
+1. Validação visual manual em navegador real do fluxo operacional Totem→Caixa→Cozinha, incluindo o refresh de dispositivo (a TASK-086 cobriu só o painel Admin; a TASK-089 validou o refresh de dispositivo via `curl`, não clique real) — última fatia relevante da pendência histórica de "clique real" desde a TASK-060.
 2. Considerar badge de status do CI no `README.md` e, se o time adotar branch protection no GitHub, exigir os 3 jobs de `ci.yml` como check obrigatório antes de merge em `main` (fora de escopo da TASK-084, que só criou o pipeline).

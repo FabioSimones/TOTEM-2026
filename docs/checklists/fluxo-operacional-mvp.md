@@ -20,9 +20,9 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 - [ ] Dispositivo CAIXA cadastrado e ativado em `/ativar-dispositivo` → redireciona para `/caixa`
 - [ ] Dispositivo COZINHA cadastrado e ativado em `/ativar-dispositivo` → redireciona para `/cozinha`
 - [ ] Cada dispositivo ativado numa aba/sessão diferente (o token é único por `localStorage`)
-- [ ] Ativação salva `totem.accessToken` e `totem.refreshToken`; após `401`, `/api/auth/refresh` gira ambos sem nova ativação
-- [ ] Refresh token antigo falha (`401`) após rotação
-- [ ] Admin pode regenerar o código em `/admin/dispositivos`; o novo código revoga renovações anteriores
+- [x] Ativação salva `totem.accessToken` e `totem.refreshToken`; após `401`, `/api/auth/refresh` gira ambos sem nova ativação — validado via `curl` na TASK-089 para TOTEM, CAIXA e COZINHA (equivalente funcional ao clique real; sem automação de navegador neste ambiente)
+- [x] Refresh token antigo falha (`401`) após rotação — validado na TASK-089 para os três tipos de dispositivo
+- [x] Admin pode regenerar o código em `/admin/dispositivos`; o novo código revoga renovações anteriores — validado na TASK-089 (`SUPER_ADMIN` e `ADMIN_RESTAURANTE` no próprio restaurante; `403` para outro restaurante; `accessToken` antigo continua válido até expirar, limitação JWT stateless documentada)
 
 ## 3. Fluxo A — pedido Pix/cartão (aprovação imediata)
 
@@ -75,6 +75,27 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 - [x] Backend, teste de integração HTTP ponta a ponta (TASK-067): `cd backend && mvn test -Dtest=FluxoOperacionalMvpIntegrationTest` — `integration/FluxoOperacionalMvpIntegrationTest` exercita este mesmo fluxo (seção 3 deste checklist) via HTTP real/MockMvc contra H2 em memória, sem depender de backend/frontend rodando manualmente: cardápio → criar pedido → pagar Pix → Caixa envia à cozinha → Cozinha prepara/finaliza → Caixa retira, com verificação final no banco (status `RETIRADO`, pagamento `AUTORIZADO`, histórico de transições). Também cobre pedido em dinheiro (seção 4) e os cenários de permissão entre dispositivos (seção 6). 5/5 testes passando — ver `docs/testes-backend-mvp.md` para o detalhamento completo e a limitação conhecida (H2, não substitui PostgreSQL real/Testcontainers)
 - [x] Backend completo: `cd backend && mvn test` — **193/193 testes, BUILD SUCCESS** (executado na TASK-071 com Maven 3.9.12 de `~/.m2/wrapper/dists`, já que `mvn` não estava no `PATH` do shell padrão), incluindo `TotemApplicationTests.contextLoads` (corrigido na TASK-057, ver `docs/testes-backend-mvp.md` seção 9) e os 27 testes novos de expiração de pedidos (`PedidoExpiracaoServiceTest` + casos `expirarVencidos_*` de `PedidoAdminIntegrationTest`). Complementado por validação manual contra PostgreSQL real (não só H2) — ver `docs/checklists/admin-mvp.md` seção 9h
 - [x] Frontend: `cd frontend && npm run build` — sem erro TypeScript (checkbox desatualizado corrigido na TASK-081; validado repetidamente desde a TASK-076, mais recentemente na própria TASK-081 como parte da consolidação da Fase 13)
+
+## 9. TASK-089 — refresh token de dispositivos (Totem/Caixa/Cozinha)
+
+Validação da TASK-088 (refresh token para dispositivos + regeneração de código de ativação). Executada via `curl` contra backend real, reproduzindo exatamente a sequência que `services/api.ts` faz no navegador (não houve clique real na UI — sem automação de navegador disponível neste ambiente; equivalente funcional).
+
+- [x] `POST /api/auth/dispositivos/ativar` retorna `accessToken` + `refreshToken` (TOTEM, CAIXA e COZINHA)
+- [x] `accessToken` inválido → `401` na chamada de domínio (`/api/totem/cardapio`, `/api/caixa/pedidos/pendentes`, `/api/cozinha/pedidos`)
+- [x] `POST /api/auth/refresh` com o `refreshToken` do dispositivo retorna novo par de tokens, com `dispositivo` preenchido e `usuario: null`
+- [x] Repetir a chamada original com o novo `accessToken` → `200` (TOTEM, CAIXA, COZINHA)
+- [x] Reutilizar o `refreshToken` antigo (já rotacionado) → `401` (uso único), nos três tipos de dispositivo
+- [x] `accessToken` e `refreshToken` ambos inválidos → `401` em `/api/auth/refresh`, sem erro 500, sem loop
+- [x] `PATCH /api/admin/dispositivos/{id}/regenerar-codigo`: `SUPER_ADMIN` regenera qualquer dispositivo (`200`, novo código diferente do anterior)
+- [x] `ADMIN_RESTAURANTE` regenera dispositivo do próprio restaurante (`200`) e recebe `403` ao tentar dispositivo de outro restaurante (sessão preservada); sem token → `401`
+- [x] Após regenerar, o `refreshToken` anterior do dispositivo passa a retornar `401`; o `accessToken` JWT já emitido continua válido até expirar (limitação conhecida de JWT stateless — não é revogação ativa)
+- [x] Ativar novamente o dispositivo com o novo código funciona e emite novo par de tokens
+- [x] `GET /api/health` → `200`; preflight CORS em `/api/auth/refresh` com `Origin: http://localhost:5173` → `200` com `Access-Control-Allow-Origin` correto
+- [x] `mvn test` → 240/240, BUILD SUCCESS (baseline antes e depois da validação, sem alteração de código); `npm run build` sem erro TypeScript; `npx oxlint` só o warning pré-existente de `ThemeContext.tsx`
+
+**Nenhum bug encontrado nesta rodada** — nenhuma alteração de código foi necessária. Ver `frontend/README.md` seção "Como testar refresh token de dispositivo" para o roteiro detalhado e `docs/testes-backend-mvp.md`/`docs/status-mvp.md` para o registro consolidado.
+
+**Pendência**: clique real no navegador (abrir `/totem`, `/caixa`, `/cozinha`, editar Local Storage pelo DevTools, observar console) não foi executado por automação — requer alguém disponível para reproduzir manualmente o roteiro acima, já validado como correto no nível de API/contrato HTTP.
 
 ## Fora do escopo deste checklist
 
