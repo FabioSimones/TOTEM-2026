@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { OperadorPainel } from "../../components/operador/OperadorPainel";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { PedidoPendenteCard } from "../../components/caixa/PedidoPendenteCard";
 import { Button } from "../../components/ui/Button";
@@ -11,8 +12,9 @@ import {
   listarPendencias,
   marcarPedidoComoRetirado,
 } from "../../services/caixaService";
-import { clearSession, getAccessToken } from "../../services/tokenStorage";
+import { clearOperadorSession, clearSession, getAccessToken, getOperador, getOperadorToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
+import type { OperadorAutenticadoResponse } from "../../types/auth";
 import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
 
 export function CaixaHomePage() {
@@ -22,6 +24,7 @@ export function CaixaHomePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [operador, setOperador] = useState<OperadorAutenticadoResponse | null>(getOperador());
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -82,9 +85,18 @@ export function CaixaHomePage() {
   const tratarErroAcao = useCallback(
     (pedidoId: number, error: unknown, mensagemPadrao: string) => {
       if (error instanceof ApiError && error.status === 401) {
-        clearSession();
-        setSemAutorizacao(true);
-        setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+        if (getOperadorToken()) {
+          // TASK-092: 401 numa ação com operador identificado é mais provável ser o token do
+          // operador (curto, sem refresh) expirado do que o do dispositivo (que já tenta se
+          // renovar sozinho via api.ts) — limpa só o operador, preserva a sessão do dispositivo.
+          clearOperadorSession();
+          setOperador(null);
+          setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Sessão do operador expirada. Identifique-se novamente." }));
+        } else {
+          clearSession();
+          setSemAutorizacao(true);
+          setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+        }
       } else if (error instanceof ApiError && error.status === 403) {
         setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Este dispositivo não tem permissão para executar esta ação." }));
       } else if (error instanceof ApiError && error.status === 404) {
@@ -174,6 +186,12 @@ export function CaixaHomePage() {
 
   return (
     <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro, envio à cozinha e retirada.">
+      <OperadorPainel
+        operador={operador}
+        onIdentificado={(response) => setOperador(response.operador)}
+        onTrocar={() => setOperador(null)}
+      />
+
       <div className="caixa-toolbar">
         <Button type="button" onClick={() => void carregarPendencias()} loading={loading}>
           Atualizar lista

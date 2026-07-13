@@ -5,6 +5,8 @@ import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
 import com.totem.fastfood.entity.Pedido;
 import com.totem.fastfood.entity.Restaurante;
+import com.totem.fastfood.entity.Usuario;
+import com.totem.fastfood.enums.PerfilUsuario;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.mapper.CozinhaPedidoMapper;
 import com.totem.fastfood.repository.HistoricoStatusPedidoRepository;
@@ -75,7 +77,7 @@ class CozinhaPedidoServiceTest {
 
         cozinhaPedidoService.atualizarStatus(
                 20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, "Preparo iniciado"),
-                dispositivoCozinha());
+                dispositivoCozinha(), null);
 
         assertEquals(StatusPedido.EM_PREPARO, pedido.getStatusPedido());
         ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
@@ -92,7 +94,7 @@ class CozinhaPedidoServiceTest {
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
 
         cozinhaPedidoService.atualizarStatus(
-                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.PRONTO, null), dispositivoCozinha());
+                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.PRONTO, null), dispositivoCozinha(), null);
 
         assertEquals(StatusPedido.PRONTO, pedido.getStatusPedido());
         ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
@@ -107,7 +109,7 @@ class CozinhaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(20L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
 
         assertThrows(IllegalArgumentException.class, () -> cozinhaPedidoService.atualizarStatus(
-                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.PRONTO, null), dispositivoCozinha()));
+                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.PRONTO, null), dispositivoCozinha(), null));
         verify(historicoStatusPedidoRepository, never()).save(any());
     }
 
@@ -117,7 +119,7 @@ class CozinhaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(20L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
 
         assertThrows(IllegalArgumentException.class, () -> cozinhaPedidoService.atualizarStatus(
-                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null), dispositivoCozinha()));
+                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null), dispositivoCozinha(), null));
         verify(historicoStatusPedidoRepository, never()).save(any());
     }
 
@@ -128,7 +130,7 @@ class CozinhaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(20L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
 
         assertThrows(IllegalArgumentException.class, () -> cozinhaPedidoService.atualizarStatus(
-                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null), dispositivoCozinha()));
+                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null), dispositivoCozinha(), null));
         verify(historicoStatusPedidoRepository, never()).save(any());
     }
 
@@ -137,6 +139,22 @@ class CozinhaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(999L, RESTAURANTE_ID)).thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class, () -> cozinhaPedidoService.atualizarStatus(
-                999L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null), dispositivoCozinha()));
+                999L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null), dispositivoCozinha(), null));
+    }
+
+    @Test
+    void atualizarStatus_comOperador_preencheAlteradoPorUsuario() {
+        Pedido pedido = pedidoComStatus(StatusPedido.ENVIADO_PARA_COZINHA);
+        when(pedidoRepository.findByIdAndRestauranteId(20L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
+        Usuario operador = Usuario.builder().id(8L).nome("Operador Cozinha").perfil(PerfilUsuario.OPERADOR_COZINHA).build();
+
+        cozinhaPedidoService.atualizarStatus(
+                20L, new AtualizarStatusPedidoCozinhaRequest(StatusPedido.EM_PREPARO, null),
+                dispositivoCozinha(), operador);
+
+        ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
+        verify(historicoStatusPedidoRepository).save(captor.capture());
+        assertEquals(operador, captor.getValue().getAlteradoPorUsuario());
     }
 }

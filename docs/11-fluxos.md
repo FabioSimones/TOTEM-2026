@@ -133,6 +133,41 @@ Cancelamento é um desvio possível **antes** do envio à cozinha: o Caixa pode 
 
 Expiração é outro desvio possível **antes** do pagamento (TASK-070): pedido em `CRIADO`, `AGUARDANDO_PAGAMENTO` ou `AGUARDANDO_PAGAMENTO_DINHEIRO` criado há mais de `app.pedidos.expiracao.minutos` (padrão 30min) vira `EXPIRADO` automaticamente (job agendado) ou por chamada manual do SUPER_ADMIN. Nunca afeta pedido `PAGO` em diante — ver `docs/09-contratos-api.md` seção "Admin — Expiração de pedidos".
 
+**Nota sobre "Operador"/"Equipe" no diagrama acima**: quem autentica e autoriza cada ação de Caixa/Cozinha é sempre o **dispositivo** (`ROLE_DEVICE_CAIXA`/`ROLE_DEVICE_COZINHA`) — modelo confirmado na TASK-091 e mantido na TASK-092. Desde a TASK-092, uma pessoa humana pode **opcionalmente** se identificar dentro do dispositivo (ver fluxo abaixo) só para fins de auditoria (`HistoricoStatusPedido.alteradoPorUsuario`); isso nunca substitui nem é exigido para o dispositivo continuar operando.
+
+## Fluxo de identificação de operador dentro do dispositivo (TASK-092)
+
+```text
+Dispositivo CAIXA/COZINHA já ativado (token de dispositivo válido)
+↓
+Tela pede "identifique-se" (aviso: "Operador não identificado. As ações
+serão registradas apenas pelo dispositivo.")
+↓
+Operador informa email/senha
+↓
+Backend valida:
+  - dispositivo é CAIXA ou COZINHA (TOTEM/ADMINISTRACAO → 403)
+  - perfil compatível com o tipo do dispositivo
+    (OPERADOR_CAIXA/ADMIN_RESTAURANTE → CAIXA; OPERADOR_COZINHA/ADMIN_RESTAURANTE → COZINHA)
+  - SUPER_ADMIN nunca é aceito
+  - operador pertence ao mesmo restaurante do dispositivo
+↓
+Backend emite operadorToken curto (~30min, sem refresh)
+↓
+Frontend guarda o operador num storage separado (nunca no mesmo local do
+token de dispositivo/usuário) e passa a exibir "Operador: {nome}"
+↓
+Ações de Caixa/Cozinha continuam usando o token do dispositivo; o
+operadorToken vai num header à parte (X-Operador-Token) — opcional, a ação
+funciona igual sem ele
+↓
+Histórico de status do pedido registra dispositivo (sempre) e operador
+(se identificado)
+↓
+Se o operadorToken expirar, a próxima ação retorna 401 — frontend limpa só
+a sessão de operador e pede identificação novamente, sem afetar o dispositivo
+```
+
 ## Fluxo de alteração de cardápio
 
 ```text

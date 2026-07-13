@@ -58,6 +58,10 @@ app:
       secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
       refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
+      # Token de operador (TASK-092): curto, sem refresh — só identifica quem está no terminal
+      # agora, para auditoria (HistoricoStatusPedido.alteradoPorUsuario). Não substitui o token
+      # de dispositivo, que continua sendo a autenticação principal de Caixa/Cozinha.
+      operador-expiration-minutes: ${JWT_OPERADOR_EXPIRATION_MINUTES:30}
     login-rate-limit:
       # Rate limiting em memória (TASK-065) — reinicia ao reiniciar a aplicação; não substitui
       # um WAF/proxy/rate limiting de borda em produção.

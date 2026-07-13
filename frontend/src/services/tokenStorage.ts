@@ -2,6 +2,8 @@ import type {
   AtivarDispositivoResponse,
   DispositivoAutenticadoResponse,
   LoginResponse,
+  OperadorAutenticadoResponse,
+  OperadorLoginResponse,
   RefreshResponse,
   UsuarioAutenticadoResponse,
 } from "../types/auth";
@@ -20,11 +22,17 @@ import type {
  * um dos dois (`totem.dispositivo` ou `totem.usuario`) deve estar
  * preenchido por vez, nunca os dois ao mesmo tempo. Ambos os tipos de sessão
  * usam `totem.refreshToken`, com o titular identificado pela resposta da API.
+ *
+ * `totem.operadorToken`/`totem.operador` (TASK-092) são um storage **separado**, nunca
+ * reaproveitando as chaves acima — o operador é uma identificação complementar dentro de uma
+ * sessão de dispositivo CAIXA/COZINHA já ativa, não substitui nem se mistura com ela.
  */
 const ACCESS_TOKEN_KEY = "totem.accessToken";
 const REFRESH_TOKEN_KEY = "totem.refreshToken";
 const DISPOSITIVO_KEY = "totem.dispositivo";
 const USUARIO_KEY = "totem.usuario";
+const OPERADOR_TOKEN_KEY = "totem.operadorToken";
+const OPERADOR_KEY = "totem.operador";
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -104,6 +112,38 @@ export function saveDeviceSession(response: AtivarDispositivoResponse): void {
   setRefreshToken(response.refreshToken);
   setStoredDispositivo(response.dispositivo);
   clearStoredUsuario();
+  // Dispositivo recém-ativado não deveria herdar operador de uma sessão anterior no mesmo terminal.
+  clearOperadorSession();
+}
+
+/**
+ * TASK-092: sessão de operador humano identificado dentro de um dispositivo CAIXA/COZINHA já
+ * ativo — storage próprio, nunca reaproveita accessToken/refreshToken/dispositivo/usuario.
+ */
+export function getOperadorToken(): string | null {
+  return localStorage.getItem(OPERADOR_TOKEN_KEY);
+}
+
+export function getOperador(): OperadorAutenticadoResponse | null {
+  const raw = localStorage.getItem(OPERADOR_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as OperadorAutenticadoResponse;
+  } catch {
+    return null;
+  }
+}
+
+export function saveOperadorSession(response: OperadorLoginResponse): void {
+  localStorage.setItem(OPERADOR_TOKEN_KEY, response.operadorToken);
+  localStorage.setItem(OPERADOR_KEY, JSON.stringify(response.operador));
+}
+
+export function clearOperadorSession(): void {
+  localStorage.removeItem(OPERADOR_TOKEN_KEY);
+  localStorage.removeItem(OPERADOR_KEY);
 }
 
 /** Atualiza tokens e dados do titular após a rotação automática. */
@@ -124,10 +164,11 @@ export function saveRefreshedSession(response: RefreshResponse): boolean {
   return false;
 }
 
-/** Limpa toda a sessão local (tokens + dispositivo + usuário). Uso básico de "logout". */
+/** Limpa toda a sessão local (tokens + dispositivo + usuário + operador). Uso básico de "logout". */
 export function clearSession(): void {
   clearAccessToken();
   clearRefreshToken();
   clearStoredDispositivo();
   clearStoredUsuario();
+  clearOperadorSession();
 }

@@ -1077,6 +1077,53 @@ a:hover {
   width: 100%;
 }
 
+/* ===== Operador (TASK-092) — identificação humana dentro do dispositivo CAIXA/COZINHA ===== */
+.operador-painel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.operador-painel--identificacao {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.operador-painel__nome {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.operador-painel__trocar {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.operador-painel__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+}
+
+.operador-painel__form .ui-input {
+  flex: 1 1 14rem;
+}
+
 /* ===== Caixa — lista de pendências ===== */
 .caixa-toolbar {
   display: flex;

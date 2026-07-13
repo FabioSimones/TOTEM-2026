@@ -9,6 +9,7 @@ import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
 import com.totem.fastfood.entity.ItemPedido;
 import com.totem.fastfood.entity.Pedido;
+import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.enums.AcaoCaixa;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.mapper.CaixaPedidoMapper;
@@ -64,8 +65,9 @@ public class CaixaPedidoService {
     private final HistoricoStatusPedidoRepository historicoStatusPedidoRepository;
     private final CaixaPedidoMapper caixaPedidoMapper;
 
+    /** {@code operador} é nullable (TASK-092) — sem ele, o fluxo permanece idêntico ao anterior. */
     @Transactional
-    public EnviarPedidoCozinhaResponse enviarParaCozinha(Long pedidoId, Dispositivo dispositivoCaixa) {
+    public EnviarPedidoCozinhaResponse enviarParaCozinha(Long pedidoId, Dispositivo dispositivoCaixa, Usuario operador) {
         Long restauranteId = dispositivoCaixa.getRestaurante().getId();
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
                 .orElseThrow(() -> new NoSuchElementException("Pedido não encontrado para o id: " + pedidoId));
@@ -84,6 +86,7 @@ public class CaixaPedidoService {
                 .statusAnterior(statusAnterior)
                 .statusNovo(StatusPedido.ENVIADO_PARA_COZINHA)
                 .alteradoPorDispositivo(dispositivoCaixa)
+                .alteradoPorUsuario(operador)
                 .observacao(OBSERVACAO_ENVIO_COZINHA)
                 .build();
         historicoStatusPedidoRepository.save(historico);
@@ -93,8 +96,9 @@ public class CaixaPedidoService {
         return caixaPedidoMapper.toEnviarCozinhaResponse(pedido);
     }
 
+    /** {@code operador} é nullable (TASK-092) — sem ele, o fluxo permanece idêntico ao anterior. */
     @Transactional
-    public RetirarPedidoResponse marcarComoRetirado(Long pedidoId, Dispositivo dispositivoCaixa) {
+    public RetirarPedidoResponse marcarComoRetirado(Long pedidoId, Dispositivo dispositivoCaixa, Usuario operador) {
         Long restauranteId = dispositivoCaixa.getRestaurante().getId();
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
                 .orElseThrow(() -> new NoSuchElementException("Pedido não encontrado para o id: " + pedidoId));
@@ -113,6 +117,7 @@ public class CaixaPedidoService {
                 .statusAnterior(statusAnterior)
                 .statusNovo(StatusPedido.RETIRADO)
                 .alteradoPorDispositivo(dispositivoCaixa)
+                .alteradoPorUsuario(operador)
                 .observacao(OBSERVACAO_RETIRADA)
                 .build();
         historicoStatusPedidoRepository.save(historico);
@@ -127,9 +132,10 @@ public class CaixaPedidoService {
      * registro em pagamentos permanece AUTORIZADO — estorno é uma regra
      * financeira mais complexa, fora do escopo desta task.
      */
+    /** {@code operador} é nullable (TASK-092) — sem ele, o fluxo permanece idêntico ao anterior. */
     @Transactional
     public CancelarPedidoResponse cancelarPedido(
-            Long pedidoId, CancelarPedidoRequest request, Dispositivo dispositivoCaixa) {
+            Long pedidoId, CancelarPedidoRequest request, Dispositivo dispositivoCaixa, Usuario operador) {
 
         Long restauranteId = dispositivoCaixa.getRestaurante().getId();
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
@@ -149,6 +155,7 @@ public class CaixaPedidoService {
                 .statusAnterior(statusAnterior)
                 .statusNovo(StatusPedido.CANCELADO)
                 .alteradoPorDispositivo(dispositivoCaixa)
+                .alteradoPorUsuario(operador)
                 .observacao(request.motivo())
                 .build();
         historicoStatusPedidoRepository.save(historico);

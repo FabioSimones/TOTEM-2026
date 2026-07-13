@@ -70,3 +70,27 @@ export interface AtivarDispositivoResponse {
   refreshExpiresIn: number;
   dispositivo: DispositivoAutenticadoResponse;
 }
+
+/**
+ * POST /api/auth/operador/login (TASK-092) — login operacional de operador humano dentro de um
+ * dispositivo CAIXA/COZINHA já autenticado. Exige o Authorization do dispositivo atual.
+ */
+export interface OperadorLoginRequest {
+  email: string;
+  senha: string;
+}
+
+export interface OperadorAutenticadoResponse {
+  id: number;
+  nome: string;
+  email: string;
+  perfil: PerfilUsuario;
+  restauranteId: number | null;
+}
+
+/** operadorToken é curto e sem refresh — o operador se identifica de novo quando expirar. */
+export interface OperadorLoginResponse {
+  operadorToken: string;
+  expiresIn: number;
+  operador: OperadorAutenticadoResponse;
+}

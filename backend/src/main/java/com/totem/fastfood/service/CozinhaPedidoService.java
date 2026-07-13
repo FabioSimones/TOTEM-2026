@@ -7,6 +7,7 @@ import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
 import com.totem.fastfood.entity.ItemPedido;
 import com.totem.fastfood.entity.Pedido;
+import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.mapper.CozinhaPedidoMapper;
 import com.totem.fastfood.repository.HistoricoStatusPedidoRepository;
@@ -68,9 +69,10 @@ public class CozinhaPedidoService {
                 .toList();
     }
 
+    /** {@code operador} é nullable (TASK-092) — sem ele, o fluxo permanece idêntico ao anterior. */
     @Transactional
     public AtualizarStatusPedidoCozinhaResponse atualizarStatus(
-            Long pedidoId, AtualizarStatusPedidoCozinhaRequest request, Dispositivo dispositivo) {
+            Long pedidoId, AtualizarStatusPedidoCozinhaRequest request, Dispositivo dispositivo, Usuario operador) {
 
         Long restauranteId = dispositivo.getRestaurante().getId();
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
@@ -93,6 +95,7 @@ public class CozinhaPedidoService {
                 .statusAnterior(statusAnterior)
                 .statusNovo(statusSolicitado)
                 .alteradoPorDispositivo(dispositivo)
+                .alteradoPorUsuario(operador)
                 .observacao(request.observacao() != null && !request.observacao().isBlank()
                         ? request.observacao()
                         : OBSERVACAO_PADRAO)

@@ -5,6 +5,8 @@ import type {
   LoginRequest,
   LoginResponse,
   LogoutRequest,
+  OperadorLoginRequest,
+  OperadorLoginResponse,
   RefreshRequest,
   RefreshResponse,
 } from "../types/auth";
@@ -36,4 +38,14 @@ export function refreshToken(request: RefreshRequest): Promise<RefreshResponse> 
 /** POST /api/auth/logout — endpoint público, idempotente. Revoga o refreshToken informado. */
 export function logout(request: LogoutRequest): Promise<void> {
   return api.post<void>("/api/auth/logout", request, { withAuth: false });
+}
+
+/**
+ * POST /api/auth/operador/login (TASK-092) — identifica um operador humano dentro do dispositivo
+ * CAIXA/COZINHA atual. Exige o Authorization do dispositivo (`withAuth` padrão, anexado
+ * automaticamente por `api.ts` a partir de `totem.accessToken`) — nunca um token de operador.
+ */
+export function loginOperador(email: string, senha: string): Promise<OperadorLoginResponse> {
+  const request: OperadorLoginRequest = { email, senha };
+  return api.post<OperadorLoginResponse>("/api/auth/operador/login", request);
 }

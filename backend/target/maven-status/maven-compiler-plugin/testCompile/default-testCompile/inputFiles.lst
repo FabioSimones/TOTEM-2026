@@ -4,6 +4,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\DispositivoAcessoIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\DispositivoRefreshIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\FluxoOperacionalMvpIntegrationTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\OperadorLoginIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\PedidoAdminIntegrationTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\PedidoExpiracaoPostgresIT.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\integration\PostgresIntegrationTestBase.java
@@ -17,6 +18,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthLoginRateLimitTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthRefreshLogoutTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\LoginAttemptServiceTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\OperadorContextServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\RefreshTokenServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\SecurityHttpStatusTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\CaixaPedidoServiceTest.java
@@ -24,6 +26,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\CozinhaPedidoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\DispositivoAcessoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\DispositivoServiceTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\OperadorAuthServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\PedidoExpiracaoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\ProdutoServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\service\RestauranteServiceTest.java

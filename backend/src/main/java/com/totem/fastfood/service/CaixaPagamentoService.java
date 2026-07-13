@@ -5,6 +5,7 @@ import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.HistoricoStatusPedido;
 import com.totem.fastfood.entity.Pagamento;
 import com.totem.fastfood.entity.Pedido;
+import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.enums.FormaPagamento;
 import com.totem.fastfood.enums.StatusPagamento;
 import com.totem.fastfood.enums.StatusPedido;
@@ -32,9 +33,10 @@ public class CaixaPagamentoService {
     private final HistoricoStatusPedidoRepository historicoStatusPedidoRepository;
     private final CaixaPagamentoMapper caixaPagamentoMapper;
 
+    /** {@code operador} é nullable (TASK-092) — sem ele, o fluxo permanece idêntico ao anterior. */
     @Transactional
     public ConfirmarPagamentoDinheiroResponse confirmarPagamentoDinheiro(
-            Long pedidoId, Dispositivo dispositivoCaixa, String observacao) {
+            Long pedidoId, Dispositivo dispositivoCaixa, String observacao, Usuario operador) {
 
         Long restauranteId = dispositivoCaixa.getRestaurante().getId();
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
@@ -65,6 +67,7 @@ public class CaixaPagamentoService {
                 .statusAnterior(statusAnterior)
                 .statusNovo(StatusPedido.PAGO)
                 .alteradoPorDispositivo(dispositivoCaixa)
+                .alteradoPorUsuario(operador)
                 .observacao(observacao != null && !observacao.isBlank() ? observacao : OBSERVACAO_PADRAO)
                 .build();
         historicoStatusPedidoRepository.save(historico);

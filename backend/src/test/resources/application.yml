@@ -47,6 +47,7 @@ app:
       secret: chave-fake-de-teste-nao-usar-em-producao-totem-fast-food-contextloads
       expiration-minutes: 60
       refresh-expiration-days: 7
+      operador-expiration-minutes: 30
     login-rate-limit:
       # Valor baixo só para o teste de MockMvc (AuthLoginRateLimitTest) não precisar de muitas
       # requisições para atingir o bloqueio. A expiração do bloqueio em si é testada com Clock

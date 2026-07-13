@@ -545,6 +545,27 @@ Baseline antes e depois da validação: `mvn test` → **240/240, BUILD SUCCESS*
 
 `mvn test` → **279/279, BUILD SUCCESS** (suíte completa, sem regressão). `npm run build` sem erro TypeScript; `npx oxlint` só o warning pré-existente.
 
+## 7-nonies. TASK-092 — login operacional de operador (Modelo C da TASK-091)
+
+Dispositivo continua sendo a autenticação principal e única exigida por `/api/caixa/**`/`/api/cozinha/**` (`@PreAuthorize` inalterado). Operador humano é uma camada adicional e opcional, resolvida via novo header `X-Operador-Token`.
+
+**Novo endpoint**: `POST /api/auth/operador/login` (`OperadorAuthController`, `@PreAuthorize("hasAnyRole('DEVICE_CAIXA', 'DEVICE_COZINHA')")`) — exige dispositivo CAIXA/COZINHA autenticado; TOTEM/ADMINISTRACAO recebem `403` automaticamente do próprio Spring Security, sem lógica extra. `OperadorAuthService` valida perfil compatível com o tipo do dispositivo, restaurante igual, e rejeita `SUPER_ADMIN` sempre. `JwtService.gerarTokenOperador` emite um JWT curto (`app.security.jwt.operador-expiration-minutes`, padrão 30min) sem refresh.
+
+**Novo componente de resolução**: `OperadorContextService.resolver(operadorToken, dispositivo)` — usado pelos controllers de Caixa/Cozinha para ler o header `X-Operador-Token` (opcional). Recarrega o `Usuario` do banco (nunca confia só no claim) e revalida perfil/restaurante contra o **dispositivo da requisição atual** — não o da emissão do token. `OperadorEscopoValidator` centraliza a regra de compatibilidade perfil × tipo de dispositivo, reaproveitada por `OperadorAuthService` (login) e `OperadorContextService` (resolução por ação), evitando duas implementações divergentes da mesma regra.
+
+**Testes unitários**:
+- `OperadorAuthServiceTest` (11 testes, Mockito): CAIXA+OPERADOR_CAIXA/COZINHA+OPERADOR_COZINHA/CAIXA+ADMIN_RESTAURANTE/COZINHA+ADMIN_RESTAURANTE mesmo restaurante → sucesso; CAIXA+OPERADOR_COZINHA, COZINHA+OPERADOR_CAIXA, operador de outro restaurante, SUPER_ADMIN → `AccessDeniedException`; senha errada, usuário inativo, email inexistente → `BadCredentialsException`.
+- `OperadorContextServiceTest` (8 testes, Mockito): sem header → `Optional.empty()`; token inválido/de outro tipo/operador não encontrado/inativo → `BadCredentialsException`; perfil incompatível com o dispositivo atual ou restaurante diferente (revalidados a cada chamada, não confiando no claim do token) → `AccessDeniedException`; token válido → retorna o `Usuario`.
+- `CaixaPedidoServiceTest`/`CozinhaPedidoServiceTest`: novos casos confirmando que `alteradoPorUsuario` é preenchido quando um operador é passado e permanece `null` quando não é (compatibilidade com o comportamento anterior à TASK-092); todos os testes pré-existentes atualizados para a nova assinatura (parâmetro `Usuario operador` adicional, `null` nos casos que não testam operador).
+
+**Teste de integração HTTP** (`integration/OperadorLoginIntegrationTest`, MockMvc contra H2 em memória): cobre todos os cenários de login (`200`/`401`/`403` por combinação dispositivo×perfil×restaurante) e as ações de Caixa/Cozinha com/sem `X-Operador-Token`, incluindo o caso de token de operador emitido para um tipo de dispositivo sendo reenviado a outro (perfil incompatível com o dispositivo atual → `403`). Confirma no banco (`HistoricoStatusPedidoRepository`) que `alteradoPorUsuario` é preenchido só quando o header é válido, e que `FluxoOperacionalMvpIntegrationTest`/`DispositivoRefreshIntegrationTest`/`UsuarioAdminScopeIntegrationTest` continuam passando sem alteração (o header é sempre opcional).
+
+**Migration**: nenhuma — reaproveita `Usuario`/`Dispositivo`/`HistoricoStatusPedido.alteradoPorUsuario`, todos já existentes.
+
+`mvn test` → **320/320, BUILD SUCCESS** (suíte completa, sem regressão). `npm run build`/`npx oxlint` sem erro.
+
+**Fora do escopo desta task**: PIN de operador, refresh token de operador, preenchimento de `alteradoPorUsuario` no fluxo do Totem, WebSocket.
+
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
 
 **Limitação conhecida, deliberada**: H2 em memória (`MODE=PostgreSQL`, schema via `ddl-auto: create-drop`) valida a integração HTTP + JPA + regras de transição de status num único processo, mas **não substitui** um teste contra PostgreSQL real — não exercita comportamento específico do driver/dialeto Postgres (ex.: `SERIAL`/`BIGSERIAL`, locks de linha reais como os usados em `RefreshTokenService.revogarSeAtivo`, tipos específicos). Migrar para Testcontainers (subir um PostgreSQL real em container durante o teste) continua como pendência técnica caso se queira essa cobertura mais fiel — deliberadamente fora do escopo da TASK-067.

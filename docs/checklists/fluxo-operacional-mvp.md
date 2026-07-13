@@ -97,6 +97,25 @@ Validação da TASK-088 (refresh token para dispositivos + regeneração de cód
 
 **Pendência**: clique real no navegador (abrir `/totem`, `/caixa`, `/cozinha`, editar Local Storage pelo DevTools, observar console) não foi executado por automação — requer alguém disponível para reproduzir manualmente o roteiro acima, já validado como correto no nível de API/contrato HTTP.
 
+## 10. TASK-092 — login operacional de operador (Caixa/Cozinha)
+
+Implementa o Modelo C decidido na TASK-091. Dispositivo continua sendo a autenticação principal e única exigida — o operador é uma camada adicional e opcional de auditoria.
+
+- [ ] Criar `OPERADOR_CAIXA` e `OPERADOR_COZINHA` pelo `ADMIN_RESTAURANTE` (TASK-090) do restaurante do dispositivo
+- [ ] Em `/caixa`, sem operador identificado: aviso "Operador não identificado. As ações serão registradas apenas pelo dispositivo." e formulário de identificação
+- [ ] Identificar operador com email/senha corretos → `POST /api/auth/operador/login` retorna `200`, painel passa a mostrar "Operador: {nome}" e botão "Trocar operador"
+- [ ] Confirmar pagamento/enviar à cozinha com operador identificado → ação funciona normalmente; no Admin — Pedidos, o detalhe do pedido mostra o histórico com o nome do operador (`alteradoPorUsuarioNome`) além do dispositivo
+- [ ] Repetir identificação e ação em `/cozinha` (operador `OPERADOR_COZINHA`, iniciar preparo/marcar pronto) — histórico também registra o operador
+- [ ] "Trocar operador" limpa a identificação sem afetar a sessão do dispositivo (a tela continua funcionando, só com o aviso de operador não identificado)
+- [ ] Tentar identificar um operador de **outro restaurante** → `403` "Usuário não pertence a este restaurante", formulário permanece
+- [ ] Tentar identificar `OPERADOR_CAIXA` em `/cozinha` (ou `OPERADOR_COZINHA` em `/caixa`) → `403` "Este usuário não pode operar este terminal."
+- [ ] Usar o Caixa/Cozinha **sem** identificar operador → fluxo completo continua funcionando normalmente, histórico só com dispositivo (`alteradoPorUsuario=null`)
+- [x] `mvn test` → **320/320, BUILD SUCCESS**, incluindo `OperadorAuthServiceTest`, `OperadorContextServiceTest`, `OperadorLoginIntegrationTest` (ver `docs/testes-backend-mvp.md`); `npm run build`/`npx oxlint` sem erro
+
+Os itens acima (104–112) foram exercitados via `integration/OperadorLoginIntegrationTest` (mesmos cenários HTTP: identificação por combinação dispositivo×perfil×restaurante, ação com/sem operador, histórico preenchido) — equivalente funcional ao clique real, que não foi executado neste ambiente (sem automação de navegador disponível).
+
+**Fora do escopo desta task**: PIN de operador, refresh token de operador, login de operador em dispositivo TOTEM/ADMINISTRACAO, WebSocket. Ver `frontend/README.md` para o roteiro detalhado de teste manual.
+
 ## Fora do escopo deste checklist
 
 Retirada/cancelamento já cobertos acima. **Não** cobertos aqui (sem frontend ainda): CRUD de restaurante/categoria/produto/dispositivo/usuário (painel Admin), pagamento real, impressão, nota fiscal, relatórios, WebSocket.

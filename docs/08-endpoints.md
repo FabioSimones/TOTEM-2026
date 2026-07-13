@@ -30,6 +30,14 @@ Todos os 4 endpoints abaixo são públicos (`permitAll`) — `/login`, `/refresh
 
 **Rate limiting do login (TASK-065)**: `POST /api/auth/login` bloqueia temporariamente (`429`) após `app.security.login-rate-limit.max-failures` falhas consecutivas (padrão 5) para a mesma chave email normalizado + IP remoto, por `app.security.login-rate-limit.block-minutes` minutos (padrão 15). Implementação em memória (`LoginAttemptService`) — reiniciar a aplicação limpa os contadores; não substitui um WAF/proxy/rate limiting de borda em produção. Ver `docs/09-contratos-api.md` seção "Rate limiting do login administrativo" para o contrato completo do `429`.
 
+**Login operacional de operador (TASK-092)** — **não** público, exige dispositivo já autenticado:
+
+| Método | Rota | Objetivo | Permissão |
+|---|---|---|---|
+| POST | `/api/auth/operador/login` | Identificar um operador humano (email/senha) dentro de um dispositivo CAIXA/COZINHA já autenticado — retorna `operadorToken` curto (sem refresh) | `DEVICE_CAIXA` ou `DEVICE_COZINHA` (dispositivo TOTEM/ADMINISTRACAO recebem `403` automaticamente) |
+
+Ver seção "Login operacional de operador" mais abaixo para o contrato completo e as regras de compatibilidade perfil × tipo de dispositivo.
+
 ## Totem
 
 | Método | Rota | Objetivo | Permissão |
@@ -41,6 +49,8 @@ Todos os 4 endpoints abaixo são públicos (`permitAll`) — `/login`, `/refresh
 
 ## Caixa
 
+Continuam exigindo exclusivamente `ROLE_DEVICE_CAIXA` (Modelo C da TASK-091: dispositivo é a autenticação principal). Desde a TASK-092, as 4 ações abaixo aceitam opcionalmente o header `X-Operador-Token` (ver seção "Login operacional de operador") — sem ele, o comportamento é idêntico ao anterior.
+
 | Método | Rota | Objetivo |
 |---|---|---|
 | GET | `/api/caixa/pedidos/pendentes` | Listar pedidos que exigem ação do Caixa (`AGUARDANDO_PAGAMENTO_DINHEIRO`, `PAGO`, `PRONTO`) |
@@ -50,6 +60,8 @@ Todos os 4 endpoints abaixo são públicos (`permitAll`) — `/login`, `/refresh
 | POST | `/api/caixa/pedidos/{id}/cancelar` | Cancelar pedido pendente |
 
 ## Cozinha
+
+Continua exigindo exclusivamente `ROLE_DEVICE_COZINHA`. Desde a TASK-092, `PATCH .../status` aceita opcionalmente o header `X-Operador-Token`.
 
 | Método | Rota | Objetivo |
 |---|---|---|

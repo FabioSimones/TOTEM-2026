@@ -6,7 +6,9 @@ import com.totem.fastfood.entity.HistoricoStatusPedido;
 import com.totem.fastfood.entity.ItemPedido;
 import com.totem.fastfood.entity.Pedido;
 import com.totem.fastfood.entity.Restaurante;
+import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.enums.AcaoCaixa;
+import com.totem.fastfood.enums.PerfilUsuario;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.mapper.CaixaPedidoMapper;
 import com.totem.fastfood.repository.HistoricoStatusPedidoRepository;
@@ -27,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -82,7 +85,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        caixaPedidoService.enviarParaCozinha(10L, dispositivoCaixa());
+        caixaPedidoService.enviarParaCozinha(10L, dispositivoCaixa(), null);
 
         assertEquals(StatusPedido.ENVIADO_PARA_COZINHA, pedido.getStatusPedido());
         ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
@@ -98,7 +101,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
 
         assertThrows(IllegalArgumentException.class,
-                () -> caixaPedidoService.enviarParaCozinha(10L, dispositivoCaixa()));
+                () -> caixaPedidoService.enviarParaCozinha(10L, dispositivoCaixa(), null));
         verify(historicoStatusPedidoRepository, never()).save(any());
     }
 
@@ -107,7 +110,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(999L, RESTAURANTE_ID)).thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class,
-                () -> caixaPedidoService.enviarParaCozinha(999L, dispositivoCaixa()));
+                () -> caixaPedidoService.enviarParaCozinha(999L, dispositivoCaixa(), null));
     }
 
     // ---------- marcarComoRetirado ----------
@@ -118,7 +121,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        caixaPedidoService.marcarComoRetirado(10L, dispositivoCaixa());
+        caixaPedidoService.marcarComoRetirado(10L, dispositivoCaixa(), null);
 
         assertEquals(StatusPedido.RETIRADO, pedido.getStatusPedido());
         ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
@@ -134,7 +137,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
 
         assertThrows(IllegalArgumentException.class,
-                () -> caixaPedidoService.marcarComoRetirado(10L, dispositivoCaixa()));
+                () -> caixaPedidoService.marcarComoRetirado(10L, dispositivoCaixa(), null));
         verify(historicoStatusPedidoRepository, never()).save(any());
     }
 
@@ -148,7 +151,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        caixaPedidoService.cancelarPedido(10L, new CancelarPedidoRequest("Cliente desistiu"), dispositivoCaixa());
+        caixaPedidoService.cancelarPedido(10L, new CancelarPedidoRequest("Cliente desistiu"), dispositivoCaixa(), null);
 
         assertEquals(StatusPedido.CANCELADO, pedido.getStatusPedido());
         ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
@@ -166,7 +169,7 @@ class CaixaPedidoServiceTest {
         when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
 
         assertThrows(IllegalArgumentException.class, () -> caixaPedidoService.cancelarPedido(
-                10L, new CancelarPedidoRequest("Motivo qualquer"), dispositivoCaixa()));
+                10L, new CancelarPedidoRequest("Motivo qualquer"), dispositivoCaixa(), null));
         verify(historicoStatusPedidoRepository, never()).save(any());
     }
 
@@ -239,5 +242,52 @@ class CaixaPedidoServiceTest {
 
         assertTrue(resultado.isEmpty());
         verify(itemPedidoRepository, never()).findByPedidoIdIn(any());
+    }
+
+    // ---------- operador (TASK-092) ----------
+
+    private Usuario operadorCaixa() {
+        return Usuario.builder().id(7L).nome("Operador Caixa").perfil(PerfilUsuario.OPERADOR_CAIXA).build();
+    }
+
+    @Test
+    void enviarParaCozinha_comOperador_preencheAlteradoPorUsuario() {
+        Pedido pedido = pedidoComStatus(StatusPedido.PAGO);
+        when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
+        Usuario operador = operadorCaixa();
+
+        caixaPedidoService.enviarParaCozinha(10L, dispositivoCaixa(), operador);
+
+        ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
+        verify(historicoStatusPedidoRepository).save(captor.capture());
+        assertEquals(operador, captor.getValue().getAlteradoPorUsuario());
+    }
+
+    @Test
+    void marcarComoRetirado_semOperador_alteradoPorUsuarioContinuaNulo() {
+        Pedido pedido = pedidoComStatus(StatusPedido.PRONTO);
+        when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        caixaPedidoService.marcarComoRetirado(10L, dispositivoCaixa(), null);
+
+        ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
+        verify(historicoStatusPedidoRepository).save(captor.capture());
+        assertNull(captor.getValue().getAlteradoPorUsuario());
+    }
+
+    @Test
+    void cancelarPedido_comOperador_preencheAlteradoPorUsuario() {
+        Pedido pedido = pedidoComStatus(StatusPedido.PAGO);
+        when(pedidoRepository.findByIdAndRestauranteId(10L, RESTAURANTE_ID)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
+        Usuario operador = operadorCaixa();
+
+        caixaPedidoService.cancelarPedido(10L, new CancelarPedidoRequest("Cliente desistiu"), dispositivoCaixa(), operador);
+
+        ArgumentCaptor<HistoricoStatusPedido> captor = ArgumentCaptor.forClass(HistoricoStatusPedido.class);
+        verify(historicoStatusPedidoRepository).save(captor.capture());
+        assertEquals(operador, captor.getValue().getAlteradoPorUsuario());
     }
 }

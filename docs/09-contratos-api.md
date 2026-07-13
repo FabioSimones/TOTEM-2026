@@ -149,6 +149,74 @@ app:
 - `getRemoteAddr()` é usado diretamente para o IP — atrás de um proxy/load balancer sem configuração de `X-Forwarded-For`, todas as requisições apareceriam com o mesmo IP (o do proxy). Não implementado nesta task (fora de escopo — exigiria decidir em quais proxies confiar).
 - Sem captcha, sem desbloqueio administrativo manual, sem tabela de tentativas no banco — tudo deliberadamente fora do escopo do MVP.
 
+## Login operacional de operador (TASK-092)
+
+Implementa o Modelo C decidido na TASK-091: dispositivo continua sendo a autenticação principal e única exigida por `/api/caixa/**`/`/api/cozinha/**`; o operador humano é uma camada **adicional e opcional** de auditoria, identificada dentro de uma sessão de dispositivo já ativa.
+
+### Identificar operador
+
+`POST /api/auth/operador/login` — **não é público**: exige `Authorization: Bearer <accessToken do dispositivo>` de um dispositivo `CAIXA` ou `COZINHA` já autenticado (`@PreAuthorize("hasAnyRole('DEVICE_CAIXA', 'DEVICE_COZINHA')")`). Dispositivo `TOTEM`/`ADMINISTRACAO` recebe `403` automaticamente, sem lógica adicional.
+
+Request:
+
+```json
+{
+  "email": "operador@restaurante.com",
+  "senha": "Senha@2026!"
+}
+```
+
+Response (`200 OK`):
+
+```json
+{
+  "operadorToken": "eyJhbGciOiJIUzUxMiJ9...",
+  "expiresIn": 1800,
+  "operador": {
+    "id": 10,
+    "nome": "João",
+    "email": "operador@restaurante.com",
+    "perfil": "OPERADOR_CAIXA",
+    "restauranteId": 1
+  }
+}
+```
+
+**Regras de compatibilidade perfil × tipo de dispositivo**:
+
+| Dispositivo | Perfis aceitos |
+|---|---|
+| CAIXA | `OPERADOR_CAIXA`, `ADMIN_RESTAURANTE` |
+| COZINHA | `OPERADOR_COZINHA`, `ADMIN_RESTAURANTE` |
+| TOTEM/ADMINISTRACAO | nenhum — `403` antes mesmo de validar credenciais (bloqueado pelo `@PreAuthorize` do controller) |
+
+`SUPER_ADMIN` **nunca** pode operar loja (decisão de produto da TASK-092) — sempre `403`, independentemente do tipo de dispositivo. Operador precisa pertencer ao **mesmo restaurante** do dispositivo (`Usuario.restaurante.id == Dispositivo.restaurante.id`) — de outro restaurante, `403`.
+
+**Erros**:
+
+- `401` — token de dispositivo ausente/inválido (endpoint não é público), ou email/senha do operador inválidos, ou usuário inativo (mesmo padrão de `/api/auth/login`: mensagem genérica "Email ou senha inválidos", não distingue os dois casos).
+- `403` — dispositivo `TOTEM`/`ADMINISTRACAO`; perfil incompatível com o tipo do dispositivo (`OPERADOR_CAIXA` numa `COZINHA` ou vice-versa); `SUPER_ADMIN`; ou operador de outro restaurante.
+
+**Token de operador**: JWT curto (`app.security.jwt.operador-expiration-minutes`, padrão 30 minutos) e **sem refresh** — quando expira, o operador precisa se identificar de novo. Claims: `tipo=OPERADOR`, `operadorId`, `perfil`, `restauranteId`, `dispositivoId`, `tipoDispositivo`. Não é persistido em `RefreshToken` (diferente dos tokens de usuário/dispositivo) — não há tabela nem endpoint de revogação; expira sozinho.
+
+### Usar o token de operador nas ações de Caixa/Cozinha
+
+As 5 ações abaixo aceitam **opcionalmente** o header `X-Operador-Token` — sem ele, comportamento idêntico ao anterior à TASK-092 (`HistoricoStatusPedido.alteradoPorUsuario` fica `null`):
+
+- `POST /api/caixa/pedidos/{id}/confirmar-pagamento`
+- `POST /api/caixa/pedidos/{id}/enviar-cozinha`
+- `POST /api/caixa/pedidos/{id}/retirar`
+- `POST /api/caixa/pedidos/{id}/cancelar`
+- `PATCH /api/cozinha/pedidos/{id}/status`
+
+Quando o header está presente, o backend (`OperadorContextService`) recarrega o `Usuario` do banco (nunca confia só no claim do JWT — mesmo padrão de `JwtAuthenticationFilter` para dispositivo) e **revalida perfil/restaurante contra o dispositivo autenticado da requisição atual**, não o da emissão do token:
+
+- Token ausente/malformado/expirado, ou operador não existe mais/foi desativado → `401`.
+- Token válido, mas perfil incompatível com o tipo do dispositivo atual, ou restaurante diferente → `403`. Isso cobre inclusive o caso de um `X-Operador-Token` emitido para um dispositivo COZINHA sendo reenviado numa ação do CAIXA (ou vice-versa).
+- Token válido e compatível → a ação prossegue normalmente e `HistoricoStatusPedido.alteradoPorUsuario` é preenchido, além de `alteradoPorDispositivo` (já preenchido desde sempre).
+
+**Fora do escopo desta task** (deliberado): PIN de operador (fica email/senha por enquanto), refresh token de operador, WebSocket/notificação de troca de operador, e preenchimento de `alteradoPorUsuario` no fluxo do Totem (cliente não é um `Usuario` do sistema).
+
 ## Totem
 
 ### Criar pedido

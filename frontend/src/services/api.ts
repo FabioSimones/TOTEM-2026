@@ -1,6 +1,6 @@
 import { ApiError, type ApiErrorResponse } from "../types/api";
 import type { RefreshResponse } from "../types/auth";
-import { clearSession, getAccessToken, getRefreshToken, saveRefreshedSession } from "./tokenStorage";
+import { clearSession, getAccessToken, getOperadorToken, getRefreshToken, saveRefreshedSession } from "./tokenStorage";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
@@ -70,6 +70,13 @@ async function apiFetchInternal<TResponse>(
     const token = getAccessToken();
     if (token) {
       requestHeaders.set("Authorization", `Bearer ${token}`);
+    }
+    // TASK-092: anexa o token de operador automaticamente quando existir sessão de operador salva —
+    // opcional para o backend (endpoints que não usam o header simplesmente o ignoram), então não
+    // afeta chamadas de Admin/Totem nem qualquer tela que não tenha identificado um operador.
+    const operadorToken = getOperadorToken();
+    if (operadorToken) {
+      requestHeaders.set("X-Operador-Token", operadorToken);
     }
   }
 

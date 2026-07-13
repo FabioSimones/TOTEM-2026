@@ -13,6 +13,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\UsuarioAdminController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\auth\AuthController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\auth\DispositivoAuthController.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\auth\OperadorAuthController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\caixa\CaixaPagamentoController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\caixa\CaixaPedidoController.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\cozinha\CozinhaPedidoController.java
@@ -47,6 +48,9 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\CriarDispositivoRequest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\DispositivoAutenticadoResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\DispositivoResponse.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\operador\OperadorAutenticadoResponse.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\operador\OperadorLoginRequest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\operador\OperadorLoginResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\PageResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\ExpirarPedidosResponse.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\HistoricoPedidoAdminResponse.java
@@ -134,6 +138,8 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtAuthenticationFilter.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\LoginAttemptService.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\OperadorContextService.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\OperadorEscopoValidator.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\RefreshTokenService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\RestAuthenticationEntryPoint.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\AuthService.java
@@ -145,6 +151,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DashboardAdminService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoAcessoService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoService.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\OperadorAuthService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PagamentoTotemService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoAdminService.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoExpiracaoService.java

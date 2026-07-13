@@ -65,6 +65,7 @@ com\totem\fastfood\controller\admin\ProdutoAdminController.class
 com\totem\fastfood\entity\Usuario$UsuarioBuilder.class
 com\totem\fastfood\repository\CategoriaRepository.class
 com\totem\fastfood\config\SecurityConfig.class
+com\totem\fastfood\security\OperadorEscopoValidator$1.class
 com\totem\fastfood\mapper\PagamentoTotemMapper.class
 com\totem\fastfood\entity\Restaurante.class
 com\totem\fastfood\entity\Produto$ProdutoBuilder.class

@@ -6,8 +6,11 @@ import com.totem.fastfood.dto.caixa.pedido.EnviarPedidoCozinhaResponse;
 import com.totem.fastfood.dto.caixa.pedido.PedidoPendenteCaixaResponse;
 import com.totem.fastfood.dto.caixa.pedido.RetirarPedidoResponse;
 import com.totem.fastfood.entity.Dispositivo;
+import com.totem.fastfood.entity.Usuario;
+import com.totem.fastfood.security.OperadorContextService;
 import com.totem.fastfood.service.CaixaPedidoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,15 +22,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 /**
- * Escopo atual: apenas dispositivo CAIXA autenticado (ROLE_DEVICE_CAIXA),
- * mesmo padrão da TASK-019 — o principal humano ainda não carrega
- * restauranteId, o que impediria aplicar o isolamento por restaurante.
+ * Escopo atual: dispositivo CAIXA autenticado (ROLE_DEVICE_CAIXA) continua sendo a autenticação
+ * principal — o isolamento por restaurante vem sempre do dispositivo. Desde a TASK-092, as ações
+ * abaixo aceitam opcionalmente o header {@code X-Operador-Token} (identificação de operador
+ * humano, resolvida por {@link OperadorContextService}) só para fins de auditoria
+ * (`HistoricoStatusPedido.alteradoPorUsuario`) — nunca é exigido nem substitui o dispositivo.
  */
 @Tag(name = "Caixa - Pedidos", description = "Ações de ciclo de vida do pedido pelo dispositivo CAIXA (requer Bearer JWT de dispositivo)")
 @RestController
@@ -37,6 +43,7 @@ import java.util.List;
 public class CaixaPedidoController {
 
     private final CaixaPedidoService caixaPedidoService;
+    private final OperadorContextService operadorContextService;
 
     @Operation(summary = "Listar pedidos pendentes de ação do Caixa",
             description = "Retorna pedidos do restaurante do dispositivo autenticado que exigem ação do Caixa: "
@@ -62,8 +69,10 @@ public class CaixaPedidoController {
     @PostMapping("/{id}/enviar-cozinha")
     public ResponseEntity<EnviarPedidoCozinhaResponse> enviarParaCozinha(
             @PathVariable Long id,
-            @AuthenticationPrincipal Dispositivo dispositivo) {
-        return ResponseEntity.ok(caixaPedidoService.enviarParaCozinha(id, dispositivo));
+            @AuthenticationPrincipal Dispositivo dispositivo,
+            @Parameter(description = "Token de operador (TASK-092), opcional") @RequestHeader(value = "X-Operador-Token", required = false) String operadorToken) {
+        Usuario operador = operadorContextService.resolver(operadorToken, dispositivo).orElse(null);
+        return ResponseEntity.ok(caixaPedidoService.enviarParaCozinha(id, dispositivo, operador));
     }
 
     @Operation(summary = "Marcar pedido como retirado",
@@ -77,8 +86,10 @@ public class CaixaPedidoController {
     @PostMapping("/{id}/retirar")
     public ResponseEntity<RetirarPedidoResponse> marcarComoRetirado(
             @PathVariable Long id,
-            @AuthenticationPrincipal Dispositivo dispositivo) {
-        return ResponseEntity.ok(caixaPedidoService.marcarComoRetirado(id, dispositivo));
+            @AuthenticationPrincipal Dispositivo dispositivo,
+            @Parameter(description = "Token de operador (TASK-092), opcional") @RequestHeader(value = "X-Operador-Token", required = false) String operadorToken) {
+        Usuario operador = operadorContextService.resolver(operadorToken, dispositivo).orElse(null);
+        return ResponseEntity.ok(caixaPedidoService.marcarComoRetirado(id, dispositivo, operador));
     }
 
     @Operation(summary = "Cancelar pedido",
@@ -95,7 +106,9 @@ public class CaixaPedidoController {
     public ResponseEntity<CancelarPedidoResponse> cancelarPedido(
             @PathVariable Long id,
             @RequestBody @Valid CancelarPedidoRequest request,
-            @AuthenticationPrincipal Dispositivo dispositivo) {
-        return ResponseEntity.ok(caixaPedidoService.cancelarPedido(id, request, dispositivo));
+            @AuthenticationPrincipal Dispositivo dispositivo,
+            @Parameter(description = "Token de operador (TASK-092), opcional") @RequestHeader(value = "X-Operador-Token", required = false) String operadorToken) {
+        Usuario operador = operadorContextService.resolver(operadorToken, dispositivo).orElse(null);
+        return ResponseEntity.ok(caixaPedidoService.cancelarPedido(id, request, dispositivo, operador));
     }
 }

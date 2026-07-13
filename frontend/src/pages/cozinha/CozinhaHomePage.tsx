@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { OperadorPainel } from "../../components/operador/OperadorPainel";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { PedidoCozinhaCard } from "../../components/cozinha/PedidoCozinhaCard";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { atualizarStatusPedidoCozinha, listarPedidosCozinha } from "../../services/cozinhaService";
-import { clearSession, getAccessToken } from "../../services/tokenStorage";
+import { clearOperadorSession, clearSession, getAccessToken, getOperador, getOperadorToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
+import type { OperadorAutenticadoResponse } from "../../types/auth";
 import type { PedidoCozinhaResponse } from "../../types/cozinha";
 import { getProximoStatusCozinha } from "../../utils/cozinhaStatus";
 
@@ -17,6 +19,7 @@ export function CozinhaHomePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [operador, setOperador] = useState<OperadorAutenticadoResponse | null>(getOperador());
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -91,9 +94,17 @@ export function CozinhaHomePage() {
         setMensagemSucesso(`Pedido ${response.numeroPedido} atualizado para ${response.statusAtual}.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
-          setSemAutorizacao(true);
-          setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+          if (getOperadorToken()) {
+            // TASK-092: mesma lógica do Caixa — 401 com operador identificado é mais provável ser
+            // o token do operador expirado do que o do dispositivo.
+            clearOperadorSession();
+            setOperador(null);
+            setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Sessão do operador expirada. Identifique-se novamente." }));
+          } else {
+            clearSession();
+            setSemAutorizacao(true);
+            setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+          }
         } else if (error instanceof ApiError && error.status === 403) {
           setErrosAcao((atual) => ({
             ...atual,
@@ -120,6 +131,12 @@ export function CozinhaHomePage() {
 
   return (
     <AppLayout title="Cozinha" description="Pedidos enviados para preparo e atualização de status.">
+      <OperadorPainel
+        operador={operador}
+        onIdentificado={(response) => setOperador(response.operador)}
+        onTrocar={() => setOperador(null)}
+      />
+
       <div className="caixa-toolbar">
         <Button type="button" onClick={() => void carregarPedidos()} loading={loading}>
           Atualizar lista
