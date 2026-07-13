@@ -1,5 +1,5 @@
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
-import { formatDateTimeBRL } from "../../../utils/formatters";
+import { formatarDataHora } from "../../../utils/dateTime";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
 
@@ -65,11 +65,11 @@ export function RestauranteCard({ restaurante, executando, erro, onEditar, onAti
         )}
         <div>
           <dt>Criado em</dt>
-          <dd>{formatDateTimeBRL(restaurante.criadoEm)}</dd>
+          <dd>{formatarDataHora(restaurante.criadoEm)}</dd>
         </div>
         <div>
           <dt>Atualizado em</dt>
-          <dd>{formatDateTimeBRL(restaurante.atualizadoEm)}</dd>
+          <dd>{formatarDataHora(restaurante.atualizadoEm)}</dd>
         </div>
       </dl>
 

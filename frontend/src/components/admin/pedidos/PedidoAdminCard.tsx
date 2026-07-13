@@ -1,5 +1,6 @@
 import type { PedidoAdminResumoResponse } from "../../../types/pedidoAdmin";
-import { formatCurrencyBRL, formatDateTimeBRL } from "../../../utils/formatters";
+import { formatarDataHora } from "../../../utils/dateTime";
+import { formatCurrencyBRL } from "../../../utils/formatters";
 import { getPedidoStatusLabel } from "../../../utils/pedidoStatus";
 import { Button } from "../../ui/Button";
 
@@ -41,11 +42,11 @@ export function PedidoAdminCard({ pedido, mostrarRestaurante, onVerDetalhes }: P
         </div>
         <div>
           <dt>Criado em</dt>
-          <dd>{formatDateTimeBRL(pedido.criadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.criadoEm)}</dd>
         </div>
         <div>
           <dt>Atualizado em</dt>
-          <dd>{formatDateTimeBRL(pedido.atualizadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.atualizadoEm)}</dd>
         </div>
       </dl>
 

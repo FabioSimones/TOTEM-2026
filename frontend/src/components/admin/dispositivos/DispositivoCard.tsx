@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DispositivoAdminResponse } from "../../../types/dispositivo";
-import { formatDateTimeBRL } from "../../../utils/formatters";
+import { formatarDataHora } from "../../../utils/dateTime";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
 
@@ -95,16 +95,16 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
         {dispositivo.ativadoEm && (
           <div>
             <dt>Ativado em</dt>
-            <dd>{formatDateTimeBRL(dispositivo.ativadoEm)}</dd>
+            <dd>{formatarDataHora(dispositivo.ativadoEm)}</dd>
           </div>
         )}
         <div>
           <dt>Último acesso</dt>
-          <dd>{dispositivo.ultimoAcesso ? formatDateTimeBRL(dispositivo.ultimoAcesso) : "Nunca acessou"}</dd>
+          <dd>{dispositivo.ultimoAcesso ? formatarDataHora(dispositivo.ultimoAcesso) : "Nunca acessou"}</dd>
         </div>
         <div>
           <dt>Criado em</dt>
-          <dd>{formatDateTimeBRL(dispositivo.criadoEm)}</dd>
+          <dd>{formatarDataHora(dispositivo.criadoEm)}</dd>
         </div>
       </dl>
 

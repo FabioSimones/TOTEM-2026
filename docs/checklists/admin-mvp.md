@@ -382,7 +382,28 @@ Fluxo real executado: criação de dispositivo TOTEM novo (id 9, restaurante 1) 
 
 **Fora do escopo desta task (deliberado)**: migração de `LocalDateTime` para `Instant`/`OffsetDateTime`; alteração de contratos REST; alteração do frontend (só documentação); correção do Dashboard "hoje" para `America/Sao_Paulo` (continua UTC).
 
-**Implicação documentada, não corrigida nesta task**: como `LocalDateTime` serializa sem sufixo `Z`/offset, o frontend (`new Date(valor)`) vai interpretar os valores UTC como hora local do navegador — os campos `criadoEm`/`atualizadoEm` (agora UTC, antes local) passam a exibir ~3h adiantado em um navegador configurado para `America/Sao_Paulo`, mesma limitação que já existia desde a TASK-077 para `ultimoAcesso`/`ativadoEm`/`revogadoEm`, agora estendida a todos os campos de data de forma consistente. Ver `frontend/README.md`.
+**Implicação documentada, não corrigida nesta task**: como `LocalDateTime` serializa sem sufixo `Z`/offset, o frontend (`new Date(valor)`) vai interpretar os valores UTC como hora local do navegador — os campos `criadoEm`/`atualizadoEm` (agora UTC, antes local) passam a exibir ~3h adiantado em um navegador configurado para `America/Sao_Paulo`, mesma limitação que já existia desde a TASK-077 para `ultimoAcesso`/`ativadoEm`/`revogadoEm`, agora estendida a todos os campos de data de forma consistente. Ver `frontend/README.md`. **Corrigido na TASK-080** — ver seção 9o abaixo.
+
+## 9o. Correção de exibição de datas UTC no frontend (TASK-080)
+
+Resolve a implicação registrada na TASK-079 (seção 9n acima): o frontend interpretava `LocalDateTime` sem offset como hora local do navegador, exibindo todos os campos de data/hora do Admin ~3h adiantados num navegador configurado para `America/Sao_Paulo`.
+
+**Correção**: novo utilitário central `frontend/src/utils/dateTime.ts` — `parseBackendUtcDateTime` acrescenta `Z` a qualquer string sem offset explícito (detectado via regex `/([zZ]|[+-]\d{2}:\d{2})$/`, respeitando offsets já presentes) antes de construir o `Date`, garantindo que o navegador interprete o valor como UTC e converta corretamente para o fuso local ao formatar. `formatarDataHora`/`formatarData`/`formatarHora` usam essa base; `formatarDataReferencia` (para o campo `dataReferencia` do Dashboard, um `LocalDate` sem hora) formata por manipulação pura de string, sem passar por `Date`, evitando o risco de "pular" de dia perto da meia-noite UTC.
+
+- [x] `formatDateTimeBRL` (função única já reaproveitada em 6 componentes: `DispositivoCard`, `PedidoAdminCard`, `PedidoAdminDetalhe`, `RestauranteCard`, `PedidoPendenteCard` do Caixa, `PedidoCozinhaCard` da Cozinha) renomeada/movida para `formatarDataHora` em `utils/dateTime.ts` — corrigir um único ponto central corrigiu todas as telas de uma vez, sem precisar tocar em cada componente individualmente além da troca de import
+- [x] `AdminDashboardPage.tsx`: `dataReferencia` passa por `formatarDataReferencia` em vez de ser exibida como string crua
+- [x] `AdminCategoriasPage`, `AdminProdutosPage`, `AdminUsuariosPage`: confirmado que não exibem datas — nada a alterar
+- [x] Nenhum uso direto de `new Date(valor)` remanescente fora de `utils/dateTime.ts` (confirmado por busca no projeto)
+- [x] Texto "Nunca acessou" (`DispositivoCard`, quando `ultimoAcesso` é `null`) preservado exatamente como estava — não substituído por travessão genérico
+- [x] `npm run build` → sem erro TypeScript
+- [x] **Validação da conversão**: criado e ativado um dispositivo real contra o backend (reiniciado com a correção da TASK-079); `ultimoAcesso` retornado pela API (`"2026-07-13T00:11:50.5562168"`) confirmado batendo com `date -u` real. Testado em Node.js simulando `Intl.DateTimeFormat` em `America/Sao_Paulo`: o valor passa a formatar como `12/07/2026, 21:11` — batendo com `date` (hora local real), em vez de `13/07/2026, 00:11` (o que apareceria sem a correção — 3h adiantado e em outro dia)
+- [x] Casos de borda testados em Node: `parseBackendUtcDateTime(null)` → `null`; string já com `Z` ou offset `-03:00` → respeitada, não duplica o sufixo; `formatarDataReferencia(null)` → `"—"`
+
+**Sem automação de navegador disponível neste ambiente** (mesma limitação de todas as validações anteriores do projeto) — validação feita via `curl` (dados reais da API) + execução da lógica exata do utilitário em Node.js, simulando o `Intl.DateTimeFormat` que o navegador executaria. Clique real na UI recomendado para fechar 100%.
+
+**Nenhuma biblioteca instalada** — só `Intl.DateTimeFormat` nativo. **Nenhuma mudança de backend, contrato de API ou regra de negócio** nesta task.
+
+**Fora do escopo desta task (deliberado)**: migração do backend para `Instant`/`OffsetDateTime`; seletor de fuso horário; correção do Dashboard "hoje" (continua UTC).
 
 ## 10. Consistência visual
 

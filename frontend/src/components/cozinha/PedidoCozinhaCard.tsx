@@ -1,6 +1,6 @@
 import type { PedidoCozinhaResponse } from "../../types/cozinha";
 import { getAcaoCozinhaDescription, getAcaoCozinhaLabel } from "../../utils/cozinhaStatus";
-import { formatDateTimeBRL } from "../../utils/formatters";
+import { formatarDataHora } from "../../utils/dateTime";
 import { getPedidoStatusLabel } from "../../utils/pedidoStatus";
 import { Button } from "../ui/Button";
 import { ErrorMessage } from "../ui/ErrorMessage";
@@ -54,7 +54,7 @@ export function PedidoCozinhaCard({ pedido, executando, erro, onAvancarStatus }:
         </div>
         <div>
           <dt>Criado em</dt>
-          <dd>{formatDateTimeBRL(pedido.criadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.criadoEm)}</dd>
         </div>
       </dl>
 

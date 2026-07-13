@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
 import { getAcaoCaixaDescription, getAcaoCaixaLabel } from "../../utils/caixaStatus";
-import { formatCurrencyBRL, formatDateTimeBRL } from "../../utils/formatters";
+import { formatarDataHora } from "../../utils/dateTime";
+import { formatCurrencyBRL } from "../../utils/formatters";
 import { getPedidoStatusLabel } from "../../utils/pedidoStatus";
 import { Button } from "../ui/Button";
 import { ErrorMessage } from "../ui/ErrorMessage";
@@ -98,11 +99,11 @@ export function PedidoPendenteCard({
         </div>
         <div>
           <dt>Criado em</dt>
-          <dd>{formatDateTimeBRL(pedido.criadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.criadoEm)}</dd>
         </div>
         <div>
           <dt>Atualizado em</dt>
-          <dd>{formatDateTimeBRL(pedido.atualizadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.atualizadoEm)}</dd>
         </div>
       </dl>
 

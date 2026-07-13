@@ -9,6 +9,7 @@ import { clearSession, getAccessToken, getStoredUsuario } from "../../services/t
 import { ApiError } from "../../types/api";
 import type { DashboardAdminResponse } from "../../types/dashboardAdmin";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
+import { formatarDataReferencia } from "../../utils/dateTime";
 import { formatCurrencyBRL } from "../../utils/formatters";
 
 interface CardResumo {
@@ -119,7 +120,9 @@ export function AdminDashboardPage() {
                   Restaurante: {resumo.restauranteNome}
                 </p>
               )}
-              <p className="totem-estado dashboard-admin__data">Data de referência: {resumo.dataReferencia}</p>
+              <p className="totem-estado dashboard-admin__data">
+                Data de referência: {formatarDataReferencia(resumo.dataReferencia)}
+              </p>
 
               <div className="dashboard-admin__grid">
                 {montarCards(resumo).map((card) => (

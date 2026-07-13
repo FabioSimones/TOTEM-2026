@@ -1,5 +1,6 @@
 import type { PedidoAdminDetalheResponse } from "../../../types/pedidoAdmin";
-import { formatCurrencyBRL, formatDateTimeBRL } from "../../../utils/formatters";
+import { formatarDataHora } from "../../../utils/dateTime";
+import { formatCurrencyBRL } from "../../../utils/formatters";
 import { getPedidoStatusLabel } from "../../../utils/pedidoStatus";
 import { Button } from "../../ui/Button";
 
@@ -44,11 +45,11 @@ export function PedidoAdminDetalhe({ pedido, onFechar }: PedidoAdminDetalheProps
         )}
         <div>
           <dt>Criado em</dt>
-          <dd>{formatDateTimeBRL(pedido.criadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.criadoEm)}</dd>
         </div>
         <div>
           <dt>Atualizado em</dt>
-          <dd>{formatDateTimeBRL(pedido.atualizadoEm)}</dd>
+          <dd>{formatarDataHora(pedido.atualizadoEm)}</dd>
         </div>
       </dl>
 
@@ -83,7 +84,7 @@ export function PedidoAdminDetalhe({ pedido, onFechar }: PedidoAdminDetalheProps
                   {ROTULO_FORMA_PAGAMENTO[pagamento.formaPagamento]} — {ROTULO_STATUS_PAGAMENTO[pagamento.statusPagamento]}
                 </span>
                 <span>{formatCurrencyBRL(pagamento.valor)}</span>
-                <span className="pedido-admin-detalhe__item-data">{formatDateTimeBRL(pagamento.criadoEm)}</span>
+                <span className="pedido-admin-detalhe__item-data">{formatarDataHora(pagamento.criadoEm)}</span>
               </li>
             ))}
           </ul>
@@ -99,7 +100,7 @@ export function PedidoAdminDetalhe({ pedido, onFechar }: PedidoAdminDetalheProps
                 {entrada.statusAnterior ? `${getPedidoStatusLabel(entrada.statusAnterior)} → ` : ""}
                 {getPedidoStatusLabel(entrada.statusNovo)}
               </span>
-              <span className="pedido-admin-detalhe__item-data">{formatDateTimeBRL(entrada.dataAlteracao)}</span>
+              <span className="pedido-admin-detalhe__item-data">{formatarDataHora(entrada.dataAlteracao)}</span>
               {(entrada.alteradoPorUsuarioNome || entrada.alteradoPorDispositivoNome) && (
                 <span className="pedido-admin-detalhe__item-data">
                   {entrada.alteradoPorUsuarioNome ?? entrada.alteradoPorDispositivoNome}
