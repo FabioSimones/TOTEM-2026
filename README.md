@@ -43,6 +43,24 @@ Antes de alterar, explique o plano.
 Depois de alterar, liste arquivos modificados e validações realizadas.
 ```
 
+## CI e validações
+
+O repositório tem um pipeline de CI (`.github/workflows/ci.yml`, GitHub Actions) que roda em todo `pull_request` e `push` para `main`, com três jobs paralelos:
+
+- `backend-h2` — `cd backend && mvn test` (suíte rápida, sem Docker).
+- `backend-postgres-it` — `cd backend && mvn verify -Ppostgres-it` (suíte contra PostgreSQL real via Testcontainers; exige Docker, disponível nos runners Ubuntu do GitHub Actions).
+- `frontend` — `cd frontend && npm ci && npm run build && npm run lint`.
+
+Localmente, os mesmos comandos continuam separados (não existe um único "make ci"):
+
+```bash
+cd backend && mvn test                    # suíte H2, sem Docker
+cd backend && mvn verify -Ppostgres-it    # suíte PostgreSQL real, exige Docker rodando
+cd frontend && npm run build && npm run lint
+```
+
+Detalhes de cada suíte de teste em `docs/testes-backend-mvp.md`.
+
 ## Ordem recomendada
 
 1. Fase 1 - Planejamento

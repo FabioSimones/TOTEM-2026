@@ -58,6 +58,11 @@ Padronização de fuso horário (UTC) implementada e validada na TASK-079 (`Tote
 - Confirmado via `docker ps -a` que nenhum container de teste ficou órfão após a execução.
 - Nenhum bug de produção encontrado — os dois pontos sensíveis (fuso horário, expiração) já se comportam corretamente contra Postgres real, confirmando que as correções da TASK-079 realmente resolveram os bugs na origem, não só na suíte H2.
 
+**TASK-084 (CI GitHub Actions)**:
+- Criado `.github/workflows/ci.yml` com 3 jobs paralelos: `backend-h2` (`mvn test`), `backend-postgres-it` (`mvn verify -Ppostgres-it`, Docker nativo nos runners Ubuntu), `frontend` (`npm ci && npm run build && npm run lint`).
+- Validado localmente (o workflow em si não roda fora do GitHub): `mvn test` → 233/233; `mvn verify -Ppostgres-it` → 5/5; `npm run build` → sem erro TypeScript; `npx oxlint` → exit code 0, mesmo warning pré-existente de `ThemeContext.tsx`.
+- Nenhum bug de produção encontrado — task de DevOps/CI pura, nenhum código de produção alterado.
+
 ## Pendências
 
 ### Críticas (impedem uso do MVP)
@@ -81,9 +86,9 @@ Nenhuma identificada nesta consolidação.
 - Sem estorno de pagamento no cancelamento de pedido `PAGO` (decisão documentada desde a TASK-024).
 - Sem Pix real/TEF/SmartPOS — só `FakePaymentProvider` simulado.
 - Suíte Testcontainers (TASK-083) cobre só fuso horário/expiração — o fluxo operacional completo (Totem→Caixa→Cozinha) e os demais módulos administrativos continuam validados apenas contra H2 automatizado + Postgres manual.
-- `mvn verify -Ppostgres-it` exige Docker disponível — não roda em CI/ambiente sem Docker; nenhum pipeline CI foi criado nesta task (fora de escopo, ver TASK-083).
+- ~~`mvn verify -Ppostgres-it` exige Docker disponível — não roda em CI/ambiente sem Docker; nenhum pipeline CI foi criado nesta task~~ **fechada na TASK-084** — `.github/workflows/ci.yml` roda `backend-h2`, `backend-postgres-it` (Docker nativo em runners `ubuntu-latest`) e `frontend` em jobs paralelos, em `pull_request` e `push` para `main`.
 
 ## Próximas tasks recomendadas
 
 1. Validação visual manual em navegador real, se/quando houver ambiente disponível — consolidaria todas as pendências de "clique real" acumuladas desde a TASK-060.
-2. Avaliar um pipeline CI que rode `mvn verify -Ppostgres-it` (Docker já suportado em runners GitHub Actions/GitLab CI padrão), tornando a suíte Postgres parte da validação contínua em vez de só sob demanda local.
+2. Considerar badge de status do CI no `README.md` e, se o time adotar branch protection no GitHub, exigir os 3 jobs de `ci.yml` como check obrigatório antes de merge em `main` (fora de escopo da TASK-084, que só criou o pipeline).

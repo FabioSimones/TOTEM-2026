@@ -456,6 +456,25 @@ mvn verify -Ppostgres-it
 
 **Escopo deliberadamente mínimo** (não é objetivo desta task migrar a suíte inteira): não cobre o fluxo operacional completo Totem→Caixa→Cozinha contra Postgres real (candidato a uma task futura, se justificado — ver `docs/status-mvp.md`), nem todos os módulos administrativos. O objetivo era proteger especificamente os dois pontos onde bugs reais já escaparam da suíte H2.
 
+## 7-ter. CI (GitHub Actions, TASK-084)
+
+A TASK-084 adicionou `.github/workflows/ci.yml`, rodando em `pull_request` e em `push` para `main` (branch principal real do repositório), com três jobs independentes em paralelo:
+
+| Job | O que roda | Observação |
+|---|---|---|
+| `backend-h2` | `cd backend && mvn test` | Suíte padrão H2, sem Docker — sempre roda, mesmo sem o profile `postgres-it`. |
+| `backend-postgres-it` | `cd backend && mvn verify -Ppostgres-it` | Suíte Testcontainers (seção 7-bis). Runners `ubuntu-latest` do GitHub Actions já suportam Docker nativamente, então o Testcontainers sobe o `postgres:16` normalmente, sem configuração adicional. |
+| `frontend` | `cd frontend && npm ci && npm run build && npm run lint` | `npm ci` (não `npm install`) porque `frontend/package-lock.json` já existe e está versionado. `npm run lint` executa `oxlint` (script já existente em `package.json`, não criado por esta task). |
+
+**Decisões técnicas**:
+- **Sem Maven Wrapper**: o projeto não tinha `mvnw`/`mvnw.cmd` antes desta task e não foi adicionado — os jobs backend usam o Maven do runner via `actions/setup-java@v4` (que já inclui Maven) com `cache: maven`, mais simples e suficiente para o escopo desta task.
+- **`mvn test` (job `backend-h2`) permanece independente de Docker** — só `backend-postgres-it` depende de Docker/Testcontainers, exatamente como já era localmente (regra obrigatória da TASK-084: não tornar `mvn test` dependente de Docker).
+- **Três jobs separados, não um único job sequencial**: cada job roda em runner próprio, em paralelo — uma falha no frontend não atrasa o feedback do backend e vice-versa; o cache de dependências (`cache: maven`/`cache: npm`) também fica isolado por job, evitando invalidação cruzada.
+- **`npm run lint` (não `npx oxlint` direto)**: usa o script já padronizado em `package.json`, que roda o mesmo `oxlint` binário. O warning pré-existente em `ThemeContext.tsx` (`react/only-export-components`) não falha o job — `oxlint` retorna código de saída `0` quando só há warnings, sem erros (confirmado localmente via `npx oxlint`).
+- **Triggers**: `pull_request` (qualquer branch de origem) + `push` para `main` — único branch principal usado neste repositório (confirmado via `git branch --show-current`). Não há branch `master` nem `develop`.
+
+**Validado nesta task** (localmente, simulando os três jobs): `mvn test` → **233/233, BUILD SUCCESS**; `mvn verify -Ppostgres-it` → **5/5, BUILD SUCCESS**; `npm run build` → sem erro TypeScript; `npx oxlint` → exit code `0`, 1 warning pré-existente (mesmo comportamento esperado dentro do job `frontend`). O workflow em si (`ci.yml`) não pôde ser executado de fato nesta sessão (exigiria push/PR real no GitHub), mas cada comando que ele invoca foi validado localmente com o mesmo resultado esperado.
+
 ### Pendência de teste de integração
 
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
