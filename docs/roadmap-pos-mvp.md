@@ -48,7 +48,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 | Dashboard "hoje" em UTC vs. `America/Sao_Paulo` | Confirmado, decisão deliberada mantida desde a TASK-074 | `docs/status-mvp.md` |
 | Fake payment provider | Confirmado — sem Pix/TEF/SmartPOS real | `docs/09-contratos-api.md` |
 | Estorno/cancelamento de pedido pago | Confirmado — cancelamento de pedido `PAGO` não estorna o pagamento (`Pagamento` permanece `AUTORIZADO`), decisão documentada | `CaixaPedidoService.java:132` |
-| Seed `SUPER_ADMIN` com senha fixa | **Confirmado e mais sério do que uma "melhoria"** — migration `V4`/`V5` grava um hash BCrypt fixo para a senha `Admin@2026!`, documentada em texto claro no próprio SQL versionado | `db/migration/V4__seed_super_admin.sql`, `V5__corrigir_senha_super_admin.sql` |
+| Seed `SUPER_ADMIN` com senha fixa | **Resolvido na TASK-096** — `V7` desativa a conta com a senha fixa (`Admin@2026!`) nunca trocada; `SuperAdminBootstrapRunner` passa a ser o único caminho para criar o primeiro `SUPER_ADMIN`, sem valor padrão de senha em nenhum lugar | `db/migration/V7__desativar_seed_super_admin_conhecido.sql`, `bootstrap/SuperAdminBootstrapRunner.java` |
 | Entidade Rede/Grupo de restaurantes | Não implementada — modelo atual é restaurante único, sem hierarquia | não encontrada no schema |
 | Multi-tenant por rede | Não implementado — escopo atual é só por `restauranteId` | idem |
 | Observabilidade/logs | Mínima — só `HealthController` customizado (sem Spring Actuator), nível de log `DEBUG` fixo para `com.totem.fastfood` em `application.yml`, sem log estruturado/correlação | `application.yml:97-101`, `backend/pom.xml` (sem `spring-boot-starter-actuator`) |
@@ -62,7 +62,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 ## 4. Priorização P0/P1/P2/P3
 
 ### P0 — impede operação real / risco grave de segurança / perda de dados
-- **Seed `SUPER_ADMIN` com senha fixa documentada publicamente** — qualquer pessoa com acesso ao repositório (público ou não) conhece a senha do usuário mais privilegiado do sistema. Sem troca obrigatória no primeiro login ou geração de senha aleatória no deploy, isso é uma porta aberta em produção.
+- ~~**Seed `SUPER_ADMIN` com senha fixa documentada publicamente**~~ **resolvido na TASK-096** — `V7` desativa a conta com a senha nunca trocada; criação do primeiro `SUPER_ADMIN` passou a ser via `SuperAdminBootstrapRunner`, sem senha padrão em código.
 - **JWT secret com fallback silencioso para valor de desenvolvimento** — se `JWT_SECRET` não for setado em produção (erro humano plausível), a aplicação sobe normalmente assinando tokens com uma chave conhecida publicamente neste repositório. Não é "fraco", é uma chave completamente comprometida por definição.
 - **CORS com origens fixas em `localhost`** — não é só uma melhoria: em produção, o frontend real (domínio diferente de `localhost:5173`) será bloqueado pelo próprio CORS que hoje "funciona" só porque ambiente de dev e produção nunca foram diferenciados. Sem isso, o sistema **não funciona** fora do laptop de desenvolvimento.
 
@@ -98,7 +98,7 @@ A sequência lógica é: **fechar os 3 riscos P0 (que são configuração/seed, 
 
 | # | Título | Categoria | Prioridade | Objetivo | Arquivos prováveis | Validações esperadas | Por que nessa ordem |
 |---|---|---|---|---|---|---|---|
-| TASK-096 | Seed de `SUPER_ADMIN` seguro (senha aleatória ou troca obrigatória) | Segurança | P0 | Eliminar a senha fixa documentada publicamente; gerar senha aleatória no primeiro deploy ou forçar troca no primeiro login | `V4__seed_super_admin.sql`/nova migration, `AuthService`, possivelmente `UsuarioService` | `mvn test`, teste novo cobrindo o fluxo de primeira troca | É o risco mais barato de mitigar e o mais grave — deve vir antes de qualquer outra coisa tocar em auth |
+| TASK-096 | ~~Seed de `SUPER_ADMIN` seguro~~ **concluída** | Segurança | P0 | Eliminar a senha fixa documentada publicamente — feito via `V7` (desativação condicional) + `SuperAdminBootstrapRunner` (criação controlada por variável de ambiente, sem default de senha) | `V7__desativar_seed_super_admin_conhecido.sql`, `bootstrap/SuperAdminBootstrapRunner.java`, `UsuarioRepository.java`, `application.yml` | `mvn test` → 324/324 BUILD SUCCESS (320 + 4 novos) | Era o risco mais barato de mitigar e o mais grave — feito antes de qualquer outra coisa tocar em auth |
 | TASK-097 | Falha rápida se `JWT_SECRET` não for setado fora do perfil de dev | Segurança | P0 | Impedir que a aplicação suba com a chave de desenvolvimento fora do perfil `dev`/`test` | `application.yml`, `application-prod.yml` (novo), `JwtService`/`SecurityConfig` | `mvn test`, teste de contexto validando `@Profile`/`@ConditionalOnProperty` | Mesma classe de risco da TASK-096 (segredo público comprometendo produção), sequencial por serem ambas mudanças pequenas e isoladas em security config |
 | TASK-098 | Externalizar origens de CORS por variável de ambiente | Segurança/Deploy | P0 | `allowedOrigins` deixar de ser hardcoded, virar `${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}` | `SecurityConfig.java`, `application.yml` | `mvn test`, `curl` de preflight com origem customizada | Fecha o último P0 — sem isso o sistema não roda fora de `localhost` de jeito nenhum |
 | TASK-099 | Observabilidade mínima (Actuator + log estruturado) | Infra | P1 | Adicionar `spring-boot-starter-actuator` (`/health`, `/info`), revisar níveis de log por ambiente | `pom.xml`, `application.yml`, `application-prod.yml` | `mvn test`, `curl /actuator/health` | Depois dos P0 de segurança, é o que mais reduz "voar às cegas" antes de qualquer deploy real |
@@ -137,7 +137,7 @@ A sequência lógica é: **fechar os 3 riscos P0 (que são configuração/seed, 
 
 ## 10. Itens obrigatórios antes de produção
 
-- Seed de `SUPER_ADMIN` sem senha fixa pública (TASK-096).
+- ~~Seed de `SUPER_ADMIN` sem senha fixa pública~~ **concluído na TASK-096**.
 - `JWT_SECRET` obrigatório fora do perfil de desenvolvimento, sem fallback (TASK-097).
 - CORS configurável por ambiente, sem `localhost` hardcoded (TASK-098).
 - Definir estratégia de storage de upload não-local se houver mais de uma instância da aplicação.
@@ -163,4 +163,6 @@ Task estritamente documental — nenhuma alteração de `backend/src`/`frontend/
 
 ## Próxima task recomendada
 
-**TASK-096 — Seed de `SUPER_ADMIN` seguro.** É o item de maior risco real (P0) e o menor em esforço de implementação: não exige decisão de arquitetura, não expande escopo, e fecha uma exposição de segurança que hoje está documentada em texto claro dentro do próprio repositório versionado. TASK-097 (JWT secret) e TASK-098 (CORS externalizado) devem segui-la na mesma "leva de hardening", nessa ordem, antes de qualquer investimento em testes ou produto novo.
+~~TASK-096 — Seed de `SUPER_ADMIN` seguro~~ **concluída** (ver `docs/status-mvp.md`/`docs/testes-backend-mvp.md` seção 7-tredecies).
+
+**Próxima: TASK-097 — Falha rápida se `JWT_SECRET` não for setado fora do perfil de dev.** Mesma classe de risco (segredo comprometendo produção) e mesmo padrão de correção (variável de ambiente obrigatória, sem fallback silencioso) já aplicado na TASK-096 — deve seguir imediatamente na mesma "leva de hardening", antes de TASK-098 (CORS externalizado) e antes de qualquer investimento em testes ou produto novo.

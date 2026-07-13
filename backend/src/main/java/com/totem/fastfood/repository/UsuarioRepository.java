@@ -1,6 +1,7 @@
 package com.totem.fastfood.repository;
 
 import com.totem.fastfood.entity.Usuario;
+import com.totem.fastfood.enums.PerfilUsuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -15,4 +16,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     boolean existsByEmailAndIdNot(String email, Long id);
 
     List<Usuario> findByRestauranteId(Long restauranteId);
+
+    /** Usado pelo bootstrap de SUPER_ADMIN (TASK-096) para nunca criar um segundo enquanto já existir um ativo. */
+    boolean existsByPerfilAndAtivoTrue(PerfilUsuario perfil);
 }

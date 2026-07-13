@@ -15,10 +15,8 @@ mvn clean compile
 mvn spring-boot:run
 ```
 
-- Migrations Flyway aplicadas automaticamente na subida (`ddl-auto: none`, schema vem só de `V1`...`V6`).
-- Usuário SUPER_ADMIN já existe via seed/migration:
-  - email: `admin@totem.local`
-  - senha: `Admin@2026!`
+- Migrations Flyway aplicadas automaticamente na subida (`ddl-auto: none`, schema vem só de `V1`...`V7`).
+- **Usuário SUPER_ADMIN (TASK-096)**: o antigo seed de senha fixa (`admin@totem.local`/`Admin@2026!`, migrations V4/V5) foi desativado pela V7 em qualquer instalação onde a senha nunca tenha sido trocada — não use mais essa credencial como referência de teste. Para ter um `SUPER_ADMIN` ativo, defina `SUPER_ADMIN_BOOTSTRAP_ENABLED=true`, `SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD` (variáveis de ambiente) antes da primeira subida — ver `README.md` seção "Primeiro acesso administrativo" e `docs/04-seguranca.md`. Os exemplos de `curl` abaixo que usam `admin@totem.local`/`Admin@2026!` assumem que você configurou o bootstrap com esses valores localmente; substitua pelos que você escolheu.
 
 ## 2. Endpoints implementados por módulo
 
@@ -619,6 +617,25 @@ Continuação da TASK-093 contra o mesmo backend real + PostgreSQL local, restau
 ## 7-duodecies. TASK-094.1 — tentativa de homologação visual (bloqueada por ambiente)
 
 Nova checagem de disponibilidade de `chromium-cli`/Playwright/Cypress neste ambiente: continuam ausentes; instalar ferramenta nova estava fora do escopo desta tentativa. Nenhuma alteração de código no repositório desde o fechamento da TASK-094 (`git status` confirmado). Suíte de regressão reexecutada por precaução: `mvn test` → **320/320, BUILD SUCCESS**; `npm run build` sem erro; `npx oxlint` sem erro (mesmo warning cosmético pré-existente em `ThemeContext.tsx` — `npm run lint` ficou com saída inesperada por interceptação de um hook local do ambiente, não relacionada ao projeto; `npx oxlint` direto confirma o resultado real). **Nenhum bug encontrado — pendência de clique real permanece aberta, dependente de testador humano ou ferramenta de automação de navegador.**
+
+## 7-tredecies. TASK-096 — seed de SUPER_ADMIN seguro
+
+Corrige o risco P0 identificado na TASK-095 (revisão de roadmap): o seed de `SUPER_ADMIN` das migrations `V4`/`V5` usava uma senha fixa (`Admin@2026!`) documentada em texto claro no repositório versionado.
+
+**Mudanças de código**:
+- `V7__desativar_seed_super_admin_conhecido.sql` (nova migration): `UPDATE usuarios SET ativo = false ... WHERE email = 'admin@totem.local' AND senha_hash = '<hash exato da V5>'` — só desativa a conta se a senha nunca tiver sido trocada (hash ainda bate); se já foi trocada pelo painel, não faz nada. `V4`/`V5` **não foram editadas** (evita quebrar o checksum do Flyway em bancos onde já foram aplicadas).
+- `SuperAdminBootstrapRunner` (`backend/src/main/java/com/totem/fastfood/bootstrap/`, novo `ApplicationRunner`): cria o primeiro `SUPER_ADMIN` de um ambiente, condicionado a `app.bootstrap.super-admin.enabled` (`@ConditionalOnProperty`, default `false` — bean nem é instanciado quando desligado). Exige `app.bootstrap.super-admin.email`/`password` (variáveis `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD`) — sem elas, falha o startup com `IllegalStateException` em vez de criar algo silenciosamente. Nunca cria um segundo `SUPER_ADMIN` se já existir um ativo (`UsuarioRepository.existsByPerfilAndAtivoTrue`, método novo).
+- `application.yml`: novo bloco `app.bootstrap.super-admin` (enabled/email/password, todos via variável de ambiente, sem default de senha).
+
+**Testes novos**: `SuperAdminBootstrapRunnerTest` (4 casos, unitário puro com Mockito — sem contexto Spring): não cria quando já existe um `SUPER_ADMIN` ativo; falha ao iniciar quando habilitado sem e-mail/senha; falha ao iniciar com e-mail mas sem senha; cria com senha criptografada (via `PasswordEncoder`, mesmo bean de `SecurityConfig`) quando habilitado e não existe um ativo.
+
+**Por que o bean condicional é seguro para a suíte existente**: como o bootstrap não foi habilitado em `backend/src/test/resources/application.yml` (permanece `false`, o default), o `SuperAdminBootstrapRunner` **nunca é instanciado** nos ~13 testes `@SpringBootTest` do projeto — confirmado que `TotemApplicationTests.contextLoads` continua passando sem nenhum usuário extra sendo criado.
+
+**Testes ajustados (comentário apenas, lógica preservada)**: `BCryptValidationTest`/`GerarSenhaUtilTest` — Javadoc atualizado para deixar claro que documentam um bug histórico (hash V4→V5) e que a conta em questão está desativada desde a V7; nenhuma assertion foi alterada, ambos continuam passando.
+
+`mvn test` → **324/324, BUILD SUCCESS** (320 anteriores + 4 novos). Nenhuma alteração de frontend.
+
+**Efeito em ambientes existentes**: qualquer instalação que ainda tivesse a senha `Admin@2026!` nunca trocada perde o acesso via essa credencial na próxima subida (a V7 desativa a conta). Para recuperar acesso administrativo, habilitar o bootstrap (`SUPER_ADMIN_BOOTSTRAP_ENABLED=true` + `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD`) antes do próximo restart — documentado em `README.md` e `docs/04-seguranca.md`.
 
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
 

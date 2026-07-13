@@ -12,6 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * Serve como regressão: se um hash inválido for commitado novamente em
  * uma migration futura, este teste falha antes de chegar ao banco.
+ *
+ * Nota (TASK-096): esse usuário de seed foi desativado pela V7 em qualquer
+ * instalação onde a senha nunca tenha sido trocada — o risco de uma senha
+ * fixa pública foi eliminado. Este teste permanece só como documentação
+ * histórica do bug de hash corrigido pela V5; novos ambientes devem criar o
+ * primeiro SUPER_ADMIN via {@code SuperAdminBootstrapRunner}.
  */
 class BCryptValidationTest {
 

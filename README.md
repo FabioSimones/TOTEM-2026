@@ -61,6 +61,18 @@ cd frontend && npm run build && npm run lint
 
 Detalhes de cada suíte de teste em `docs/testes-backend-mvp.md`.
 
+## Primeiro acesso administrativo (SUPER_ADMIN)
+
+Desde a TASK-096, o sistema **não** cria mais um `SUPER_ADMIN` com senha fixa por migration — o antigo seed (`admin@totem.local`/senha documentada) foi desativado para qualquer instalação onde a senha nunca tenha sido trocada (ver `docs/04-seguranca.md`). Para ter um `SUPER_ADMIN` ativo (ambiente local novo, ou um ambiente onde o seed antigo foi desativado), defina estas variáveis de ambiente **antes** de subir o backend pela primeira vez:
+
+```bash
+export SUPER_ADMIN_BOOTSTRAP_ENABLED=true
+export SUPER_ADMIN_EMAIL=admin@totem.local
+export SUPER_ADMIN_PASSWORD="escolha uma senha sua aqui"
+```
+
+Na próxima subida (`mvn spring-boot:run`), o `SuperAdminBootstrapRunner` cria o usuário com a senha informada (BCrypt) — só executa se ainda não houver nenhum `SUPER_ADMIN` ativo. Sem essas variáveis, o bootstrap fica desligado por padrão e nenhuma credencial é criada — não há senha padrão de produção em lugar nenhum do código.
+
 ## Ordem recomendada
 
 1. Fase 1 - Planejamento

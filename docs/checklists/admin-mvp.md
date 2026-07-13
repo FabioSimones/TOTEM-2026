@@ -18,7 +18,7 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 
 - [ ] `/admin/login` com campos vazios → não chama o backend, mostra "Informe e-mail e senha."
 - [ ] Login inválido → mensagem amigável (401), sem revelar se foi e-mail ou senha
-- [ ] Login com `admin@totem.local` / `Admin@2026!` → redireciona para `/admin`, mostra nome/e-mail/perfil
+- [ ] Login com o `SUPER_ADMIN` configurado via bootstrap (TASK-096 — `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD`, não mais `admin@totem.local`/`Admin@2026!` fixo) → redireciona para `/admin`, mostra nome/e-mail/perfil
 - [ ] Recarregar `/admin` (F5) → sessão persiste
 - [ ] Botão "Sair" → limpa sessão e volta para `/admin/login`
 - [ ] Errar a senha repetidamente (padrão: 5 vezes seguidas para o mesmo e-mail) → a partir da 6ª tentativa, `429` "Muitas tentativas de login. Tente novamente mais tarde." (rate limiting, TASK-065) — ver seção 9f

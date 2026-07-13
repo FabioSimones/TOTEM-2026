@@ -36,6 +36,8 @@ Request:
 }
 ```
 
+Exemplo ilustrativo do formato do corpo — não é uma credencial válida por padrão desde a TASK-096 (ver `docs/04-seguranca.md` e `README.md` seção "Primeiro acesso administrativo").
+
 Response (`200 OK`):
 
 ```json

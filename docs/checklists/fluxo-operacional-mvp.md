@@ -11,7 +11,7 @@ Ver `docs/11-fluxos.md` para o diagrama do fluxo completo e `docs/testes-backend
 - [ ] `GET http://localhost:8080/api/health` responde `200 OK`
 - [ ] Frontend rodando: `cd frontend && npm install && npm run dev`
 - [ ] `.env` do frontend aponta `VITE_API_BASE_URL` para o backend local
-- [ ] Login como `SUPER_ADMIN` funciona (`admin@totem.local` / `Admin@2026!`)
+- [ ] Login como `SUPER_ADMIN` funciona (credencial configurada via bootstrap — `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD`, TASK-096; não depende mais de `admin@totem.local`/`Admin@2026!` fixo)
 - [ ] Restaurante, categoria e ao menos um produto disponível cadastrados (`docs/http/totem-fast-food-mvp.http`, blocos 3–5, ou `docs/testes-backend-mvp.md` seção 5.2–5.3)
 
 ## 2. Ativar dispositivos

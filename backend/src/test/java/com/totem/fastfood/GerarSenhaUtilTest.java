@@ -4,15 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
- * Utilitário para gerar o hash BCrypt da senha do SUPER_ADMIN.
+ * Utilitário histórico usado para gerar o hash BCrypt da senha fixa do seed de SUPER_ADMIN
+ * (migrations V4/V5, hoje desativadas pela V7 — TASK-096).
  *
- * COMO USAR:
- * 1. Execute: mvn test -Dtest=GerarSenhaUtilTest -pl backend
- * 2. Copie o hash impresso no console
- * 3. Substitua o valor de senha_hash em V4__seed_super_admin.sql
- * 4. Execute mvn spring-boot:run para aplicar a migration
- *
- * Este arquivo pode ser deletado após gerar e aplicar o hash.
+ * Não usar mais para gerar credencial real: desde a TASK-096, o primeiro SUPER_ADMIN de um
+ * ambiente é criado por {@code SuperAdminBootstrapRunner}, que já criptografa a senha informada
+ * via {@code SUPER_ADMIN_PASSWORD} — não há mais hash fixo para colar em migration nenhuma.
  */
 class GerarSenhaUtilTest {
 

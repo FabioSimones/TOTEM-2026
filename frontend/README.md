@@ -252,11 +252,15 @@ Fluxo completo para testar (fecha o ciclo Totem → Caixa → Cozinha → Caixa)
 
 A partir da TASK-042, `/admin/login` autentica um **usuário humano** (diferente da ativação de dispositivo — ver seção acima) e `/admin` exibe um painel administrativo. Na época da TASK-042 nenhum CRUD existia ainda; hoje (TASK-046) Restaurantes/Dispositivos/Categorias/Produtos já são reais — só "Usuários" continua placeholder "Em breve" (ver seções próprias abaixo).
 
-Usuário seed disponível desde a migration inicial do backend:
+**Desde a TASK-096**, não existe mais um usuário seed com senha fixa — o antigo (`admin@totem.local`/`Admin@2026!`) foi desativado pela migration `V7` em qualquer instalação onde a senha nunca tenha sido trocada. Para ter um `SUPER_ADMIN` ativo, habilite o bootstrap antes de subir o backend (ver `README.md` raiz, seção "Primeiro acesso administrativo"):
 
-- E-mail: `admin@totem.local`
-- Senha: `Admin@2026!`
-- Perfil: `SUPER_ADMIN`
+```bash
+export SUPER_ADMIN_BOOTSTRAP_ENABLED=true
+export SUPER_ADMIN_EMAIL=admin@totem.local
+export SUPER_ADMIN_PASSWORD="escolha uma senha sua aqui"
+```
+
+Perfil: `SUPER_ADMIN`. Os passos abaixo usam `admin@totem.local`/`Admin@2026!` como exemplo — substitua pelos valores que você configurou.
 
 1. Abra `http://localhost:5173/admin/login` (ou acesse `http://localhost:5173/admin` sem sessão — redireciona automaticamente para o login).
 2. Clique em "Entrar" com os campos vazios: nenhuma chamada é feita ao backend, aparece a mensagem "Informe e-mail e senha.".

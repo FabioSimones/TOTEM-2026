@@ -25,6 +25,8 @@ GET {{baseUrl}}/api/health
 
 
 ### 2. Login SUPER_ADMIN
+### Desde a TASK-096, não há mais senha fixa de seed — substitua pelos valores configurados
+### via SUPER_ADMIN_BOOTSTRAP_ENABLED/SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD (ver README.md).
 # @name login
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json

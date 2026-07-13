@@ -67,6 +67,17 @@ app:
       # um WAF/proxy/rate limiting de borda em produção.
       max-failures: ${LOGIN_RATE_LIMIT_MAX_FAILURES:5}
       block-minutes: ${LOGIN_RATE_LIMIT_BLOCK_MINUTES:15}
+  bootstrap:
+    super-admin:
+      # Desligado por padrão (TASK-096) — a V7 desativou o antigo seed de senha fixa das
+      # migrations V4/V5. Para criar o primeiro SUPER_ADMIN de um ambiente novo (ou reativar
+      # um ambiente onde o seed antigo foi desativado), habilite explicitamente e informe
+      # e-mail/senha via variável de ambiente. NUNCA definir um valor padrão de senha aqui —
+      # ligar sem SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD falha o startup de propósito. Ver
+      # docs/04-seguranca.md.
+      enabled: ${SUPER_ADMIN_BOOTSTRAP_ENABLED:false}
+      email: ${SUPER_ADMIN_EMAIL:}
+      password: ${SUPER_ADMIN_PASSWORD:}
   uploads:
     # Armazenamento local em disco — adequado para o MVP. Em produção,
     # substituir por storage externo (S3, Cloudinary ou equivalente).
