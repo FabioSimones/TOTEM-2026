@@ -2,6 +2,8 @@
 
 Criado na TASK-081 (Fase 13 — Consolidação de testes e qualidade). Consolida o estado real do projeto após 81 tasks, cruzando documentação, código e resultados de teste — não substitui os documentos detalhados (`docs/08-endpoints.md`, `docs/09-contratos-api.md`, `docs/testes-backend-mvp.md`, `docs/checklists/*`), serve como visão executiva de "onde o projeto está agora".
 
+**Para priorização e próximos passos pós-MVP, ver `docs/roadmap-pos-mvp.md` (TASK-095)** — este documento continua registrando o histórico de tasks concluídas; o roadmap é quem organiza P0/P1/P2/P3 e a sequência recomendada daqui em diante.
+
 ## Visão geral
 
 Sistema de autoatendimento para fast food: Totem (cliente monta pedido e paga), Caixa (confirma dinheiro, envia à cozinha, retira), Cozinha (prepara), e um Painel Administrativo (gestão de restaurantes, cardápio, dispositivos, usuários, pedidos e um dashboard operacional). Backend Java 21 + Spring Boot 3.3.5 + PostgreSQL + Flyway; frontend React 19 + TypeScript + Vite, sem framework de UI.
