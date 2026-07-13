@@ -86,8 +86,10 @@ class SecurityHttpStatusTest {
 
         String token = jwtService.gerarToken(adminRestaurante);
 
-        // /api/admin/usuarios exige SUPER_ADMIN — ADMIN_RESTAURANTE tem token válido, mas sem role.
-        mockMvc.perform(get("/api/admin/usuarios").header("Authorization", "Bearer " + token))
+        // /api/admin/restaurantes exige SUPER_ADMIN — ADMIN_RESTAURANTE tem token válido, mas sem
+        // role suficiente. (Até a TASK-090 este teste usava /api/admin/usuarios, mas esse endpoint
+        // passou a aceitar ADMIN_RESTAURANTE com escopo — deixou de ser um exemplo válido de 403.)
+        mockMvc.perform(get("/api/admin/restaurantes").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 

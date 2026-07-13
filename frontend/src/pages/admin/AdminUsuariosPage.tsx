@@ -18,10 +18,18 @@ import { listarRestaurantes } from "../../services/adminRestauranteService";
 import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
-import type { AtualizarUsuarioRequest, CriarUsuarioRequest, UsuarioAdminResponse } from "../../types/usuario";
+import type { AtualizarUsuarioRequest, CriarUsuarioRequest, PerfilUsuario, UsuarioAdminResponse } from "../../types/usuario";
+import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
+
+/** TASK-090: perfis que um ADMIN_RESTAURANTE pode atribuir/gerenciar — nunca SUPER_ADMIN/ADMIN_RESTAURANTE. */
+const PERFIS_GERENCIAVEIS_POR_ADMIN_RESTAURANTE: PerfilUsuario[] = ["OPERADOR_CAIXA", "OPERADOR_COZINHA"];
 
 export function AdminUsuariosPage() {
   const navigate = useNavigate();
+  const usuarioAutenticado = getStoredUsuario();
+  const adminRestaurante = isAdminRestaurante(usuarioAutenticado);
+  const restauranteIdEscopo = getRestauranteIdEscopo(usuarioAutenticado);
+
   const [restaurantes, setRestaurantes] = useState<RestauranteAdminResponse[]>([]);
   const [erroRestaurantes, setErroRestaurantes] = useState<string | null>(null);
 
@@ -40,6 +48,11 @@ export function AdminUsuariosPage() {
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
 
   const carregarRestaurantes = useCallback(async () => {
+    if (adminRestaurante) {
+      // GET /api/admin/restaurantes é SUPER_ADMIN apenas — ADMIN_RESTAURANTE sempre recebe 403.
+      // Nem chamamos: o formulário usa restauranteFixo (ver abaixo) em vez de uma lista.
+      return;
+    }
     setErroRestaurantes(null);
     try {
       const response = await listarRestaurantes();
@@ -49,37 +62,44 @@ export function AdminUsuariosPage() {
       // SUPER_ADMIN, mas a listagem/edição/ativação de usuários segue normalmente.
       setErroRestaurantes("Não foi possível carregar a lista de restaurantes.");
     }
-  }, []);
+  }, [adminRestaurante]);
 
-  const carregarUsuarios = useCallback(async (restauranteId: number | null) => {
-    setLoading(true);
-    setErro(null);
-    setSemAutorizacao(false);
-    setMensagemSucesso(null);
+  const carregarUsuarios = useCallback(
+    async (restauranteId: number | null) => {
+      setLoading(true);
+      setErro(null);
+      setSemAutorizacao(false);
+      setMensagemSucesso(null);
 
-    try {
-      const response = await listarUsuarios(restauranteId ?? undefined);
-      setUsuarios(response);
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setSemAutorizacao(true);
-        if (error.status === 401) {
-          clearSession();
-          setErro("Sessão expirada. Faça login novamente.");
+      // ADMIN_RESTAURANTE (TASK-090) nunca filtra por outro restaurante — o backend rejeitaria com
+      // 403; aqui já forçamos o próprio para nem tentar.
+      const restauranteIdEfetivo = adminRestaurante ? restauranteIdEscopo : restauranteId;
+
+      try {
+        const response = await listarUsuarios(restauranteIdEfetivo ?? undefined);
+        setUsuarios(response);
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          setSemAutorizacao(true);
+          if (error.status === 401) {
+            clearSession();
+            setErro("Sessão expirada. Faça login novamente.");
+          } else {
+            setErro("Você não tem permissão para acessar usuários.");
+          }
         } else {
-          setErro("Você não tem permissão para acessar usuários.");
+          setErro(
+            error instanceof ApiError
+              ? error.message
+              : "Não foi possível carregar os usuários. Tente novamente.",
+          );
         }
-      } else {
-        setErro(
-          error instanceof ApiError
-            ? error.message
-            : "Não foi possível carregar os usuários. Tente novamente.",
-        );
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [adminRestaurante, restauranteIdEscopo],
+  );
 
   useEffect(() => {
     if (!getAccessToken() || !getStoredUsuario()) {
@@ -264,7 +284,13 @@ export function AdminUsuariosPage() {
         </Button>
       </div>
 
-      {restaurantes.length > 0 && (
+      {adminRestaurante && (
+        <p className="totem-estado admin-filtro-restaurante">
+          Você está gerenciando usuários do seu restaurante.
+        </p>
+      )}
+
+      {!adminRestaurante && restaurantes.length > 0 && (
         <div className="dispositivo-form__tipo admin-filtro-restaurante">
           <span className="dispositivo-form__tipo-rotulo">Filtrar por restaurante</span>
           <div className="dispositivo-form__tipo-opcoes">
@@ -325,6 +351,12 @@ export function AdminUsuariosPage() {
             usuarioEmEdicao={usuarioEmEdicao}
             restaurantes={restaurantes}
             restauranteSelecionadoPadrao={filtroRestauranteId}
+            restauranteFixo={
+              adminRestaurante && restauranteIdEscopo != null
+                ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
+                : null
+            }
+            perfisPermitidos={adminRestaurante ? PERFIS_GERENCIAVEIS_POR_ADMIN_RESTAURANTE : undefined}
             onCriar={handleCriar}
             onAtualizar={handleAtualizar}
             onCancelarEdicao={handleCancelarEdicao}

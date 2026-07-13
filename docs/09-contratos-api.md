@@ -452,13 +452,24 @@ app:
 
 ## Admin — Usuários
 
-Implementado na TASK-048. Todos os endpoints exigem perfil `SUPER_ADMIN`.
+Implementado na TASK-048. Todos os endpoints exigem perfil `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` (TASK-090 abriu para `ADMIN_RESTAURANTE`, com escopo — ver abaixo). `OPERADOR_CAIXA`/`OPERADOR_COZINHA` nunca acessam este módulo (`403`).
+
+**Escopo por restaurante (TASK-090)**:
+
+- `SUPER_ADMIN`: comportamento inalterado — qualquer perfil, qualquer restaurante, qualquer usuário-alvo.
+- `ADMIN_RESTAURANTE`: só pode listar/criar/atualizar/ativar/desativar/alterar senha de usuários com perfil `OPERADOR_CAIXA` ou `OPERADOR_COZINHA` **do próprio restaurante**. Qualquer uma das situações abaixo retorna `403`:
+  - Criar ou atualizar um usuário com `perfil=SUPER_ADMIN` ou `perfil=ADMIN_RESTAURANTE` (não pode promover operador nem criar outro admin).
+  - Informar `restauranteId` diferente do próprio (na criação, se omitido o backend assume o restaurante do `ADMIN_RESTAURANTE`; na atualização, sempre é forçado para o próprio).
+  - Listar/filtrar (`?restauranteId=`) outro restaurante.
+  - Atualizar, ativar, desativar ou alterar a senha de um usuário-alvo que não seja `OPERADOR_CAIXA`/`OPERADOR_COZINHA` do próprio restaurante (inclui: outro `ADMIN_RESTAURANTE`, qualquer `SUPER_ADMIN`, ou usuário de outro restaurante).
+  - Desativar a si mesmo (bloqueio pré-existente da TASK-048, `400`, continua valendo antes de qualquer checagem de escopo).
+- Essa abertura **não torna `OPERADOR_CAIXA`/`OPERADOR_COZINHA` operadores reais do fluxo Caixa/Cozinha** — eles seguem sem acesso a `/api/caixa/**`/`/api/cozinha/**` (exclusivamente dispositivo, `ROLE_DEVICE_CAIXA`/`ROLE_DEVICE_COZINHA`). Auditoria de ação por operador humano (preencher `HistoricoStatusPedido.alteradoPorUsuario`) fica para task futura — ver `docs/status-mvp.md`.
 
 ### Cadastrar usuário
 
 `POST /api/admin/usuarios`
 
-Request — `restauranteId` é **obrigatório** para todo perfil exceto `SUPER_ADMIN` (que nunca pode ter restaurante, sob pena de `400`); `ativo` é opcional (padrão `true`):
+Request — `restauranteId` é **obrigatório** para todo perfil exceto `SUPER_ADMIN` (que nunca pode ter restaurante, sob pena de `400`); `ativo` é opcional (padrão `true`). Para `ADMIN_RESTAURANTE`, `restauranteId` é opcional (assume o próprio restaurante) e `perfil` só aceita `OPERADOR_CAIXA`/`OPERADOR_COZINHA`:
 
 ```json
 {
@@ -488,7 +499,7 @@ Response (`201 Created`) — nunca inclui `senha`/`senhaHash`:
 
 ### Listar usuários
 
-`GET /api/admin/usuarios[?restauranteId=]` — mesmo formato de resposta da criação, em lista. Sem filtro, retorna usuários de todos os restaurantes (incluindo `SUPER_ADMIN`).
+`GET /api/admin/usuarios[?restauranteId=]` — mesmo formato de resposta da criação, em lista. `SUPER_ADMIN` sem filtro retorna usuários de todos os restaurantes (incluindo outros `SUPER_ADMIN`). `ADMIN_RESTAURANTE` (TASK-090) sempre fica restrito ao próprio restaurante — filtro omitido ou igual ao próprio retorna a lista normalmente; qualquer outro valor retorna `403`.
 
 ### Atualizar usuário
 
@@ -777,7 +788,7 @@ Em `dryRun=true`, `excluido` é sempre `false` nos itens de `detalhes` (nenhuma 
 
 ## Escopo por restaurante para ADMIN_RESTAURANTE
 
-Implementado na TASK-058, cobrindo Categorias, Produtos e Dispositivos (`/api/admin/categorias`, `/api/admin/produtos`, `/api/admin/dispositivos`).
+Implementado na TASK-058, cobrindo Categorias, Produtos e Dispositivos (`/api/admin/categorias`, `/api/admin/produtos`, `/api/admin/dispositivos`). Estendido na TASK-090 para Usuários (`/api/admin/usuarios`), com uma regra adicional de hierarquia de perfil — ver seção "Admin — Usuários" acima para o detalhamento completo desse módulo.
 
 **Regra**: `SUPER_ADMIN` continua com acesso irrestrito a qualquer restaurante. `ADMIN_RESTAURANTE` só pode consultar, criar, atualizar ou inativar/revogar recursos vinculados ao restaurante do seu próprio usuário — mesmo que informe um `restauranteId` diferente no corpo da requisição ou no filtro de listagem, a operação é bloqueada.
 
@@ -787,9 +798,9 @@ Implementado na TASK-058, cobrindo Categorias, Produtos e Dispositivos (`/api/ad
 
 **Como o backend descobre o restaurante do `ADMIN_RESTAURANTE`**: o JWT de usuário humano já carrega `restauranteId` como claim, mas o filtro de autenticação não o utiliza — em vez de alterar login/geração de token, o backend resolve o restaurante buscando o usuário por email (`Authentication.getName()`) a cada validação de escopo (`AdminScopeService`). Login e emissão de token não foram alterados.
 
-**Fora do escopo desta task**: `/api/admin/usuarios` continua exclusivo de `SUPER_ADMIN` (não recebeu escopo por restaurante — gestão de usuários é mais sensível). Upload de imagem (`/api/admin/uploads/produtos/imagem`) continua liberado a qualquer `ADMIN_RESTAURANTE` sem checagem de restaurante (o arquivo em si não pertence a um restaurante até ser referenciado por um produto); a limpeza de órfãos (`/limpar-orfas`) continua `SUPER_ADMIN` apenas.
+**`/api/admin/usuarios` (TASK-090)**: ~~continua exclusivo de `SUPER_ADMIN`~~ passou a aceitar `ADMIN_RESTAURANTE`, mas com uma regra adicional além do isolamento por restaurante — hierarquia de perfil (só gerencia `OPERADOR_CAIXA`/`OPERADOR_COZINHA`, nunca `SUPER_ADMIN`/`ADMIN_RESTAURANTE`) — ver seção "Admin — Usuários" acima. Upload de imagem (`/api/admin/uploads/produtos/imagem`) continua liberado a qualquer `ADMIN_RESTAURANTE` sem checagem de restaurante (o arquivo em si não pertence a um restaurante até ser referenciado por um produto); a limpeza de órfãos (`/limpar-orfas`) continua `SUPER_ADMIN` apenas.
 
-**Frontend (TASK-059)**: o painel administrativo (`frontend/`) passou a refletir essa regra visualmente — `ADMIN_RESTAURANTE` não vê seletor de restaurante em Categorias/Produtos/Dispositivos (o campo aparece fixo, sem depender de `GET /api/admin/restaurantes`, que é `SUPER_ADMIN` apenas) e o painel `/admin` esconde os cards "Restaurantes"/"Usuários" para quem não é `SUPER_ADMIN`. Isso é só uma melhoria de UX — o contrato da API e a validação de escopo continuam inteiramente no backend, exatamente como documentado acima.
+**Frontend (TASK-059, estendido na TASK-090)**: o painel administrativo (`frontend/`) reflete essa regra visualmente — `ADMIN_RESTAURANTE` não vê seletor de restaurante em Categorias/Produtos/Dispositivos/Usuários (o campo aparece fixo, sem depender de `GET /api/admin/restaurantes`, que é `SUPER_ADMIN` apenas), o painel `/admin` esconde o card "Restaurantes" para quem não é `SUPER_ADMIN` e o card "Usuários" para `OPERADOR_CAIXA`/`OPERADOR_COZINHA`, e `/admin/usuarios` só exibe/permite atribuir os perfis `OPERADOR_CAIXA`/`OPERADOR_COZINHA` quando o autenticado é `ADMIN_RESTAURANTE`. Isso é só uma melhoria de UX — o contrato da API e a validação de escopo continuam inteiramente no backend, exatamente como documentado acima.
 
 ## Erro padrão
 

@@ -13,6 +13,16 @@ export function isAdminRestaurante(usuario: UsuarioAutenticadoResponse | null): 
   return usuario?.perfil === "ADMIN_RESTAURANTE";
 }
 
+/**
+ * OPERADOR_CAIXA/OPERADOR_COZINHA (TASK-090): perfis humanos sem função no painel Admin — o
+ * backend nunca libera nenhum endpoint de `/api/admin/**` para eles (só `ROLE_SUPER_ADMIN`/
+ * `ROLE_ADMIN_RESTAURANTE`). Usado só para ajustar a UI (esconder cards); a autorização real
+ * continua inteiramente no backend.
+ */
+export function isOperador(usuario: UsuarioAutenticadoResponse | null): boolean {
+  return usuario?.perfil === "OPERADOR_CAIXA" || usuario?.perfil === "OPERADOR_COZINHA";
+}
+
 /** Restaurante ao qual o usuário está restrito, ou `null` para SUPER_ADMIN (acesso global). */
 export function getRestauranteIdEscopo(usuario: UsuarioAutenticadoResponse | null): number | null {
   if (!usuario || isSuperAdmin(usuario)) {

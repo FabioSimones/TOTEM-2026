@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.totem.fastfood.security.AuthRefreshLogoutTest" time="2.941" tests="7" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="32.522" tests="18" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -65,11 +65,22 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="refresh_deveRejeitarTokenJaRotacionado_umUsoSo" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.502"/>
-  <testcase name="loginNovo_deveRevogarRefreshTokenAnteriorDoMesmoUsuario" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.779"/>
-  <testcase name="login_deveRetornarAccessTokenERefreshToken" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.482"/>
-  <testcase name="refresh_comTokenInexistente_deveRetornar401" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.008"/>
-  <testcase name="logout_comTokenInexistente_deveSerIdempotente_retornando204" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.017"/>
-  <testcase name="refresh_comTokenValido_deveEmitirNovoParEDiferenteDoAnterior" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.551"/>
-  <testcase name="logout_deveRevogarRefreshToken_eImpedirRefreshFuturo" classname="com.totem.fastfood.security.AuthRefreshLogoutTest" time="0.583"/>
+  <testcase name="adminRestaurante_tentaDesativarASiMesmo_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.789"/>
+  <testcase name="adminRestaurante_listar_deveRetornarApenasUsuariosDoProprioRestaurante" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.703"/>
+  <testcase name="adminRestaurante_tentaCriarAdminRestaurante_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.72"/>
+  <testcase name="adminRestaurante_tentaCriarSuperAdmin_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.737"/>
+  <testcase name="superAdmin_editaUsuarioDeQualquerRestaurante_deveRetornar200" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.66"/>
+  <testcase name="adminRestaurante_editaOperadorDoProprioRestaurante_deveRetornar200" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.821"/>
+  <testcase name="adminRestaurante_filtrandoOutroRestaurante_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.663"/>
+  <testcase name="adminRestaurante_alteraSenhaDeOperadorDoProprioRestaurante_deveRetornar200" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="2.063"/>
+  <testcase name="superAdmin_criaAdminRestaurante_deveRetornar201" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="2.028"/>
+  <testcase name="semToken_deveRetornar401" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.934"/>
+  <testcase name="adminRestaurante_criaOperadorCaixaNoProprioRestaurante_deveRetornar201" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="2.052"/>
+  <testcase name="superAdmin_listaTodosOsUsuarios_deveRetornar200" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.805"/>
+  <testcase name="adminRestaurante_tentaAlterarSenhaDeOutroAdminRestaurante_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.714"/>
+  <testcase name="adminRestaurante_tentaEditarUsuarioDeOutroRestaurante_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.752"/>
+  <testcase name="superAdmin_alteraSenhaDeQualquerUsuario_deveRetornar200" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="2.005"/>
+  <testcase name="operadorCaixa_tentandoAcessar_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.687"/>
+  <testcase name="adminRestaurante_tentaPromoverOperadorParaSuperAdmin_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.709"/>
+  <testcase name="adminRestaurante_tentaCriarUsuarioEmOutroRestaurante_deveRetornar403" classname="com.totem.fastfood.integration.UsuarioAdminScopeIntegrationTest" time="1.662"/>
 </testsuite>

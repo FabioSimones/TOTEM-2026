@@ -4,7 +4,7 @@ import { AppLayout } from "../../components/layout/AppLayout";
 import { logout } from "../../services/authService";
 import { clearSession, getAccessToken, getRefreshToken, getStoredUsuario } from "../../services/tokenStorage";
 import type { UsuarioAutenticadoResponse } from "../../types/auth";
-import { isSuperAdmin } from "../../utils/adminScope";
+import { isOperador, isSuperAdmin } from "../../utils/adminScope";
 
 const ROTULO_PERFIL: Record<UsuarioAutenticadoResponse["perfil"], string> = {
   SUPER_ADMIN: "Super administrador",
@@ -18,6 +18,12 @@ interface AreaAdmin {
   rota?: string;
   /** true = exige SUPER_ADMIN (backend bloqueia os demais perfis com 403). */
   apenasSuperAdmin?: boolean;
+  /**
+   * true = some para OPERADOR_CAIXA/OPERADOR_COZINHA (TASK-090), mesmo esses perfis não sendo
+   * "apenasSuperAdmin" — hoje só "Usuários" usa isso (SUPER_ADMIN e ADMIN_RESTAURANTE gerenciam,
+   * operadores nunca acessam esse módulo).
+   */
+  ocultarParaOperador?: boolean;
 }
 
 const AREAS_ADMIN: AreaAdmin[] = [
@@ -26,7 +32,7 @@ const AREAS_ADMIN: AreaAdmin[] = [
   { nome: "Dispositivos", rota: "/admin/dispositivos" },
   { nome: "Categorias", rota: "/admin/categorias" },
   { nome: "Produtos", rota: "/admin/produtos" },
-  { nome: "Usuários", rota: "/admin/usuarios", apenasSuperAdmin: true },
+  { nome: "Usuários", rota: "/admin/usuarios", ocultarParaOperador: true },
   { nome: "Pedidos", rota: "/admin/pedidos" },
 ];
 
@@ -62,7 +68,10 @@ export function AdminHomePage() {
   }
 
   const superAdmin = isSuperAdmin(usuario);
-  const areasVisiveis = AREAS_ADMIN.filter((area) => superAdmin || !area.apenasSuperAdmin);
+  const operador = isOperador(usuario);
+  const areasVisiveis = AREAS_ADMIN.filter(
+    (area) => (superAdmin || !area.apenasSuperAdmin) && (!operador || !area.ocultarParaOperador),
+  );
 
   return (
     <AppLayout title="Painel Administrativo" description="Gestão de restaurantes, dispositivos, categorias, produtos, usuários e pedidos.">

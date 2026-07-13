@@ -17,6 +17,18 @@ interface UsuarioFormProps {
   usuarioEmEdicao: UsuarioAdminResponse | null;
   restaurantes: RestauranteAdminResponse[];
   restauranteSelecionadoPadrao: number | null;
+  /**
+   * Presente quando o usuário autenticado é ADMIN_RESTAURANTE (TASK-090): trava o formulário no
+   * restaurante do usuário, sem seletor — o backend já rejeitaria qualquer outro (403). Mesmo
+   * padrão de `DispositivoForm.restauranteFixo` (TASK-059).
+   */
+  restauranteFixo?: { id: number; rotulo: string } | null;
+  /**
+   * Restringe os perfis exibidos/atribuíveis no formulário (TASK-090). Ausente/undefined = todos
+   * os perfis (comportamento de SUPER_ADMIN). Para ADMIN_RESTAURANTE, o backend só aceita
+   * OPERADOR_CAIXA/OPERADOR_COZINHA — o front espelha isso para não gerar um 403 evitável.
+   */
+  perfisPermitidos?: PerfilUsuario[];
   onCriar: (request: CriarUsuarioRequest) => void;
   onAtualizar: (id: number, request: AtualizarUsuarioRequest) => void;
   onCancelarEdicao: () => void;
@@ -28,17 +40,21 @@ export function UsuarioForm({
   usuarioEmEdicao,
   restaurantes,
   restauranteSelecionadoPadrao,
+  restauranteFixo,
+  perfisPermitidos,
   onCriar,
   onAtualizar,
   onCancelarEdicao,
   salvando,
   erro,
 }: UsuarioFormProps) {
+  const perfisExibidos = perfisPermitidos ? PERFIS.filter((item) => perfisPermitidos.includes(item.valor)) : PERFIS;
+
   const [restauranteId, setRestauranteId] = useState<number | null>(null);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [perfil, setPerfil] = useState<PerfilUsuario>("OPERADOR_CAIXA");
+  const [perfil, setPerfil] = useState<PerfilUsuario>(perfisExibidos[0]?.valor ?? "OPERADOR_CAIXA");
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,14 +64,17 @@ export function UsuarioForm({
       setEmail(usuarioEmEdicao.email);
       setPerfil(usuarioEmEdicao.perfil);
     } else {
-      setRestauranteId(restauranteSelecionadoPadrao ?? restaurantes[0]?.id ?? null);
+      setRestauranteId(restauranteFixo?.id ?? restauranteSelecionadoPadrao ?? restaurantes[0]?.id ?? null);
       setNome("");
       setEmail("");
       setSenha("");
-      setPerfil("OPERADOR_CAIXA");
+      setPerfil(perfisExibidos[0]?.valor ?? "OPERADOR_CAIXA");
     }
     setErroValidacao(null);
-  }, [usuarioEmEdicao, restauranteSelecionadoPadrao, restaurantes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuarioEmEdicao, restauranteSelecionadoPadrao, restauranteFixo, restaurantes]);
+
+  const restauranteIdEfetivo = restauranteFixo?.id ?? restauranteId;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,14 +91,14 @@ export function UsuarioForm({
       setErroValidacao("Informe uma senha com no mínimo 8 caracteres.");
       return;
     }
-    if (perfil !== "SUPER_ADMIN" && !restauranteId) {
+    if (perfil !== "SUPER_ADMIN" && !restauranteIdEfetivo) {
       setErroValidacao("Selecione um restaurante para este perfil.");
       return;
     }
 
     setErroValidacao(null);
 
-    const restauranteIdFinal = perfil === "SUPER_ADMIN" ? undefined : (restauranteId as number);
+    const restauranteIdFinal = perfil === "SUPER_ADMIN" ? undefined : (restauranteIdEfetivo as number);
 
     if (usuarioEmEdicao) {
       onAtualizar(usuarioEmEdicao.id, {
@@ -99,7 +118,7 @@ export function UsuarioForm({
     }
   }
 
-  if (perfil !== "SUPER_ADMIN" && restaurantes.length === 0) {
+  if (!restauranteFixo && perfil !== "SUPER_ADMIN" && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
         <h2 className="dispositivo-form__titulo">Cadastrar usuário</h2>
@@ -120,7 +139,7 @@ export function UsuarioForm({
       <div className="dispositivo-form__tipo">
         <span className="dispositivo-form__tipo-rotulo">Perfil</span>
         <div className="dispositivo-form__tipo-opcoes">
-          {PERFIS.map((item) => (
+          {perfisExibidos.map((item) => (
             <button
               key={item.valor}
               type="button"
@@ -138,23 +157,27 @@ export function UsuarioForm({
       {perfil !== "SUPER_ADMIN" && (
         <div className="dispositivo-form__tipo">
           <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
-          <div className="dispositivo-form__tipo-opcoes">
-            {restaurantes.map((restaurante) => (
-              <button
-                key={restaurante.id}
-                type="button"
-                className={
-                  "dispositivo-form__tipo-botao" +
-                  (restauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
-                }
-                aria-pressed={restauranteId === restaurante.id}
-                onClick={() => setRestauranteId(restaurante.id)}
-                disabled={salvando}
-              >
-                {restaurante.nome}
-              </button>
-            ))}
-          </div>
+          {restauranteFixo ? (
+            <p className="dispositivo-form__restaurante-fixo">{restauranteFixo.rotulo}</p>
+          ) : (
+            <div className="dispositivo-form__tipo-opcoes">
+              {restaurantes.map((restaurante) => (
+                <button
+                  key={restaurante.id}
+                  type="button"
+                  className={
+                    "dispositivo-form__tipo-botao" +
+                    (restauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
+                  }
+                  aria-pressed={restauranteId === restaurante.id}
+                  onClick={() => setRestauranteId(restaurante.id)}
+                  disabled={salvando}
+                >
+                  {restaurante.nome}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

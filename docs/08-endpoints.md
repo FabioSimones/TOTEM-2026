@@ -97,7 +97,9 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE`. **Escopo por restauran
 
 ## Administração de usuários
 
-Permissão exigida: `SUPER_ADMIN` (implementado na TASK-048; alteração de senha na TASK-049). **Não recebeu escopo por restaurante na TASK-058** — continua exclusivo de `SUPER_ADMIN`, decisão deliberada (gestão de usuários, inclusive outros admins, é mais sensível que cardápio/dispositivos).
+Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` (implementado na TASK-048; alteração de senha na TASK-049; escopo por restaurante para `ADMIN_RESTAURANTE` na TASK-090). `OPERADOR_CAIXA`/`OPERADOR_COZINHA` nunca acessam este módulo — `403` em qualquer endpoint.
+
+**Escopo por restaurante (TASK-090)**: `SUPER_ADMIN` mantém acesso irrestrito (qualquer perfil, qualquer restaurante). `ADMIN_RESTAURANTE` só lista/cria/edita/ativa/desativa/altera senha de usuários **`OPERADOR_CAIXA`/`OPERADOR_COZINHA` do próprio restaurante** — nunca `SUPER_ADMIN`, nunca outro `ADMIN_RESTAURANTE` (nem a si mesmo), nunca usuário de outro restaurante. Qualquer tentativa fora desse escopo (criar/editar com perfil proibido, restaurante diferente, ou mexer em usuário fora do escopo) retorna `403`. **Importante**: isso só habilita o CRUD desses perfis pelo Admin — não torna `OPERADOR_CAIXA`/`OPERADOR_COZINHA` operadores reais do fluxo Caixa/Cozinha, que continua exclusivamente autenticado por dispositivo (`ROLE_DEVICE_CAIXA`/`ROLE_DEVICE_COZINHA`, ver seções "Caixa"/"Cozinha" acima) — ver `docs/09-contratos-api.md` para detalhes e limitações.
 
 | Método | Rota | Objetivo |
 |---|---|---|

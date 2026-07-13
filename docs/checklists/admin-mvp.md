@@ -108,7 +108,7 @@ Ver a seção "Ordem recomendada de uso do Admin" em `frontend/README.md` para o
 - [x] Repetir os 4 passos acima para `/api/admin/produtos` (incluindo `PATCH .../disponibilidade` e `.../destaque`) — incluindo o caso extra `restauranteId=A` + `categoriaId` de B → `400` "categoria não pertence ao restaurante informado" (não `403`, comportamento correto e distinto)
 - [x] Repetir para `/api/admin/dispositivos` (`GET` sem filtro já restringe ao restaurante A; `POST`/`PUT`/`PATCH .../revogar` no restaurante B → `403`)
 - [x] `SUPER_ADMIN` continua acessando/alterando livremente categorias/produtos/dispositivos de A e B
-- [x] `/api/admin/usuarios` continua bloqueado para `ADMIN_RESTAURANTE` (403), sem exceção — não recebeu escopo por restaurante, permanece exclusivo de `SUPER_ADMIN`
+- [x] ~~`/api/admin/usuarios` continua bloqueado para `ADMIN_RESTAURANTE` (403), sem exceção~~ **alterado na TASK-090**: `ADMIN_RESTAURANTE` passou a gerenciar `OPERADOR_CAIXA`/`OPERADOR_COZINHA` do próprio restaurante — ver seção 14 abaixo para o detalhamento completo do novo escopo
 - [x] Upload de imagem (`POST /api/admin/uploads/produtos/imagem`) continua funcionando para `ADMIN_RESTAURANTE` normalmente (`201`, sem checagem de restaurante); limpeza de órfãos (`limpar-orfas`) confirmada `403` para `ADMIN_RESTAURANTE`
 - [x] Todos os `403` acima preservam a sessão — chamada seguinte com o mesmo token a um recurso do próprio restaurante continua `200`
 
@@ -118,7 +118,7 @@ Todos os cenários passaram sem exceção — nenhum bug encontrado no backend.
 
 **Revisado por leitura de código na TASK-060** (não houve automação de navegador disponível para clicar de fato na UI — recomenda-se uma passada manual rápida para confirmação visual final). O código de `AdminCategoriasPage`/`AdminProdutosPage`/`AdminDispositivosPage`/`AdminHomePage` e dos 3 forms foi conferido linha a linha e implementa exatamente o descrito abaixo; combinado com a validação de API (9b, que exercita a mesma lógica de backend que a UI consome), a confiança é alta.
 
-- [x] (por revisão de código) Login como `ADMIN_RESTAURANTE` do restaurante A → em `/admin`, cards "Restaurantes" e "Usuários" **não aparecem** (`AREAS_ADMIN` filtrado por `apenasSuperAdmin`); aviso "Você está operando apenas no restaurante vinculado à sua conta." visível
+- [x] (por revisão de código) Login como `ADMIN_RESTAURANTE` do restaurante A → em `/admin`, card "Restaurantes" **não aparece** (`apenasSuperAdmin`); ~~card "Usuários" também não aparecia~~ **a partir da TASK-090, "Usuários" aparece para `ADMIN_RESTAURANTE`** (só some para `OPERADOR_CAIXA`/`OPERADOR_COZINHA`, via `ocultarParaOperador` — ver seção 14); aviso "Você está operando apenas no restaurante vinculado à sua conta." visível
 - [x] (por revisão de código) `/admin/categorias`: `carregarRestaurantes` retorna cedo sem chamar a API quando `adminRestaurante`; sem seletor "Filtrar por restaurante"; formulário mostra "Restaurante" fixo como "Restaurante vinculado à sua conta"; `carregarCategorias(restauranteIdEscopo)` já filtra a lista
 - [x] (por revisão de código) Cadastrar categoria: `onCriar` usa `restauranteFixo?.id ?? restauranteId`, sempre o do usuário — nenhum estado local permite outro valor
 - [x] (por revisão de código) Repetido para `/admin/produtos` (formulário fixo, `categoriasDoRestaurante` filtradas por `restauranteFixo.id`) e `/admin/dispositivos` (formulário fixo)
@@ -455,6 +455,29 @@ Validado via `curl` contra backend real (usuários `ADMIN_RESTAURANTE` novos cri
 - [x] Reativar o dispositivo com o código novo funciona e emite um novo par `accessToken`/`refreshToken`.
 
 **Nenhum bug encontrado** — nenhuma alteração de código nesta task. Clique real no botão "Regenerar código" em `/admin/dispositivos` (DevTools, confirmação, exibição do código) segue como pendência de validação manual — ambiente sem automação de navegador.
+
+## 14. TASK-090 — gestão de usuários pelo ADMIN_RESTAURANTE
+
+Implementado e coberto por teste automatizado: `UsuarioServiceTest` (32 testes, unitário/Mockito) e `integration/UsuarioAdminScopeIntegrationTest` (18 testes, MockMvc/HTTP real).
+
+**Regra de negócio**: `ADMIN_RESTAURANTE` passou a gerenciar `/admin/usuarios`, mas só usuários com perfil `OPERADOR_CAIXA`/`OPERADOR_COZINHA` **do próprio restaurante**. `SUPER_ADMIN` mantém acesso irrestrito (qualquer perfil, qualquer restaurante) — comportamento anterior à TASK-090 preservado 1:1.
+
+- [x] `SUPER_ADMIN`: lista todos, cria `SUPER_ADMIN`/`ADMIN_RESTAURANTE`/operadores em qualquer restaurante, edita/ativa/desativa/altera senha de qualquer usuário — sem mudança de comportamento.
+- [x] `ADMIN_RESTAURANTE`: `GET /api/admin/usuarios` sem filtro → só usuários do próprio restaurante (nunca `SUPER_ADMIN`, que não tem restaurante); com `restauranteId` do próprio → `200`; com `restauranteId` de outro → `403`.
+- [x] `ADMIN_RESTAURANTE` cria `OPERADOR_CAIXA`/`OPERADOR_COZINHA` no próprio restaurante (com ou sem `restauranteId` no corpo — se omitido, backend assume o próprio) → `201`.
+- [x] `ADMIN_RESTAURANTE` tenta criar `SUPER_ADMIN` → `403`. Tenta criar outro `ADMIN_RESTAURANTE` → `403`. Tenta criar usuário em outro restaurante → `403`.
+- [x] `ADMIN_RESTAURANTE` edita operador do próprio restaurante → `200`. Tenta editar usuário de outro restaurante, um `SUPER_ADMIN`, ou outro `ADMIN_RESTAURANTE` → `403`.
+- [x] `ADMIN_RESTAURANTE` tenta promover um operador para `SUPER_ADMIN`/`ADMIN_RESTAURANTE`, ou mover para outro restaurante → `403` (mesmo com o alvo sendo um operador do próprio restaurante — a checagem é sobre o **valor solicitado**, não só o atual).
+- [x] `ADMIN_RESTAURANTE` altera senha de operador do próprio restaurante → `200`. Tenta alterar senha de `SUPER_ADMIN`, outro `ADMIN_RESTAURANTE`, ou usuário de outro restaurante → `403`.
+- [x] `ADMIN_RESTAURANTE` tenta desativar a si mesmo → `403` (perfil `ADMIN_RESTAURANTE` não é gerenciável por `ADMIN_RESTAURANTE`, então nem chega na checagem de autodesativação — resultado observável, `403`, é o esperado).
+- [x] `OPERADOR_CAIXA`/`OPERADOR_COZINHA` tentando acessar qualquer endpoint de `/api/admin/usuarios` → `403`. Sem token → `401`.
+- [x] `mvn test` → 279/279, BUILD SUCCESS (suíte completa, sem regressão nos demais módulos).
+
+**Ajuste em teste pré-existente**: `SecurityHttpStatusTest.tokenValidoSemPermissao_deveRetornar403` usava `/api/admin/usuarios` como exemplo de endpoint "autenticado mas sem permissão" para `ADMIN_RESTAURANTE` — deixou de ser um exemplo válido depois da TASK-090 (esse `ADMIN_RESTAURANTE` de teste não tem operadores para gerenciar, mas o endpoint em si passou a aceitar o perfil). Trocado para `/api/admin/restaurantes`, que continua exclusivo de `SUPER_ADMIN`.
+
+**Frontend**: `AdminHomePage.tsx` mostra o card "Usuários" para `SUPER_ADMIN` e `ADMIN_RESTAURANTE` (só some para `OPERADOR_CAIXA`/`OPERADOR_COZINHA`, via novo helper `isOperador`). `AdminUsuariosPage.tsx` não chama `GET /api/admin/restaurantes` para `ADMIN_RESTAURANTE` (mesmo padrão de Categorias/Produtos/Dispositivos desde a TASK-059), trava o restaurante do formulário (`restauranteFixo`) e restringe os perfis exibidos/atribuíveis a `OPERADOR_CAIXA`/`OPERADOR_COZINHA` (`perfisPermitidos` em `UsuarioForm`), com o aviso "Você está gerenciando usuários do seu restaurante." `npm run build`/`npx oxlint` sem erro — validação de clique real não realizada (sem automação de navegador neste ambiente).
+
+**Importante — fora do escopo desta task**: isso só habilita o CRUD desses perfis pelo Admin. `OPERADOR_CAIXA`/`OPERADOR_COZINHA` continuam **sem nenhum acesso** a `/api/caixa/**`/`/api/cozinha/**` (que seguem exclusivamente autenticados por dispositivo, `ROLE_DEVICE_CAIXA`/`ROLE_DEVICE_COZINHA`) — criar um operador aqui não o torna um usuário operacional real do Caixa/Cozinha. Login de operador dentro do dispositivo e auditoria por usuário humano (`HistoricoStatusPedido.alteradoPorUsuario`) permanecem como decisão arquitetural em aberto — ver `docs/status-mvp.md`.
 
 ## Fora do escopo (ainda não implementado)
 
