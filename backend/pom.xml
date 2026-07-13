@@ -123,6 +123,23 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- ===== TESTCONTAINERS (TASK-083) =====
+             Suíte mínima de integração contra PostgreSQL real, separada da suíte H2 padrão —
+             ver backend/src/test/java/.../integration/PostgresIntegrationTestBase.java e o
+             profile Maven "postgres-it" abaixo. Versão gerenciada pelo BOM importado por
+             spring-boot-dependencies (spring.testcontainers.version), sem necessidade de fixar
+             aqui. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -141,5 +158,33 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- TASK-083: suíte mínima de integração contra PostgreSQL real via Testcontainers.
+             Não roda em "mvn test"/"mvn verify" normal — precisa ser ativado explicitamente
+             porque exige Docker disponível. Uso: mvn verify -Ppostgres-it
+             As classes *IT.java já são ignoradas pelo Surefire padrão (que só casa *Test.java);
+             o Failsafe, habilitado só dentro deste profile, as descobre pelo padrão default
+             (**/*IT.java) e as executa nas fases integration-test/verify. -->
+        <profile>
+            <id>postgres-it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

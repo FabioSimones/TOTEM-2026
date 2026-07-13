@@ -21,7 +21,7 @@ Sistema de autoatendimento para fast food: Totem (cliente monta pedido e paga), 
 | Dispositivos (cadastro/status operacional) | `DispositivoAdminController` | `DispositivoService`, `DispositivoAcessoService` | ✅ | ✅ (`DispositivoServiceTest`, `DispositivoAcessoServiceTest`, `DispositivoMapperTest`, `DispositivoAcessoIntegrationTest`) | ✅ |
 | Upload de imagem | `UploadAdminController` | `UploadImagemService` | ✅ | ✅ (`UploadImagemServiceTest` + `UploadAdminIntegrationTest`, **HTTP/autorização adicionado na TASK-082**) | ✅ |
 | Pedidos (listagem/detalhe paginado) | `PedidoAdminController` | `PedidoAdminService` | ✅ | ✅ (`PedidoAdminIntegrationTest`) | ✅ |
-| Expiração de pedidos | `PedidoExpiracaoAdminController` | `PedidoExpiracaoService` | ✅ | ✅ (`PedidoExpiracaoServiceTest`, casos em `PedidoAdminIntegrationTest`) | ✅ |
+| Expiração de pedidos | `PedidoExpiracaoAdminController` | `PedidoExpiracaoService` | ✅ | ✅ (`PedidoExpiracaoServiceTest`, casos em `PedidoAdminIntegrationTest`, `PedidoExpiracaoPostgresIT` **contra Postgres real, TASK-083**) | ✅ |
 | Dashboard | `DashboardAdminController` | `DashboardAdminService` | ✅ | ✅ (`DashboardAdminIntegrationTest`) | ✅ |
 | Fluxo Totem/Caixa/Cozinha | `PedidoTotemController`, `CardapioTotemController`, `CaixaPedidoController`, `CaixaPagamentoController`, `CozinhaPedidoController` | `PedidoTotemService`, `PagamentoTotemService`, `CardapioTotemService`, `CaixaPedidoService`, `CozinhaPedidoService` | ✅ | ✅ (`CaixaPedidoServiceTest`, `CozinhaPedidoServiceTest`, `FluxoOperacionalMvpIntegrationTest`, `FakePaymentProviderTest`) | ✅ |
 
@@ -52,6 +52,12 @@ Padronização de fuso horário (UTC) implementada e validada na TASK-079 (`Tote
 - Confirmado que nenhum arquivo de teste vazou para `backend/target/test-uploads` ou `backend/uploads` reais — o teste isola `app.uploads.dir` num `@TempDir` próprio via `@DynamicPropertySource`.
 - Nenhum bug de produção encontrado — autorização, multipart e acesso público já se comportavam exatamente como documentado.
 
+**TASK-083 (Testcontainers/PostgreSQL real)**:
+- `mvn test` (H2, sem o profile) → **233/233, BUILD SUCCESS**, inalterado — confirma que a nova suíte Postgres não interfere na suíte padrão.
+- `mvn verify -Ppostgres-it` (Postgres 16 real via Testcontainers) → **5/5, BUILD SUCCESS** — `TimezonePostgresIT` (2 testes) + `PedidoExpiracaoPostgresIT` (3 testes), migrations Flyway reais aplicadas contra o container.
+- Confirmado via `docker ps -a` que nenhum container de teste ficou órfão após a execução.
+- Nenhum bug de produção encontrado — os dois pontos sensíveis (fuso horário, expiração) já se comportam corretamente contra Postgres real, confirmando que as correções da TASK-079 realmente resolveram os bugs na origem, não só na suíte H2.
+
 ## Pendências
 
 ### Críticas (impedem uso do MVP)
@@ -62,7 +68,7 @@ Nenhuma identificada nesta consolidação.
 
 - ~~Sem teste HTTP de autorização para `/api/admin/uploads/**`~~ **fechada na TASK-082** — `UploadAdminIntegrationTest` (9 testes) cobre autorização, multipart real e acesso público.
 - **Clique real em UI sem automação de navegador** — pendência repetida desde a TASK-060 (todas as validações manuais de frontend desde então foram feitas via `curl` contra a API real + revisão de código, nunca clicando de fato na interface). Nenhuma automação de navegador disponível neste ambiente.
-- **Sem Testcontainers/PostgreSQL real automatizado** — `mvn test` roda inteiramente contra H2 em memória; validações contra PostgreSQL real são sempre manuais (`curl`), registradas nos checklists mas não repetíveis em CI.
+- ~~Sem Testcontainers/PostgreSQL real automatizado~~ **fechada parcialmente na TASK-083** — `mvn verify -Ppostgres-it` cobre fuso horário e expiração de pedidos (os dois pontos onde bugs reais já apareceram) contra Postgres 16 real, migrations Flyway reais. Ainda não cobre o fluxo operacional completo nem os demais módulos administrativos contra Postgres real — ver Melhorias.
 - **Sem testes frontend automatizados** — não há Jest/Vitest/Testing Library configurado; toda validação de frontend é `npm run build` (TypeScript) + `oxlint` + validação manual via API.
 
 ### Melhorias (podem ficar para depois)
@@ -74,8 +80,10 @@ Nenhuma identificada nesta consolidação.
 - Sem WebSocket/heartbeat — status operacional de dispositivos e listas do Caixa/Cozinha dependem de atualização manual ou polling leve.
 - Sem estorno de pagamento no cancelamento de pedido `PAGO` (decisão documentada desde a TASK-024).
 - Sem Pix real/TEF/SmartPOS — só `FakePaymentProvider` simulado.
+- Suíte Testcontainers (TASK-083) cobre só fuso horário/expiração — o fluxo operacional completo (Totem→Caixa→Cozinha) e os demais módulos administrativos continuam validados apenas contra H2 automatizado + Postgres manual.
+- `mvn verify -Ppostgres-it` exige Docker disponível — não roda em CI/ambiente sem Docker; nenhum pipeline CI foi criado nesta task (fora de escopo, ver TASK-083).
 
 ## Próximas tasks recomendadas
 
 1. Validação visual manual em navegador real, se/quando houver ambiente disponível — consolidaria todas as pendências de "clique real" acumuladas desde a TASK-060.
-2. Avaliar Testcontainers para pelo menos um teste de integração contra PostgreSQL real em CI, reduzindo a dependência de validação manual para confirmar comportamento específico do Postgres (ex.: os bugs de fuso horário das TASK-078/079 só foram descobertos em validação manual, não em `mvn test`).
+2. Avaliar um pipeline CI que rode `mvn verify -Ppostgres-it` (Docker já suportado em runners GitHub Actions/GitLab CI padrão), tornando a suíte Postgres parte da validação contínua em vez de só sob demanda local.

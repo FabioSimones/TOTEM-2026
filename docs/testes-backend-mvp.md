@@ -429,6 +429,33 @@ mvn test
 
 A maioria desses testes é unitária pura (Mockito, sem Spring context, sem banco) — valida apenas a lógica de transição de status dentro dos services, não o comportamento HTTP completo. A exceção é `SecurityHttpStatusTest` (TASK-061), que sobe o contexto Spring completo com H2 em memória e usa MockMvc para exercitar a cadeia real de filtros/handlers HTTP — o primeiro teste do projeto a fazer isso, embora ainda restrito a status code de autenticação/autorização, não a fluxos de negócio completos.
 
+## 7-bis. Suíte de integração contra PostgreSQL real (Testcontainers, TASK-083)
+
+Todos os testes da tabela acima (inclusive os `@SpringBootTest`/MockMvc) rodam contra **H2 em memória**, nunca PostgreSQL real — e isso não é hipotético: os dois bugs mais graves encontrados no projeto (mistura de fuso horário Hibernate/`Clock`, TASK-078/079; pedido expirando em ~47 segundos em vez de 30 minutos) só apareceram em validação manual com backend real + PostgreSQL real, nunca em `mvn test`. `PedidoExpiracaoServiceTest` (Mockito puro) e os casos `expirarVencidos_*` de `PedidoAdminIntegrationTest` (H2) nunca teriam pego o bug de expiração prematura, porque nenhum dos dois deixa o Hibernate gerar `criadoEm` de verdade contra um banco real com fuso configurável.
+
+A TASK-083 adicionou uma **suíte mínima** de integração com [Testcontainers](https://testcontainers.com/) (`org.testcontainers:junit-jupiter`, `org.testcontainers:postgresql` — versão gerenciada pelo BOM já importado por `spring-boot-dependencies`, nenhuma versão fixada manualmente), cobrindo exatamente os dois pontos onde bugs reais já apareceram: fuso horário e expiração de pedidos.
+
+**Decisão de execução — profile Maven separado, não `mvn test` normal**: `mvn test` continua rodando só a suíte H2 (rápida, sem dependência externa). A suíte Postgres exige Docker disponível e leva bem mais tempo (subir um container real + rodar migrations Flyway), então roda só sob demanda:
+
+```bash
+cd backend
+mvn verify -Ppostgres-it
+```
+
+**Como funciona**:
+- `PostgresIntegrationTestBase` (classe base abstrata): sobe um container `postgres:16` real via Testcontainers, usando o padrão "singleton container" (campo estático, sem `@Testcontainers`/`@Container` — o container é compartilhado por todas as subclasses na mesma execução, e o Ryuk do Testcontainers garante a remoção automática ao final, sem `stop()` manual).
+- **Migrations reais**: em vez de reconfigurar `spring.autoconfigure.exclude` (que exclui `FlywayAutoConfiguration` no `application.yml` de teste, para a suíte H2) via propriedade dinâmica — abordagem frágil, já que "limpar" uma lista YAML via override de propriedade não tem semântica garantida —, o Flyway roda manualmente contra o container (`Flyway.configure()...migrate()`, mesmas migrations de `classpath:db/migration` usadas em produção) antes do contexto Spring subir. Só `spring.datasource.*`, `spring.jpa.hibernate.ddl-auto=none` e `hibernate.dialect=PostgreSQLDialect` são sobrescritos via `@DynamicPropertySource` — overrides escalares simples, sem ambiguidade de merge.
+- **Classes com sufixo `IT` são ignoradas pelo Surefire padrão** (que só casa `*Test.java`) e descobertas pelo Failsafe (padrão default `**/*IT.java`), habilitado só dentro do profile `postgres-it` — por isso `mvn test`/`mvn verify` sem o profile nunca tentam rodá-las, mesmo sem Docker disponível.
+
+| Classe | Cobertura |
+|---|---|
+| `integration/TimezonePostgresIT` (novo, TASK-083) | Mesmos dois cenários críticos de `TimezoneIntegrationTest` (H2), agora contra Postgres real: diferença entre `criadoEm` e `ativadoEm` de um dispositivo criado+ativado em sequência (< 5min, não ~3h); pedido recém-criado (`criadoEm` gerado pelo Hibernate contra Postgres real, não setado manualmente) não expira imediatamente ao chamar `pedidoExpiracaoService.expirarPedidosVencidos()`. 2 testes. |
+| `integration/PedidoExpiracaoPostgresIT` (novo, TASK-083) | Três cenários de negócio da expiração automática (TASK-070), todos com `Pedido.criadoEm` lido/gerado no Postgres real: pedido `CRIADO` recente não expira; pedido `CRIADO` antigo (backdatado via SQL nativo, mesmo padrão de `PedidoAdminIntegrationTest`) expira; pedido `PAGO` antigo nunca expira, mesmo com `criadoEm` backdatado. 3 testes. |
+
+**Validado nesta task**: `mvn test` (H2) → **233/233, BUILD SUCCESS**, inalterado (as classes `*IT.java` não são tocadas pelo Surefire padrão). `mvn verify -Ppostgres-it` → **5/5, BUILD SUCCESS** contra Postgres 16 real via Testcontainers — container compartilhado entre as duas classes (Flyway rodou uma vez só, ~26s incluindo subida do container + migrations; segunda classe reaproveitou o contexto/container, 0.27s). Confirmado via `docker ps -a` que nenhum container de teste ficou órfão após a execução (Ryuk limpa automaticamente).
+
+**Escopo deliberadamente mínimo** (não é objetivo desta task migrar a suíte inteira): não cobre o fluxo operacional completo Totem→Caixa→Cozinha contra Postgres real (candidato a uma task futura, se justificado — ver `docs/status-mvp.md`), nem todos os módulos administrativos. O objetivo era proteger especificamente os dois pontos onde bugs reais já escaparam da suíte H2.
+
 ### Pendência de teste de integração
 
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
