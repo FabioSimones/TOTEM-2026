@@ -102,11 +102,75 @@ Job próprio `Frontend E2E (Playwright)` em `.github/workflows/ci.yml`, separado
 
 Em caso de falha, o relatório HTML (`frontend/playwright-report/`) e os artefatos de diagnóstico (`frontend/test-results/` — screenshots, traces) são publicados como artifact do GitHub Actions (`actions/upload-artifact`, `if: failure()`, nome `playwright-report`, retenção de 7 dias) — baixe o artifact do run que falhou para inspecionar localmente com `npx playwright show-trace` ou abrindo o HTML.
 
-### O que ainda não está coberto
+### O que ainda não está coberto (suíte mockada)
 
-- E2E integrado com backend real (Testcontainers/PostgreSQL de verdade por trás do frontend) — mocks de rede não substituem essa validação, só destravam a homologação visual sem essa dependência. O job de CI também não sobe backend nenhum.
 - Cobertura de telas Admin (CRUD de restaurantes/categorias/produtos/usuários/dispositivos) — só login e as áreas críticas de Caixa/Cozinha/operador foram cobertas nesta primeira leva.
 - Relatórios/traces/vídeos (`test-results/`, `playwright-report/`, `blob-report/`) nunca são versionados — cobertos pelo `.gitignore` da raiz; no CI, só sobem como artifact temporário quando o job falha.
+
+## E2E integrado (TASK-104) — sem mocks, contra backend real
+
+Segunda suíte E2E, deliberadamente separada da mockada: nenhuma chamada de API é interceptada (`page.route`) — o frontend real conversa com um **backend Spring Boot real**, PostgreSQL real, migrations Flyway reais. Prova que o frontend consegue conversar de verdade com o backend, algo que a suíte mockada (TASK-102/103), por design, não valida.
+
+**Diferenças em relação à suíte mockada**:
+
+| | Mockada (`e2e/`) | Integrada (`e2e-integrado/`) |
+|---|---|---|
+| Config | `playwright.config.ts` | `playwright.integrado.config.ts` |
+| Comando | `npm run e2e` | `npm run e2e:integrado` |
+| API | Mockada via `page.route` | Backend real, sem interceptação |
+| Backend | Não precisa | **Precisa estar rodando antes** |
+| Porta do frontend | `127.0.0.1:5173` | `127.0.0.1:5174` (evita colidir com a mockada) |
+| Dados | Fixos, hardcoded nos helpers | Criados via API real, com sufixo único por execução (`E2E_<timestamp>`) |
+| CI | Roda (`Frontend E2E (Playwright)`) | **Não roda no CI** (decisão desta task — ver abaixo) |
+
+### Pré-requisitos
+
+1. **PostgreSQL** disponível (local ou container descartável), ex.: `docker run -d --name totem-e2e-pg -e POSTGRES_DB=totem_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:16`.
+2. **Backend rodando** (`cd backend && mvn spring-boot:run`) com estas variáveis de ambiente (valores de exemplo, só para uso local — nunca reais/produção):
+
+   ```bash
+   DB_HOST=127.0.0.1
+   DB_PORT=55432
+   DB_NAME=totem_db
+   DB_USERNAME=postgres
+   DB_PASSWORD=postgres
+   JWT_SECRET=e2e-integrado-chave-de-teste-local-com-mais-de-32-caracteres
+   CORS_ALLOWED_ORIGINS=http://127.0.0.1:5174
+   SUPER_ADMIN_BOOTSTRAP_ENABLED=true
+   SUPER_ADMIN_EMAIL=e2e-admin@totem.local
+   SUPER_ADMIN_PASSWORD=SenhaE2E@2026!
+   ```
+
+   `CORS_ALLOWED_ORIGINS` precisa incluir exatamente a origem do Vite desta suíte (`http://127.0.0.1:5174`) — sem isso, as chamadas feitas pelo navegador (não as de preparação de dados, que são server-to-server e não passam por CORS) falham silenciosamente com erro de rede.
+3. Confirmar que subiu: `curl http://127.0.0.1:8080/actuator/health` → `{"status":"UP"}`.
+4. No frontend, as mesmas credenciais do passo 2 via env vars do Playwright:
+
+   ```bash
+   export E2E_API_BASE_URL=http://127.0.0.1:8080   # default já é esse valor
+   export E2E_ADMIN_EMAIL=e2e-admin@totem.local
+   export E2E_ADMIN_PASSWORD='SenhaE2E@2026!'
+   ```
+
+### Rodar
+
+```bash
+npm run e2e:integrado          # roda a suíte integrada (backend precisa já estar de pé)
+npm run e2e:integrado:headed   # mesma suíte, com o browser visível
+npm run e2e:integrado:report   # abre o relatório HTML (playwright-report-integrado/)
+```
+
+Se o backend não estiver respondendo, o teste falha rápido com uma mensagem clara (`e2e-integrado/global-setup.ts` checa `/actuator/health` antes de rodar qualquer teste) em vez de travar em timeout tentando falar com uma porta fechada.
+
+### O que este teste cobre (`totem-pedido-real.spec.ts`)
+
+Fluxo A do fluxo operacional: login SUPER_ADMIN real → cria restaurante/categoria/produto real → cria e ativa um dispositivo TOTEM real (tudo via API, com sufixo único por execução, sem depender de limpeza de banco) → abre `/totem` no navegador real → cardápio real carregado do backend → adiciona o produto → cria o pedido real → paga com Pix → confirma `AUTORIZADO`/`PAGO` (o `FakePaymentProvider` autoriza Pix/cartão de forma síncrona e determinística, sem gateway externo). **Validado localmente**: passou de primeira, e a persistência real foi confirmada consultando `GET /api/admin/restaurantes` depois do teste — o restaurante criado pelo teste (`Restaurante E2E_<timestamp>`) apareceu no banco.
+
+### Limitações e o que ainda não está coberto
+
+- Só o fluxo do Totem (Fluxo A) — Caixa/Cozinha/operador com backend real ficam para uma task futura (Fluxo B/C do briefing da TASK-104).
+- **Não roda no CI** — decisão desta task: subir PostgreSQL + backend Spring Boot no runner é uma complexidade adicional (tempo de boot, Testcontainers vs. serviço, segredos de CI) que merece uma task própria depois que esta primeira versão local provar valor. Execução é manual/local por enquanto.
+- Dados de teste se acumulam no banco a cada execução (sem cleanup automatizado) — aceitável para um banco descartável local/CI futuro, não deve ser usado contra um banco compartilhado.
+- Não substitui a suíte mockada (que continua cobrindo mais fluxos/telas e rodando no CI a cada PR) — as duas são complementares.
 
 ## Configuração de ambiente
 

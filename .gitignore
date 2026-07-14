@@ -4,9 +4,11 @@ target/
 build/
 dist/
 
-# Playwright (TASK-102) — relatórios/traces/vídeos gerados a cada execução, nunca versionados
-test-results/
-playwright-report/
+# Playwright (TASK-102/TASK-104) — relatórios/traces/vídeos gerados a cada execução, nunca
+# versionados. Padrão com sufixo (test-results-integrado/, playwright-report-integrado/) cobre a
+# suíte E2E integrada (TASK-104), que usa pastas de saída próprias para não colidir com a mockada.
+test-results*/
+playwright-report*/
 blob-report/
 
 # Logs

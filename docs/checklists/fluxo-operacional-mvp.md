@@ -132,6 +132,8 @@ Implementa o Modelo C decidido na TASK-091. Dispositivo continua sendo a autenti
 
 **Fora do escopo desta task**: PIN de operador, refresh token de operador, login de operador em dispositivo TOTEM/ADMINISTRACAO, WebSocket. Ver `frontend/README.md` para o roteiro detalhado de teste manual.
 
+**TASK-104 (E2E integrado com backend real — Totem)**: a fatia "Totem: cardápio real → adicionar produto → criar pedido real → pagar com Pix → `AUTORIZADO`/`PAGO`" deste checklist (seções 1–3, só o Totem) agora tem cobertura **automatizada** contra backend real, não só manual: `frontend/e2e-integrado/totem-pedido-real.spec.ts` (Playwright, sem mocks) — login SUPER_ADMIN real, criação de restaurante/categoria/produto/dispositivo via API real com sufixo único por execução, ativação real do dispositivo TOTEM, navegação real em `/totem`. Validado localmente: passou de primeira, persistência confirmada consultando `GET /api/admin/restaurantes` após o teste. Ver `frontend/README.md` seção "E2E integrado" para pré-requisitos e comando (`npm run e2e:integrado`). **Não substitui este checklist** — Caixa/Cozinha/operador com backend real continuam só manuais (`docs/testes-backend-mvp.md`); não está no CI ainda (decisão da TASK-104).
+
 ## Fora do escopo deste checklist
 
 Retirada/cancelamento já cobertos acima. **Não** cobertos aqui (sem frontend ainda): CRUD de restaurante/categoria/produto/dispositivo/usuário (painel Admin), pagamento real, impressão, nota fiscal, relatórios, WebSocket.
