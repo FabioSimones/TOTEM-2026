@@ -637,6 +637,26 @@ Corrige o risco P0 identificado na TASK-095 (revisão de roadmap): o seed de `SU
 
 **Efeito em ambientes existentes**: qualquer instalação que ainda tivesse a senha `Admin@2026!` nunca trocada perde o acesso via essa credencial na próxima subida (a V7 desativa a conta). Para recuperar acesso administrativo, habilitar o bootstrap (`SUPER_ADMIN_BOOTSTRAP_ENABLED=true` + `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD`) antes do próximo restart — documentado em `README.md` e `docs/04-seguranca.md`.
 
+## 7-quattuordecies. TASK-097 — JWT secret sem fallback inseguro
+
+Corrige o segundo risco P0 identificado na TASK-095: `application.yml` tinha `secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-...}` — um fallback fixo e publicamente conhecido, usado silenciosamente para assinar tokens de USER/DEVICE/OPERADOR (mesma `SecretKey` para os três, confirmado por leitura de `JwtService`) sempre que `JWT_SECRET` não fosse definido.
+
+**Mudanças de código**:
+- `application.yml`: `secret: ${JWT_SECRET:}` — sem fallback.
+- `JwtSecretValidator` (`backend/src/main/java/com/totem/fastfood/security/`, novo, classe utilitária sem estado): chamado no construtor de `JwtService`, antes de `Keys.hmacShaKeyFor(...)`. Lança `IllegalStateException` se o secret for nulo/branco, menor que 32 caracteres, ou igual ao valor antigo do fallback (constante `SEGREDO_ANTIGO_CONHECIDO`, para rejeitar explicitamente alguém copiando o valor comprometido para uma variável de ambiente por engano).
+- `JwtService`: nenhuma mudança de claims, algoritmo ou expiração — só a validação adicionada no construtor, antes da criação da `SecretKey`.
+- `backend/src/test/resources/application.yml`: **nenhuma alteração necessária** — o secret de teste já existente (`chave-fake-de-teste-nao-usar-em-producao-totem-fast-food-contextloads`) já tem mais de 32 caracteres e é diferente do valor antigo, passando na nova validação sem ajuste.
+
+**Testes novos**: `JwtSecretValidatorTest` (6 casos, unitário puro, sem contexto Spring): falha com secret nulo; falha com secret vazio; falha com secret em branco; falha com secret menor que o mínimo; falha com o valor antigo conhecido; passa com um secret válido de tamanho suficiente.
+
+**Por que não foi criado um profile `dev`**: a recomendação do investigador previa duas opções — permitir fallback só em profile `dev`/`local`, ou exigir `JWT_SECRET` sempre. Como o projeto não usa `spring.profiles.active` em lugar nenhum hoje (o isolamento de teste é feito via arquivo de `resources` separado, não por profile), introduzir profiles agora seria uma mudança de arquitetura maior que o necessário e replicaria o mesmo tipo de risco por outro caminho (um "modo dev" que alguém esquece de desligar). Optou-se por exigir a variável sempre, inclusive em desenvolvimento local — documentado com destaque em `README.md`.
+
+**Por que a suíte continua determinística**: `JwtService` é instanciado pelo Spring em todo teste `@SpringBootTest` (13 classes) usando o secret de `backend/src/test/resources/application.yml`, que já era válido para a nova regra — nenhuma dessas classes precisou de ajuste.
+
+`mvn test` → **330/330, BUILD SUCCESS** (324 anteriores + 6 novos). Nenhuma alteração de frontend, CORS, seed de SUPER_ADMIN, fluxo de login, claims ou expiração de token.
+
+**Efeito em ambientes existentes**: qualquer instalação que dependia do fallback antigo (nunca definiu `JWT_SECRET`) para de subir na próxima execução até que a variável seja definida — comportamento intencional (falha clara, não silenciosa). Ver `README.md` seção "Variáveis de ambiente obrigatórias".
+
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
 
 **Limitação conhecida, deliberada**: H2 em memória (`MODE=PostgreSQL`, schema via `ddl-auto: create-drop`) valida a integração HTTP + JPA + regras de transição de status num único processo, mas **não substitui** um teste contra PostgreSQL real — não exercita comportamento específico do driver/dialeto Postgres (ex.: `SERIAL`/`BIGSERIAL`, locks de linha reais como os usados em `RefreshTokenService.revogarSeAtivo`, tipos específicos). Migrar para Testcontainers (subir um PostgreSQL real em container durante o teste) continua como pendência técnica caso se queira essa cobertura mais fiel — deliberadamente fora do escopo da TASK-067.

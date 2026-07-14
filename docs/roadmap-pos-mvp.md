@@ -41,7 +41,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 | Testes E2E (Playwright/Cypress) | Inexistente — nenhuma dependência, nenhuma ferramenta de automação de navegador disponível neste ambiente de desenvolvimento | verificado nesta task |
 | WebSocket/SSE | Inexistente — Totem usa polling leve de 15s; Caixa/Cozinha dependem de atualização manual | `docs/11-fluxos.md` |
 | CORS externalizado por ambiente | **Não** — `SecurityConfig.corsConfigurationSource()` tem `http://localhost:5173`/`5174` hardcoded, sem variável de ambiente | `SecurityConfig.java:96-97` |
-| JWT secret sem fallback frágil em produção | Parcial — já lê de `JWT_SECRET` (env var), mas cai silenciosamente para uma chave de desenvolvimento fixa e documentada no repositório se a variável não for setada | `application.yml:56-58` |
+| JWT secret sem fallback frágil em produção | **Resolvido na TASK-097** — fallback removido de `application.yml`; `JwtSecretValidator` falha o startup se ausente, curto (<32) ou igual ao valor antigo | `application.yml`, `security/JwtSecretValidator.java` |
 | Rate limit em memória | Confirmado — `LoginAttemptService`, contadores zeram a cada reinício, não substitui WAF/rate limit de borda | `docs/08-endpoints.md` |
 | Uploads em disco local | Confirmado — `app.uploads.dir`, sem storage externo (S3/Cloudinary) | `application.yml:75-78` |
 | Contratos `LocalDateTime` sem offset | Confirmado — mitigado no frontend (`utils/dateTime.ts` assume UTC), backend continua sem `Instant`/`OffsetDateTime` | `docs/09-contratos-api.md` |
@@ -63,7 +63,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 
 ### P0 — impede operação real / risco grave de segurança / perda de dados
 - ~~**Seed `SUPER_ADMIN` com senha fixa documentada publicamente**~~ **resolvido na TASK-096** — `V7` desativa a conta com a senha nunca trocada; criação do primeiro `SUPER_ADMIN` passou a ser via `SuperAdminBootstrapRunner`, sem senha padrão em código.
-- **JWT secret com fallback silencioso para valor de desenvolvimento** — se `JWT_SECRET` não for setado em produção (erro humano plausível), a aplicação sobe normalmente assinando tokens com uma chave conhecida publicamente neste repositório. Não é "fraco", é uma chave completamente comprometida por definição.
+- ~~**JWT secret com fallback silencioso para valor de desenvolvimento**~~ **resolvido na TASK-097** — sem `JWT_SECRET` (ou com um valor curto/o antigo conhecido), a aplicação agora falha no startup em vez de assinar tokens com uma chave comprometida por definição.
 - **CORS com origens fixas em `localhost`** — não é só uma melhoria: em produção, o frontend real (domínio diferente de `localhost:5173`) será bloqueado pelo próprio CORS que hoje "funciona" só porque ambiente de dev e produção nunca foram diferenciados. Sem isso, o sistema **não funciona** fora do laptop de desenvolvimento.
 
 ### P1 — importante para operação/segurança, mas com workaround; melhora confiabilidade
@@ -99,7 +99,7 @@ A sequência lógica é: **fechar os 3 riscos P0 (que são configuração/seed, 
 | # | Título | Categoria | Prioridade | Objetivo | Arquivos prováveis | Validações esperadas | Por que nessa ordem |
 |---|---|---|---|---|---|---|---|
 | TASK-096 | ~~Seed de `SUPER_ADMIN` seguro~~ **concluída** | Segurança | P0 | Eliminar a senha fixa documentada publicamente — feito via `V7` (desativação condicional) + `SuperAdminBootstrapRunner` (criação controlada por variável de ambiente, sem default de senha) | `V7__desativar_seed_super_admin_conhecido.sql`, `bootstrap/SuperAdminBootstrapRunner.java`, `UsuarioRepository.java`, `application.yml` | `mvn test` → 324/324 BUILD SUCCESS (320 + 4 novos) | Era o risco mais barato de mitigar e o mais grave — feito antes de qualquer outra coisa tocar em auth |
-| TASK-097 | Falha rápida se `JWT_SECRET` não for setado fora do perfil de dev | Segurança | P0 | Impedir que a aplicação suba com a chave de desenvolvimento fora do perfil `dev`/`test` | `application.yml`, `application-prod.yml` (novo), `JwtService`/`SecurityConfig` | `mvn test`, teste de contexto validando `@Profile`/`@ConditionalOnProperty` | Mesma classe de risco da TASK-096 (segredo público comprometendo produção), sequencial por serem ambas mudanças pequenas e isoladas em security config |
+| TASK-097 | ~~Falha rápida se `JWT_SECRET` não for setado~~ **concluída** | Segurança | P0 | Impedir que a aplicação suba com a chave de desenvolvimento antiga — feito via remoção do fallback + `JwtSecretValidator` (sem profile novo: `JWT_SECRET` passou a ser obrigatório inclusive em dev, para não reabrir o mesmo risco por outro caminho) | `application.yml`, `security/JwtSecretValidator.java`, `security/JwtService.java` | `mvn test` → 330/330 BUILD SUCCESS (324 + 6 novos) | Mesma classe de risco da TASK-096 (segredo público comprometendo produção), feita logo em seguida por ser mudança pequena e isolada em security config |
 | TASK-098 | Externalizar origens de CORS por variável de ambiente | Segurança/Deploy | P0 | `allowedOrigins` deixar de ser hardcoded, virar `${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}` | `SecurityConfig.java`, `application.yml` | `mvn test`, `curl` de preflight com origem customizada | Fecha o último P0 — sem isso o sistema não roda fora de `localhost` de jeito nenhum |
 | TASK-099 | Observabilidade mínima (Actuator + log estruturado) | Infra | P1 | Adicionar `spring-boot-starter-actuator` (`/health`, `/info`), revisar níveis de log por ambiente | `pom.xml`, `application.yml`, `application-prod.yml` | `mvn test`, `curl /actuator/health` | Depois dos P0 de segurança, é o que mais reduz "voar às cegas" antes de qualquer deploy real |
 | TASK-100 | Branch protection + badge de CI | DevOps | P1 | Exigir os 3 jobs de `ci.yml` como check obrigatório antes de merge em `main`; badge no `README.md` | `.github/` (configuração via GitHub, não código), `README.md` | Nenhuma (config de repositório) | Baixo esforço, alto valor de proteção — já estava pendente desde a TASK-084 |
@@ -138,7 +138,7 @@ A sequência lógica é: **fechar os 3 riscos P0 (que são configuração/seed, 
 ## 10. Itens obrigatórios antes de produção
 
 - ~~Seed de `SUPER_ADMIN` sem senha fixa pública~~ **concluído na TASK-096**.
-- `JWT_SECRET` obrigatório fora do perfil de desenvolvimento, sem fallback (TASK-097).
+- ~~`JWT_SECRET` obrigatório, sem fallback~~ **concluído na TASK-097** (obrigatório inclusive em dev, não só fora de um profile de produção).
 - CORS configurável por ambiente, sem `localhost` hardcoded (TASK-098).
 - Definir estratégia de storage de upload não-local se houver mais de uma instância da aplicação.
 - Definir estratégia de rate limiting compatível com múltiplas instâncias (hoje em memória, por instância).
@@ -165,4 +165,6 @@ Task estritamente documental — nenhuma alteração de `backend/src`/`frontend/
 
 ~~TASK-096 — Seed de `SUPER_ADMIN` seguro~~ **concluída** (ver `docs/status-mvp.md`/`docs/testes-backend-mvp.md` seção 7-tredecies).
 
-**Próxima: TASK-097 — Falha rápida se `JWT_SECRET` não for setado fora do perfil de dev.** Mesma classe de risco (segredo comprometendo produção) e mesmo padrão de correção (variável de ambiente obrigatória, sem fallback silencioso) já aplicado na TASK-096 — deve seguir imediatamente na mesma "leva de hardening", antes de TASK-098 (CORS externalizado) e antes de qualquer investimento em testes ou produto novo.
+~~TASK-097 — JWT secret sem fallback inseguro~~ **concluída** (ver `docs/status-mvp.md`/`docs/testes-backend-mvp.md` seção 7-quattuordecies).
+
+**Próxima: TASK-098 — CORS externalizado por ambiente.** Último P0 da leva de hardening (TASK-095): `SecurityConfig.corsConfigurationSource()` continua com `http://localhost:5173`/`5174` fixos no código — sem externalizar por variável de ambiente, o sistema não funciona em nenhum domínio fora do laptop de desenvolvimento. Mesmo padrão de correção das duas anteriores (variável de ambiente, sem valor de produção commitado) deve fechar essa leva antes de qualquer investimento em testes automatizados de frontend ou produto novo.

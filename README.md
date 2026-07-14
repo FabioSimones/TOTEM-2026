@@ -61,6 +61,22 @@ cd frontend && npm run build && npm run lint
 
 Detalhes de cada suíte de teste em `docs/testes-backend-mvp.md`.
 
+## Variáveis de ambiente obrigatórias (backend)
+
+Desde a TASK-097, o backend **não sobe** sem `JWT_SECRET` configurado — não há mais fallback de desenvolvimento no `application.yml` (o valor antigo era fixo e publicamente conhecido neste repositório, risco P0 da TASK-095). Antes da primeira execução (`mvn spring-boot:run` ou os testes de contexto), defina:
+
+```bash
+export JWT_SECRET="gere um valor aleatório de pelo menos 32 caracteres, nunca commitado"
+```
+
+- Mínimo de 32 caracteres (validado no startup — `JwtSecretValidator`).
+- Nunca usar o valor antigo `uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256` (removido, rejeitado explicitamente se reaparecer).
+- Sem a variável (ou com um valor curto/o antigo), a aplicação falha no startup com uma mensagem clara em vez de subir com um segredo inseguro.
+- Em ambiente de teste (`mvn test`), um secret próprio e claramente rotulado já está definido em `backend/src/test/resources/application.yml` — não precisa (nem deve) reaproveitar o valor de produção ali.
+- Nunca commitar o valor real usado em produção — gerar localmente (ex.: `openssl rand -base64 48`) e guardar fora do repositório (variável de ambiente do servidor, secret manager, etc.).
+
+Ver `docs/04-seguranca.md` para o detalhamento completo.
+
 ## Primeiro acesso administrativo (SUPER_ADMIN)
 
 Desde a TASK-096, o sistema **não** cria mais um `SUPER_ADMIN` com senha fixa por migration — o antigo seed (`admin@totem.local`/senha documentada) foi desativado para qualquer instalação onde a senha nunca tenha sido trocada (ver `docs/04-seguranca.md`). Para ter um `SUPER_ADMIN` ativo (ambiente local novo, ou um ambiente onde o seed antigo foi desativado), defina estas variáveis de ambiente **antes** de subir o backend pela primeira vez:

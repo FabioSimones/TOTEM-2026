@@ -29,6 +29,7 @@ public class JwtService {
             @Value("${app.security.jwt.secret}") String secret,
             @Value("${app.security.jwt.expiration-minutes}") long expirationMinutes,
             @Value("${app.security.jwt.operador-expiration-minutes}") long operadorExpirationMinutes) {
+        JwtSecretValidator.validar(secret);
         this.chave = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMinutes = expirationMinutes;
         this.operadorExpirationMinutes = operadorExpirationMinutes;

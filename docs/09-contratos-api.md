@@ -60,6 +60,8 @@ Response (`200 OK`):
 
 `expiresIn`/`refreshExpiresIn` em segundos (`app.security.jwt.expiration-minutes`, padrão 60min; `app.security.jwt.refresh-expiration-days`, padrão 7 dias).
 
+**`JWT_SECRET` obrigatório (TASK-097)**: `app.security.jwt.secret` não tem mais fallback — sem a variável de ambiente `JWT_SECRET` (mínimo 32 caracteres, nunca o valor antigo de desenvolvimento), a aplicação falha no startup em vez de assinar tokens com um segredo conhecido. Mesma chave assina USER/DEVICE/OPERADOR. Ver `docs/04-seguranca.md`.
+
 ### Refresh token (TASK-063)
 
 `POST /api/auth/refresh` — endpoint público (`permitAll`), mas a validação real é do `refreshToken` no corpo, não de um Bearer token. **Rotação**: o `refreshToken` informado é sempre revogado (uso único), mesmo em caso de sucesso — a resposta traz um `refreshToken` novo, que deve substituir o anterior no cliente. O titular pode ser usuário ou dispositivo; para dispositivo, `usuario` é `null` e `dispositivo` é preenchido.

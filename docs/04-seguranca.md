@@ -82,3 +82,22 @@ Estratégia:
 **Em produção**: `SUPER_ADMIN_BOOTSTRAP_ENABLED` deve ficar em `false` (ou nem ser definido) depois do primeiro `SUPER_ADMIN` criado — reabilitar por engano só é inofensivo porque o runner detecta o admin ativo existente e não faz nada, mas a prática recomendada é desligar assim que o primeiro acesso for garantido.
 
 **Em desenvolvimento/teste**: nenhuma senha fixa é recomendada nem documentada como valor a usar — ver `README.md` seção "Primeiro acesso administrativo" para o passo a passo de habilitar o bootstrap localmente com uma senha escolhida pelo próprio desenvolvedor.
+
+## JWT secret sem fallback inseguro (TASK-097)
+
+**Risco identificado (TASK-095, classificado P0)**: `application.yml` tinha `secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256}` — se a variável de ambiente `JWT_SECRET` não fosse definida (erro humano plausível em qualquer deploy), a aplicação subia normalmente assinando **todos** os tokens (usuário, dispositivo e operador — `JwtService` usa a mesma chave HMAC para os três) com um valor fixo, publicamente conhecido neste repositório desde o primeiro commit. Não era uma chave "fraca" — era uma chave já comprometida por definição, disponível para qualquer um que lesse o código-fonte.
+
+**Correção aplicada**:
+- `application.yml` não tem mais fallback: `secret: ${JWT_SECRET:}`. Sem a variável definida, a propriedade chega vazia ao `JwtService`.
+- `JwtSecretValidator` (`backend/src/main/java/com/totem/fastfood/security/`, novo) roda no construtor de `JwtService` — **antes** de qualquer token ser assinado — e falha o startup (`IllegalStateException`) se o secret estiver:
+  - ausente ou em branco (mensagem: `"JWT_SECRET must be configured for this environment."`, seguida de instrução de como configurar);
+  - menor que 32 caracteres;
+  - igual ao valor antigo do fallback (rejeitado nominalmente, para o caso de alguém copiar o valor antigo de um ambiente já comprometido para uma variável de ambiente por engano).
+- `JwtService` continua assinando USER/DEVICE/OPERADOR com a mesma chave (não houve mudança de claims, algoritmo ou expiração — fora do escopo desta task) — só a origem/validação do segredo mudou.
+- `backend/src/test/resources/application.yml` já definia um secret próprio, fixo e claramente rotulado como fictício (`chave-fake-de-teste-nao-usar-em-producao-...`), isolado do `application.yml` principal — passa na nova validação sem qualquer ajuste (tamanho e conteúdo já eram adequados).
+
+**Em produção**: `JWT_SECRET` é obrigatório, sem exceção — gerar um valor aleatório (ex.: `openssl rand -base64 48`) e nunca commitá-lo; guardar em variável de ambiente do servidor ou secret manager.
+
+**Em desenvolvimento local**: também obrigatório (decisão consciente — não foi criado um profile `dev` com secret próprio, para não introduzir uma segunda categoria de "ambiente com fallback" e repetir o mesmo risco por outro caminho). Ver `README.md` seção "Variáveis de ambiente obrigatórias" para o passo a passo.
+
+**Em teste**: nada muda — `mvn test` continua determinístico, usando o secret fictício já isolado em `backend/src/test/resources/application.yml`.

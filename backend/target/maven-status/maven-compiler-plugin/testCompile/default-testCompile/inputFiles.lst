@@ -18,6 +18,7 @@ C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\to
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AdminScopeServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthLoginRateLimitTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\AuthRefreshLogoutTest.java
+C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\JwtSecretValidatorTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\LoginAttemptServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\OperadorContextServiceTest.java
 C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\test\java\com\totem\fastfood\security\RefreshTokenServiceTest.java

@@ -53,9 +53,11 @@ server:
 app:
   security:
     jwt:
-      # ATENÇÃO: em produção, JWT_SECRET deve vir de variável de ambiente,
-      # nunca deve usar o valor padrão de desenvolvimento abaixo.
-      secret: ${JWT_SECRET:uma-chave-local-de-desenvolvimento-com-tamanho-suficiente-para-hmac-sha256}
+      # TASK-097: sem fallback — JWT_SECRET é obrigatório em qualquer ambiente (inclusive dev
+      # local), com no mínimo 32 caracteres. Sem a variável definida, a aplicação falha no
+      # startup com mensagem clara (JwtSecretValidator) em vez de assinar tokens com um segredo
+      # conhecido publicamente neste repositório. Ver docs/04-seguranca.md.
+      secret: ${JWT_SECRET:}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
       refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
       # Token de operador (TASK-092): curto, sem refresh — só identifica quem está no terminal
