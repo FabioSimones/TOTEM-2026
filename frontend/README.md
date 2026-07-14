@@ -107,9 +107,9 @@ Em caso de falha, o relatório HTML (`frontend/playwright-report/`) e os artefat
 - Cobertura de telas Admin (CRUD de restaurantes/categorias/produtos/usuários/dispositivos) — só login e as áreas críticas de Caixa/Cozinha/operador foram cobertas nesta primeira leva.
 - Relatórios/traces/vídeos (`test-results/`, `playwright-report/`, `blob-report/`) nunca são versionados — cobertos pelo `.gitignore` da raiz; no CI, só sobem como artifact temporário quando o job falha.
 
-## E2E integrado (TASK-104) — sem mocks, contra backend real
+## E2E integrado (TASK-104/TASK-105) — sem mocks, contra backend real
 
-Segunda suíte E2E, deliberadamente separada da mockada: nenhuma chamada de API é interceptada (`page.route`) — o frontend real conversa com um **backend Spring Boot real**, PostgreSQL real, migrations Flyway reais. Prova que o frontend consegue conversar de verdade com o backend, algo que a suíte mockada (TASK-102/103), por design, não valida.
+Segunda suíte E2E, deliberadamente separada da mockada: nenhuma chamada de API é interceptada (`page.route`) — o frontend real conversa com um **backend Spring Boot real**, PostgreSQL real, migrations Flyway reais. Prova que o frontend consegue conversar de verdade com o backend, algo que a suíte mockada (TASK-102/103), por design, não valida. Dois specs, rodando pelo mesmo comando (`npm run e2e:integrado`, mesma config `playwright.integrado.config.ts`, mesmo `testDir`): `totem-pedido-real.spec.ts` (TASK-104, Totem) e `caixa-cozinha-operador-real.spec.ts` (TASK-105, Caixa/Cozinha/operador).
 
 **Diferenças em relação à suíte mockada**:
 
@@ -161,16 +161,25 @@ npm run e2e:integrado:report   # abre o relatório HTML (playwright-report-integ
 
 Se o backend não estiver respondendo, o teste falha rápido com uma mensagem clara (`e2e-integrado/global-setup.ts` checa `/actuator/health` antes de rodar qualquer teste) em vez de travar em timeout tentando falar com uma porta fechada.
 
-### O que este teste cobre (`totem-pedido-real.spec.ts`)
+### O que cada spec cobre
 
-Fluxo A do fluxo operacional: login SUPER_ADMIN real → cria restaurante/categoria/produto real → cria e ativa um dispositivo TOTEM real (tudo via API, com sufixo único por execução, sem depender de limpeza de banco) → abre `/totem` no navegador real → cardápio real carregado do backend → adiciona o produto → cria o pedido real → paga com Pix → confirma `AUTORIZADO`/`PAGO` (o `FakePaymentProvider` autoriza Pix/cartão de forma síncrona e determinística, sem gateway externo). **Validado localmente**: passou de primeira, e a persistência real foi confirmada consultando `GET /api/admin/restaurantes` depois do teste — o restaurante criado pelo teste (`Restaurante E2E_<timestamp>`) apareceu no banco.
+**`totem-pedido-real.spec.ts` (TASK-104)** — Fluxo A do fluxo operacional: login SUPER_ADMIN real → cria restaurante/categoria/produto real → cria e ativa um dispositivo TOTEM real (tudo via API, com sufixo único por execução, sem depender de limpeza de banco) → abre `/totem` no navegador real → cardápio real carregado do backend → adiciona o produto → cria o pedido real → paga com Pix → confirma `AUTORIZADO`/`PAGO` (o `FakePaymentProvider` autoriza Pix/cartão de forma síncrona e determinística, sem gateway externo). **Validado localmente**: passou de primeira, e a persistência real foi confirmada consultando `GET /api/admin/restaurantes` depois do teste — o restaurante criado pelo teste (`Restaurante E2E_<timestamp>`) apareceu no banco.
+
+**`caixa-cozinha-operador-real.spec.ts` (TASK-105)** — fluxo operacional completo Caixa→Cozinha→Caixa com operadores reais: setup via API real (login SUPER_ADMIN, restaurante/categoria/produto, dispositivos CAIXA e COZINHA ativados, dois usuários `OPERADOR_CAIXA`/`OPERADOR_COZINHA`, um pedido criado e pago via API real do Totem — não pela UI, para manter o foco em Caixa/Cozinha, já que o Totem já tem cobertura própria no spec acima) — depois, **dois `BrowserContext` do Playwright** simulando dois terminais físicos ao mesmo tempo:
+1. Terminal Caixa: identifica o operador real no `OperadorPainel`, vê o pedido `PAGO` na lista, clica "Enviar para cozinha".
+2. Terminal Cozinha: identifica o outro operador real, vê o pedido, clica "Iniciar preparo" e depois "Marcar como pronto".
+3. Volta ao terminal Caixa: atualiza a lista, vê o pedido `PRONTO`, clica "Marcar como retirado".
+4. Validação final via API real (`GET /api/admin/pedidos/{id}`, token do SUPER_ADMIN): `statusPedido = RETIRADO`, e o **histórico de auditoria** confere `alteradoPorUsuarioNome`/`alteradoPorDispositivoNome` em cada transição — envio à cozinha e retirada atribuídos ao operador+dispositivo do Caixa, preparo e pronto atribuídos ao operador+dispositivo da Cozinha.
+
+Cada ação de UI é escopada ao card do pedido específico (por `numeroPedido`, via `page.locator("article", { has: ... })`), nunca "o primeiro botão com esse texto" — como os dados se acumulam no banco entre execuções (sem cleanup), uma busca genérica correria o risco de acertar um pedido de uma execução anterior que tenha ficado parado num status intermediário. Diálogos `window.confirm` (usados pelos botões de ação do Caixa/Cozinha) são aceitos automaticamente via `page.on("dialog", ...)`. **Validado localmente**: passou de primeira (2/2 com o spec do Totem, ~10s no total), confirmado de forma independente consultando `GET /api/admin/pedidos?statusPedido=RETIRADO` depois do teste.
 
 ### Limitações e o que ainda não está coberto
 
-- Só o fluxo do Totem (Fluxo A) — Caixa/Cozinha/operador com backend real ficam para uma task futura (Fluxo B/C do briefing da TASK-104).
-- **Não roda no CI** — decisão desta task: subir PostgreSQL + backend Spring Boot no runner é uma complexidade adicional (tempo de boot, Testcontainers vs. serviço, segredos de CI) que merece uma task própria depois que esta primeira versão local provar valor. Execução é manual/local por enquanto.
+- **Não roda no CI** — decisão mantida desde a TASK-104: subir PostgreSQL + backend Spring Boot no runner é complexidade adicional (tempo de boot, Testcontainers vs. serviço, segredos de CI) que merece task própria depois que esta suíte local provar valor por mais tempo. Execução é manual/local por enquanto.
 - Dados de teste se acumulam no banco a cada execução (sem cleanup automatizado) — aceitável para um banco descartável local/CI futuro, não deve ser usado contra um banco compartilhado.
-- Não substitui a suíte mockada (que continua cobrindo mais fluxos/telas e rodando no CI a cada PR) — as duas são complementares.
+- O pedido do spec de Caixa/Cozinha é criado e pago via API (não pela UI do Totem) — a criação real do pedido pela UI já está coberta pelo outro spec; não há duplicação de esforço.
+- Não cobre cancelamento de pedido, expiração, nem PIN/refresh de operador.
+- Não substitui a suíte mockada (que continua cobrindo mais fluxos/telas e rodando no CI a cada PR) — as suítes são complementares.
 
 ## Configuração de ambiente
 
