@@ -54,6 +54,12 @@ app:
       # controlado em LoginAttemptServiceTest (unitário puro), não aqui.
       max-failures: 3
       block-minutes: 1
+    cors:
+      # TASK-098: SecurityConfig.corsConfigurationSource() é sempre instanciado (não é condicional
+      # como o bootstrap de SUPER_ADMIN) — sem esta propriedade, todo teste @SpringBootTest falharia
+      # ao subir o contexto. Mesmas origens de desenvolvimento local, só para satisfazer o bean;
+      # nenhum teste hoje exercita CORS via essas origens especificamente (ver CorsConfigurationIntegrationTest).
+      allowed-origins: http://localhost:5173,http://localhost:5174
   uploads:
     dir: target/test-uploads
     public-path: /uploads
@@ -67,6 +73,25 @@ app:
       job-fixed-delay-ms: 60000
   dispositivos:
     online-recente-minutos: 5
+
+# TASK-099: mesma exposição mínima do application.yml principal — os testes de integração de
+# segurança (ActuatorSecurityIntegrationTest) validam o comportamento contra este perfil.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: totem-fast-food
+    description: Sistema de Totem de Autoatendimento para Fast Food
 
 logging:
   level:

@@ -38,11 +38,22 @@ class SuperAdminBootstrapRunnerTest {
     private ApplicationArguments applicationArguments;
 
     @Test
+    void naoExecutaNadaQuandoDesabilitado() throws Exception {
+        SuperAdminBootstrapRunner runner = new SuperAdminBootstrapRunner(
+                usuarioRepository, passwordEncoder, false, "admin@totem.local", "SenhaQualquer@123!");
+
+        runner.run(applicationArguments);
+
+        verify(usuarioRepository, never()).existsByPerfilAndAtivoTrue(any());
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
     void naoCriaSuperAdminQuandoJaExisteUmAtivo() throws Exception {
         when(usuarioRepository.existsByPerfilAndAtivoTrue(PerfilUsuario.SUPER_ADMIN)).thenReturn(true);
 
         SuperAdminBootstrapRunner runner = new SuperAdminBootstrapRunner(
-                usuarioRepository, passwordEncoder, "admin@totem.local", "SenhaQualquer@123!");
+                usuarioRepository, passwordEncoder, true, "admin@totem.local", "SenhaQualquer@123!");
 
         runner.run(applicationArguments);
 
@@ -54,7 +65,7 @@ class SuperAdminBootstrapRunnerTest {
         when(usuarioRepository.existsByPerfilAndAtivoTrue(PerfilUsuario.SUPER_ADMIN)).thenReturn(false);
 
         SuperAdminBootstrapRunner runner = new SuperAdminBootstrapRunner(
-                usuarioRepository, passwordEncoder, "", "");
+                usuarioRepository, passwordEncoder, true, "", "");
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> runner.run(applicationArguments));
@@ -67,7 +78,7 @@ class SuperAdminBootstrapRunnerTest {
         when(usuarioRepository.existsByPerfilAndAtivoTrue(PerfilUsuario.SUPER_ADMIN)).thenReturn(false);
 
         SuperAdminBootstrapRunner runner = new SuperAdminBootstrapRunner(
-                usuarioRepository, passwordEncoder, "admin@totem.local", "");
+                usuarioRepository, passwordEncoder, true, "admin@totem.local", "");
 
         assertThrows(IllegalStateException.class, () -> runner.run(applicationArguments));
         verify(usuarioRepository, never()).save(any());
@@ -79,7 +90,7 @@ class SuperAdminBootstrapRunnerTest {
         when(passwordEncoder.encode("SenhaEscolhidaPeloOperador@123!")).thenReturn("hash-bcrypt-simulado");
 
         SuperAdminBootstrapRunner runner = new SuperAdminBootstrapRunner(
-                usuarioRepository, passwordEncoder, "novo.admin@totem.local", "SenhaEscolhidaPeloOperador@123!");
+                usuarioRepository, passwordEncoder, true, "novo.admin@totem.local", "SenhaEscolhidaPeloOperador@123!");
 
         runner.run(applicationArguments);
 

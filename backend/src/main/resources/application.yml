@@ -69,6 +69,13 @@ app:
       # um WAF/proxy/rate limiting de borda em produção.
       max-failures: ${LOGIN_RATE_LIMIT_MAX_FAILURES:5}
       block-minutes: ${LOGIN_RATE_LIMIT_BLOCK_MINUTES:15}
+    cors:
+      # TASK-098: sem fallback — CORS_ALLOWED_ORIGINS é obrigatório em qualquer ambiente (inclusive
+      # dev local), lista separada por vírgula (ex.: http://localhost:5173,http://localhost:5174).
+      # "*" nunca é aceito (CorsOriginsValidator). Sem a variável definida, a aplicação falha no
+      # startup com mensagem clara em vez de subir com a lista vazia (bloqueando tudo em silêncio)
+      # ou aceitando qualquer origem. Ver docs/04-seguranca.md.
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   bootstrap:
     super-admin:
       # Desligado por padrão (TASK-096) — a V7 desativou o antigo seed de senha fixa das
@@ -106,6 +113,30 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
   default-produces-media-type: application/json
+
+# TASK-099: observabilidade mínima. Só health e info ficam expostos — qualquer outro endpoint do
+# Actuator (env, beans, metrics, loggers, threaddump, heapdump...) não tem exposure habilitado,
+# então nem chega a existir como rota no Spring MVC. show-details=never evita vazar detalhes de
+# componentes internos (ex.: status do datasource) para quem só tem acesso ao /actuator/health
+# público — ver SecurityConfig e docs/04-seguranca.md.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  info:
+    env:
+      # Sem isso, o /actuator/info não expõe as propriedades info.* abaixo (desligado por padrão
+      # desde o Spring Boot 2.5) — nada além delas é exposto, então não há risco de vazar env vars.
+      enabled: true
+
+info:
+  app:
+    name: totem-fast-food
+    description: Sistema de Totem de Autoatendimento para Fast Food
 
 logging:
   level:

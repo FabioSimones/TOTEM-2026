@@ -61,6 +61,18 @@ cd frontend && npm run build && npm run lint
 
 Detalhes de cada suíte de teste em `docs/testes-backend-mvp.md`.
 
+## Verificar saúde da aplicação (TASK-099)
+
+Com o backend no ar, dois endpoints públicos confirmam disponibilidade:
+
+```bash
+curl http://localhost:8080/api/health        # health legado, mantido por compatibilidade
+curl http://localhost:8080/actuator/health    # health operacional padrão (Spring Boot Actuator)
+curl http://localhost:8080/actuator/info      # nome/descrição da aplicação, sem dado sensível
+```
+
+Nenhum outro endpoint do Actuator (`/actuator/env`, `/actuator/metrics`, `/actuator/beans`, etc.) fica exposto publicamente — ver `docs/04-seguranca.md` seção "Observabilidade mínima" e `docs/08-endpoints.md` seção "Observabilidade".
+
 ## Variáveis de ambiente obrigatórias (backend)
 
 Desde a TASK-097, o backend **não sobe** sem `JWT_SECRET` configurado — não há mais fallback de desenvolvimento no `application.yml` (o valor antigo era fixo e publicamente conhecido neste repositório, risco P0 da TASK-095). Antes da primeira execução (`mvn spring-boot:run` ou os testes de contexto), defina:
@@ -74,6 +86,19 @@ export JWT_SECRET="gere um valor aleatório de pelo menos 32 caracteres, nunca c
 - Sem a variável (ou com um valor curto/o antigo), a aplicação falha no startup com uma mensagem clara em vez de subir com um segredo inseguro.
 - Em ambiente de teste (`mvn test`), um secret próprio e claramente rotulado já está definido em `backend/src/test/resources/application.yml` — não precisa (nem deve) reaproveitar o valor de produção ali.
 - Nunca commitar o valor real usado em produção — gerar localmente (ex.: `openssl rand -base64 48`) e guardar fora do repositório (variável de ambiente do servidor, secret manager, etc.).
+
+Desde a TASK-098, o backend também **não sobe** sem `CORS_ALLOWED_ORIGINS` configurado — as origens deixaram de ser fixas em `SecurityConfig.java`:
+
+```bash
+export CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
+```
+
+- Lista separada por vírgula, cada origem com protocolo explícito (`http://`/`https://`) e porta quando houver.
+- Em desenvolvimento local: `http://localhost:5173,http://localhost:5174` (as duas portas que o Vite usa).
+- Em produção: a origem exata do domínio do frontend, ex. `https://seu-dominio.com` — **nunca** um domínio de exemplo commitado como se fosse real, e **nunca** `*`.
+- `*` é sempre rejeitado no startup (`CorsOriginsValidator`), mesmo que alguém tente configurar assim.
+- Sem a variável (ou com um valor vazio/`*`), a aplicação falha no startup com mensagem clara.
+- Em ambiente de teste, `backend/src/test/resources/application.yml` já define as mesmas duas origens de desenvolvimento — só para satisfazer o bean, não é usado para testar comportamento de CORS de fato (isso é feito por `CorsConfigurationIntegrationTest`).
 
 Ver `docs/04-seguranca.md` para o detalhamento completo.
 

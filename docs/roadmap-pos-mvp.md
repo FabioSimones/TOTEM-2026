@@ -40,7 +40,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 | Testes frontend (Vitest) | Inexistente — `frontend/package.json` não tem Vitest/Jest/Testing Library | `frontend/package.json` |
 | Testes E2E (Playwright/Cypress) | Inexistente — nenhuma dependência, nenhuma ferramenta de automação de navegador disponível neste ambiente de desenvolvimento | verificado nesta task |
 | WebSocket/SSE | Inexistente — Totem usa polling leve de 15s; Caixa/Cozinha dependem de atualização manual | `docs/11-fluxos.md` |
-| CORS externalizado por ambiente | **Não** — `SecurityConfig.corsConfigurationSource()` tem `http://localhost:5173`/`5174` hardcoded, sem variável de ambiente | `SecurityConfig.java:96-97` |
+| CORS externalizado por ambiente | **Resolvido na TASK-098** — origens vêm de `CORS_ALLOWED_ORIGINS`; `CorsOriginsValidator` falha o startup se ausente, com `*`, ou sem protocolo explícito | `SecurityConfig.java`, `config/CorsOriginsValidator.java` |
 | JWT secret sem fallback frágil em produção | **Resolvido na TASK-097** — fallback removido de `application.yml`; `JwtSecretValidator` falha o startup se ausente, curto (<32) ou igual ao valor antigo | `application.yml`, `security/JwtSecretValidator.java` |
 | Rate limit em memória | Confirmado — `LoginAttemptService`, contadores zeram a cada reinício, não substitui WAF/rate limit de borda | `docs/08-endpoints.md` |
 | Uploads em disco local | Confirmado — `app.uploads.dir`, sem storage externo (S3/Cloudinary) | `application.yml:75-78` |
@@ -51,7 +51,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 | Seed `SUPER_ADMIN` com senha fixa | **Resolvido na TASK-096** — `V7` desativa a conta com a senha fixa (`Admin@2026!`) nunca trocada; `SuperAdminBootstrapRunner` passa a ser o único caminho para criar o primeiro `SUPER_ADMIN`, sem valor padrão de senha em nenhum lugar | `db/migration/V7__desativar_seed_super_admin_conhecido.sql`, `bootstrap/SuperAdminBootstrapRunner.java` |
 | Entidade Rede/Grupo de restaurantes | Não implementada — modelo atual é restaurante único, sem hierarquia | não encontrada no schema |
 | Multi-tenant por rede | Não implementado — escopo atual é só por `restauranteId` | idem |
-| Observabilidade/logs | Mínima — só `HealthController` customizado (sem Spring Actuator), nível de log `DEBUG` fixo para `com.totem.fastfood` em `application.yml`, sem log estruturado/correlação | `application.yml:97-101`, `backend/pom.xml` (sem `spring-boot-starter-actuator`) |
+| Observabilidade/logs | **Resolvido na TASK-099** — `spring-boot-starter-actuator` com `/actuator/health`/`/actuator/info` públicos (demais endpoints não expostos); logs INFO/WARN nos fluxos sensíveis (login, ativação/refresh de dispositivo, ações de Caixa/Cozinha, bootstrap de SUPER_ADMIN), sem token/senha/payload sensível. Ainda sem log estruturado (JSON)/correlação/Prometheus/tracing — fora do escopo da TASK-099 | `backend/pom.xml`, `application.yml`, `SecurityConfig.java`, `docs/04-seguranca.md` |
 | Backup/restore | Não documentado nem automatizado | não encontrado |
 | Deploy | Não há Dockerfile/docker-compose/manifesto de deploy no repositório | verificado nesta task |
 | CI/CD | CI existe (`ci.yml`, 3 jobs); **CD não existe** (nenhum deploy automatizado) | `.github/workflows/ci.yml` |
@@ -69,7 +69,7 @@ Confirmadas por leitura de código nesta revisão (não apenas repetindo o que a
 ### P1 — importante para operação/segurança, mas com workaround; melhora confiabilidade
 - Homologação visual real do fluxo Caixa/Cozinha/operador (workaround atual: validação funcional via `curl`, já ampla, mas sem confirmação de UX real).
 - Rate limit em memória (workaround: aceitável para instância única; quebra com múltiplas instâncias/reinícios frequentes).
-- Observabilidade/logs mínima (workaround: logs de console bastam para um MVP com pouco tráfego, mas dificultam diagnóstico em produção).
+- ~~Observabilidade/logs mínima~~ **resolvido na TASK-099** — Actuator health/info + logs operacionais nos fluxos sensíveis.
 - Testcontainers ampliado para o fluxo operacional completo (workaround: H2 já cobre a lógica, Postgres real só foi testado nos dois pontos historicamente problemáticos).
 - Branch protection no GitHub (workaround: disciplina manual da equipe).
 - Uploads em disco local (workaround: aceitável para volume baixo/single-instance; quebra se houver múltiplas instâncias sem storage compartilhado).
@@ -100,8 +100,8 @@ A sequência lógica é: **fechar os 3 riscos P0 (que são configuração/seed, 
 |---|---|---|---|---|---|---|---|
 | TASK-096 | ~~Seed de `SUPER_ADMIN` seguro~~ **concluída** | Segurança | P0 | Eliminar a senha fixa documentada publicamente — feito via `V7` (desativação condicional) + `SuperAdminBootstrapRunner` (criação controlada por variável de ambiente, sem default de senha) | `V7__desativar_seed_super_admin_conhecido.sql`, `bootstrap/SuperAdminBootstrapRunner.java`, `UsuarioRepository.java`, `application.yml` | `mvn test` → 324/324 BUILD SUCCESS (320 + 4 novos) | Era o risco mais barato de mitigar e o mais grave — feito antes de qualquer outra coisa tocar em auth |
 | TASK-097 | ~~Falha rápida se `JWT_SECRET` não for setado~~ **concluída** | Segurança | P0 | Impedir que a aplicação suba com a chave de desenvolvimento antiga — feito via remoção do fallback + `JwtSecretValidator` (sem profile novo: `JWT_SECRET` passou a ser obrigatório inclusive em dev, para não reabrir o mesmo risco por outro caminho) | `application.yml`, `security/JwtSecretValidator.java`, `security/JwtService.java` | `mvn test` → 330/330 BUILD SUCCESS (324 + 6 novos) | Mesma classe de risco da TASK-096 (segredo público comprometendo produção), feita logo em seguida por ser mudança pequena e isolada em security config |
-| TASK-098 | Externalizar origens de CORS por variável de ambiente | Segurança/Deploy | P0 | `allowedOrigins` deixar de ser hardcoded, virar `${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}` | `SecurityConfig.java`, `application.yml` | `mvn test`, `curl` de preflight com origem customizada | Fecha o último P0 — sem isso o sistema não roda fora de `localhost` de jeito nenhum |
-| TASK-099 | Observabilidade mínima (Actuator + log estruturado) | Infra | P1 | Adicionar `spring-boot-starter-actuator` (`/health`, `/info`), revisar níveis de log por ambiente | `pom.xml`, `application.yml`, `application-prod.yml` | `mvn test`, `curl /actuator/health` | Depois dos P0 de segurança, é o que mais reduz "voar às cegas" antes de qualquer deploy real |
+| TASK-098 | ~~Externalizar origens de CORS por variável de ambiente~~ **concluída** | Segurança/Deploy | P0 | `allowedOrigins` deixou de ser hardcoded — feito via `CORS_ALLOWED_ORIGINS` (sem fallback) + `CorsOriginsValidator` (rejeita `*`/ausência/origem sem protocolo) | `SecurityConfig.java`, `config/CorsOriginsValidator.java`, `application.yml` | `mvn test` → 341/341 BUILD SUCCESS (330 + 11 novos, incluindo o primeiro teste de integração de CORS do projeto) | Fechou o último P0 — sem isso o sistema não rodava fora de `localhost` de jeito nenhum |
+| TASK-099 | ~~Observabilidade mínima (Actuator + logs operacionais)~~ **concluída** | Infra | P1 | Adicionado `spring-boot-starter-actuator` (`/actuator/health`, `/actuator/info` públicos, demais endpoints não expostos) + logs INFO/WARN nos fluxos sensíveis restantes sem log (`CozinhaPedidoService`, bootstrap de SUPER_ADMIN desabilitado) | `pom.xml`, `application.yml`, `SecurityConfig.java`, `CozinhaPedidoService.java`, `SuperAdminBootstrapRunner.java` | `mvn test` → 347/347 BUILD SUCCESS (341 + 6 novos) | Depois dos P0 de segurança, era o que mais reduzia "voar às cegas" antes de qualquer deploy real |
 | TASK-100 | Branch protection + badge de CI | DevOps | P1 | Exigir os 3 jobs de `ci.yml` como check obrigatório antes de merge em `main`; badge no `README.md` | `.github/` (configuração via GitHub, não código), `README.md` | Nenhuma (config de repositório) | Baixo esforço, alto valor de proteção — já estava pendente desde a TASK-084 |
 | TASK-101 | Configurar Vitest + Testing Library no frontend | Testes | P2 | Primeira suíte de teste automatizado de frontend, começando por `tokenStorage.ts`/`api.ts` (lógica pura, sem DOM) | `frontend/package.json`, `frontend/vitest.config.ts` (novo), `frontend/src/services/*.test.ts` | `npm run test` novo, `npm run build` | Precede qualquer refatoração de frontend — sem isso, mudanças futuras em `api.ts`/`tokenStorage.ts` (código sensível de sessão) não têm rede de segurança |
 | TASK-102 | Homologação visual real (Playwright headless) — Caixa/Cozinha/operador | Testes/Validação | P1 | Fechar a pendência da TASK-094.1 de verdade, com Playwright como dependência de **teste** (não de produção) | `frontend/tests/e2e/*` (novo), `frontend/playwright.config.ts` (novo) | Suíte Playwright rodando localmente e no CI | Só faz sentido depois que Vitest já estabeleceu a convenção de testes frontend no projeto; usa o mesmo Node/CI já existente |
@@ -139,7 +139,7 @@ A sequência lógica é: **fechar os 3 riscos P0 (que são configuração/seed, 
 
 - ~~Seed de `SUPER_ADMIN` sem senha fixa pública~~ **concluído na TASK-096**.
 - ~~`JWT_SECRET` obrigatório, sem fallback~~ **concluído na TASK-097** (obrigatório inclusive em dev, não só fora de um profile de produção).
-- CORS configurável por ambiente, sem `localhost` hardcoded (TASK-098).
+- ~~CORS configurável por ambiente, sem `localhost` hardcoded~~ **concluído na TASK-098**.
 - Definir estratégia de storage de upload não-local se houver mais de uma instância da aplicação.
 - Definir estratégia de rate limiting compatível com múltiplas instâncias (hoje em memória, por instância).
 
@@ -167,4 +167,10 @@ Task estritamente documental — nenhuma alteração de `backend/src`/`frontend/
 
 ~~TASK-097 — JWT secret sem fallback inseguro~~ **concluída** (ver `docs/status-mvp.md`/`docs/testes-backend-mvp.md` seção 7-quattuordecies).
 
-**Próxima: TASK-098 — CORS externalizado por ambiente.** Último P0 da leva de hardening (TASK-095): `SecurityConfig.corsConfigurationSource()` continua com `http://localhost:5173`/`5174` fixos no código — sem externalizar por variável de ambiente, o sistema não funciona em nenhum domínio fora do laptop de desenvolvimento. Mesmo padrão de correção das duas anteriores (variável de ambiente, sem valor de produção commitado) deve fechar essa leva antes de qualquer investimento em testes automatizados de frontend ou produto novo.
+~~TASK-098 — CORS externalizado por ambiente~~ **concluída** (ver `docs/status-mvp.md`/`docs/testes-backend-mvp.md` seção 7-quindecies).
+
+**A leva de hardening P0 da TASK-095 está completa** — os três riscos (seed de SUPER_ADMIN, JWT secret, CORS) foram corrigidos nas TASK-096/097/098, todos seguindo o mesmo padrão (variável de ambiente obrigatória, validação explícita no startup, sem fallback de produção commitado).
+
+~~TASK-099 — Observabilidade mínima (Actuator + logs operacionais)~~ **concluída** (ver `docs/status-mvp.md`/`docs/testes-backend-mvp.md` seção 7-sedecies) — `/actuator/health`/`/actuator/info` públicos, demais endpoints do Actuator não expostos, logs operacionais completos nos fluxos sensíveis.
+
+**Próxima: TASK-100 — Branch protection + badge de CI.** Segundo item P1 da tabela de priorização (seção 6): esforço baixo (configuração de repositório no GitHub, não código), pode ser feito em paralelo por quem tiver acesso administrativo, e fecha uma pendência registrada desde a TASK-084.

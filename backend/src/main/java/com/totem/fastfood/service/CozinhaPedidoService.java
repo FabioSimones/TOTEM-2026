@@ -14,6 +14,7 @@ import com.totem.fastfood.repository.HistoricoStatusPedidoRepository;
 import com.totem.fastfood.repository.ItemPedidoRepository;
 import com.totem.fastfood.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CozinhaPedidoService {
@@ -101,6 +103,9 @@ public class CozinhaPedidoService {
                         : OBSERVACAO_PADRAO)
                 .build();
         historicoStatusPedidoRepository.save(historico);
+
+        log.info("Status de pedido atualizado pela cozinha: pedidoId={}, restauranteId={}, statusAnterior={}, statusNovo={}",
+                pedido.getId(), restauranteId, statusAnterior, statusSolicitado);
 
         return cozinhaPedidoMapper.toAtualizarStatusResponse(pedido, statusAnterior);
     }

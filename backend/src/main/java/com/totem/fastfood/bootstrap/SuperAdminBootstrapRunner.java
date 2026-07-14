@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -21,30 +20,40 @@ import org.springframework.stereotype.Component;
  * ({@code SUPER_ADMIN_EMAIL}/{@code SUPER_ADMIN_PASSWORD}). Nunca há um valor padrão de senha
  * aqui: ligar sem informar as duas propriedades falha o startup de propósito, para não mascarar
  * um deploy mal configurado.
+ *
+ * TASK-099: sempre registrado (não mais {@code @ConditionalOnProperty}) para poder logar o estado
+ * habilitado/desabilitado do bootstrap no startup — com o bean condicional, o caso desabilitado
+ * não tinha como emitir log nenhum.
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "app.bootstrap.super-admin.enabled", havingValue = "true")
 public class SuperAdminBootstrapRunner implements ApplicationRunner {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final boolean enabled;
     private final String email;
     private final String senha;
 
     public SuperAdminBootstrapRunner(
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
+            @Value("${app.bootstrap.super-admin.enabled:false}") boolean enabled,
             @Value("${app.bootstrap.super-admin.email:}") String email,
             @Value("${app.bootstrap.super-admin.password:}") String senha) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.enabled = enabled;
         this.email = email;
         this.senha = senha;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        if (!enabled) {
+            log.info("Bootstrap de SUPER_ADMIN desabilitado (app.bootstrap.super-admin.enabled=false).");
+            return;
+        }
         if (usuarioRepository.existsByPerfilAndAtivoTrue(PerfilUsuario.SUPER_ADMIN)) {
             log.info("Bootstrap de SUPER_ADMIN ignorado: já existe um SUPER_ADMIN ativo.");
             return;

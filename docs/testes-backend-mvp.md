@@ -657,9 +657,47 @@ Corrige o segundo risco P0 identificado na TASK-095: `application.yml` tinha `se
 
 **Efeito em ambientes existentes**: qualquer instalação que dependia do fallback antigo (nunca definiu `JWT_SECRET`) para de subir na próxima execução até que a variável seja definida — comportamento intencional (falha clara, não silenciosa). Ver `README.md` seção "Variáveis de ambiente obrigatórias".
 
+## 7-quindecies. TASK-098 — CORS externalizado por ambiente
+
+Corrige o terceiro e último P0 identificado na TASK-095: `SecurityConfig.corsConfigurationSource()` tinha as origens permitidas hardcoded (`http://localhost:5173`/`5174`) — funcionava só em desenvolvimento local, qualquer domínio de produção exigiria alterar e recompilar código.
+
+**Mudanças de código**:
+- `application.yml`: `allowed-origins: ${CORS_ALLOWED_ORIGINS:}` (`app.security.cors.allowed-origins`) — sem fallback.
+- `CorsOriginsValidator` (`backend/src/main/java/com/totem/fastfood/config/`, novo, classe utilitária sem estado): chamado dentro de `SecurityConfig.corsConfigurationSource()`, antes de montar o `CorsConfiguration`. Lança `IllegalStateException` se a configuração estiver ausente/em branco, contiver `"*"` (mesmo misturado com origens válidas), ou contiver uma origem sem `http://`/`https://` explícito.
+- `SecurityConfig`: `corsConfigurationSource()` passa a ler `List<String> allowedOrigins = CorsOriginsValidator.validar(corsAllowedOrigins)` em vez de `List.of("http://localhost:5173", "http://localhost:5174")` hardcoded. Métodos (`GET`/`POST`/`PUT`/`PATCH`/`DELETE`/`OPTIONS`) e headers (`Authorization`/`Content-Type`/`X-Operador-Token`) não mudaram.
+- `backend/src/test/resources/application.yml`: ganhou `app.security.cors.allowed-origins: http://localhost:5173,http://localhost:5174` — **obrigatório**, diferente do bootstrap de SUPER_ADMIN (TASK-096, condicional/opt-in): o bean `corsConfigurationSource()` é sempre instanciado pelo Spring Security, então as 13 classes `@SpringBootTest` do projeto quebrariam sem essa propriedade.
+
+**Testes novos**:
+- `CorsOriginsValidatorTest` (8 casos, unitário puro): falha com configuração nula/vazia/só espaços e vírgulas; falha com `"*"` sozinho ou misturado com origem válida; falha com origem sem protocolo; passa com uma origem válida; passa com múltiplas origens separadas por vírgula (com espaços ao redor, aparados corretamente).
+- `CorsConfigurationIntegrationTest` (3 casos, MockMvc contra o contexto Spring completo — **primeira cobertura automatizada de CORS do projeto**, todas as validações anteriores TASK-085/093/094 foram feitas manualmente via `curl`): preflight `OPTIONS /api/auth/login` com `Origin: http://localhost:5173` retorna `Access-Control-Allow-Origin: http://localhost:5173`; preflight de uma ação de Caixa com `Access-Control-Request-Headers: authorization,x-operador-token` retorna `Access-Control-Allow-Headers` contendo `x-operador-token`; preflight com `Origin: http://malicioso.local` (origem não configurada) **não** retorna `Access-Control-Allow-Origin` — confirmado empiricamente, não só por leitura de código.
+
+`mvn test` → **341/341, BUILD SUCCESS** (330 anteriores + 11 novos: 8 do validador + 3 de integração). Nenhuma alteração de frontend, JWT, seed de SUPER_ADMIN, autenticação ou endpoints.
+
+**Efeito em ambientes existentes**: qualquer instalação que dependia das origens hardcoded antigas (nunca definiu `CORS_ALLOWED_ORIGINS`) para de subir na próxima execução até que a variável seja definida — mesmo padrão de falha clara e intencional das TASK-096/097. Ver `README.md` seção "Variáveis de ambiente obrigatórias".
+
 ~~Não existe uma suíte de teste de integração completa (subindo contexto Spring + banco, exercitando fluxos de negócio ponta a ponta via HTTP) no projeto~~ **implementado na TASK-067**: `integration/FluxoOperacionalMvpIntegrationTest` cobre o ciclo operacional completo (Totem cria pedido e paga → Caixa envia à cozinha → Cozinha prepara e finaliza → Caixa marca retirado) via HTTP real (MockMvc) contra o contexto Spring completo com H2 em memória — ver detalhes na tabela acima. A TASK-057 havia adicionado H2 em memória para permitir que `TotemApplicationTests.contextLoads` suba o contexto completo (smoke test de que os beans se conectam); a TASK-061 deu o primeiro passo real testando HTTP de verdade via MockMvc (`SecurityHttpStatusTest`), mas cobrindo só autenticação/autorização. A TASK-067 é o primeiro teste de **fluxo de negócio** completo via HTTP.
 
 **Limitação conhecida, deliberada**: H2 em memória (`MODE=PostgreSQL`, schema via `ddl-auto: create-drop`) valida a integração HTTP + JPA + regras de transição de status num único processo, mas **não substitui** um teste contra PostgreSQL real — não exercita comportamento específico do driver/dialeto Postgres (ex.: `SERIAL`/`BIGSERIAL`, locks de linha reais como os usados em `RefreshTokenService.revogarSeAtivo`, tipos específicos). Migrar para Testcontainers (subir um PostgreSQL real em container durante o teste) continua como pendência técnica caso se queira essa cobertura mais fiel — deliberadamente fora do escopo da TASK-067.
+
+## 7-sedecies. TASK-099 — Observabilidade mínima (Actuator + logs operacionais)
+
+Primeiro item P1 do roadmap pós-MVP (TASK-095), executado logo após a leva de hardening P0 (TASK-096/097/098): adiciona `spring-boot-starter-actuator` para health/info operacionais e fecha as duas lacunas de log identificadas na revisão (`CozinhaPedidoService` sem log nenhum; `SuperAdminBootstrapRunner` sem log no caso desabilitado).
+
+**Mudanças de código**:
+- `pom.xml`: `spring-boot-starter-actuator`.
+- `application.yml`/`test/resources/application.yml`: `management.endpoints.web.exposure.include: health,info` (só esses dois — qualquer outro endpoint do Actuator não tem exposure habilitado e nem chega a existir como rota Spring MVC), `management.endpoint.health.show-details: never` (não vaza detalhes de componentes internos, ex.: status do datasource), `management.info.env.enabled: true` (necessário para o `/actuator/info` expor as propriedades estáticas `info.app.*` — sem isso, o contribuidor de env fica desligado por padrão desde o Spring Boot 2.5).
+- `SecurityConfig`: `/actuator/health` e `/actuator/info` adicionados a `ENDPOINTS_PUBLICOS`. Como a exposição já é restrita a esses dois, um request a `/actuator/env` (ou qualquer outro) não tem rota registrada — cai em `401` (não está na lista pública, exige autenticação) antes mesmo do Spring MVC decidir 404.
+- `SuperAdminBootstrapRunner`: deixou de ser `@ConditionalOnProperty` (o bean não existia quando `enabled=false`, então o caso desabilitado nunca tinha como logar nada) — agora sempre registrado, checando `enabled` via `@Value` no início de `run()` e logando os dois estados (habilitado/desabilitado). Comportamento funcional idêntico (mesmas condições de criação/erro), só a forma de checar mudou.
+- `CozinhaPedidoService`: ganhou `@Slf4j` e um log em `atualizarStatus` (pedidoId, restauranteId, statusAnterior→statusNovo) — era o único fluxo sensível de Caixa/Cozinha listado na task sem nenhum log; os demais (confirmar pagamento dinheiro, enviar cozinha, retirar, cancelar, login admin/operador, ativação/refresh de dispositivo) já logavam IDs técnicos sem dado sensível desde tasks anteriores.
+- `/api/health` (`HealthController`) não foi alterado — continua público, sem dependência de banco/beans, mantido para compatibilidade como health legado simples ao lado do `/actuator/health` operacional.
+
+**Testes novos**: `ActuatorSecurityIntegrationTest` (5 casos, MockMvc contra o contexto Spring completo): `GET /actuator/health` sem token → `200 {status: UP}`; `GET /api/health` sem token → `200` (regressão do legado); `GET /actuator/info` sem token → `200` com `app.name` estático, sem dado sensível; `GET /actuator/env` → nunca `200`; endpoint protegido (`GET /api/admin/dashboard`) sem token continua `401`.
+
+`SuperAdminBootstrapRunnerTest` ganhou um caso novo (`naoExecutaNadaQuandoDesabilitado`) e os quatro existentes passaram a informar o novo parâmetro `enabled` no construtor.
+
+`mvn test` → **347/347, BUILD SUCCESS** (341 anteriores + 6 novos: 5 de `ActuatorSecurityIntegrationTest` + 1 de `SuperAdminBootstrapRunnerTest`). Nenhuma alteração de frontend, autenticação de usuário/dispositivo/operador, ou regra de negócio de pedidos.
+
+**Fora do escopo, deliberadamente**: Prometheus/Grafana, tracing distribuído, ELK/Loki, dashboard operacional, log estruturado (JSON) — a task pede observabilidade mínima, não uma stack de monitoramento completa (ver `docs/roadmap-pos-mvp.md`).
 
 ## 8. Divergências encontradas entre `docs/08-endpoints.md` e a implementação
 

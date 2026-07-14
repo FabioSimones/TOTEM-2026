@@ -101,3 +101,38 @@ Estratégia:
 **Em desenvolvimento local**: também obrigatório (decisão consciente — não foi criado um profile `dev` com secret próprio, para não introduzir uma segunda categoria de "ambiente com fallback" e repetir o mesmo risco por outro caminho). Ver `README.md` seção "Variáveis de ambiente obrigatórias" para o passo a passo.
 
 **Em teste**: nada muda — `mvn test` continua determinístico, usando o secret fictício já isolado em `backend/src/test/resources/application.yml`.
+
+## CORS externalizado por ambiente (TASK-098)
+
+**Risco identificado (TASK-095, classificado P0)**: `SecurityConfig.corsConfigurationSource()` tinha as origens permitidas hardcoded em Java (`http://localhost:5173`/`5174`) — funcionava só em desenvolvimento local; qualquer domínio de produção exigiria alterar e recompilar código, misturando configuração operacional com o próprio código-fonte.
+
+**Correção aplicada**:
+- `application.yml` não tem mais origens hardcoded: `allowed-origins: ${CORS_ALLOWED_ORIGINS:}` (`app.security.cors.allowed-origins`, lista separada por vírgula).
+- `CorsOriginsValidator` (`backend/src/main/java/com/totem/fastfood/config/`, novo) roda dentro de `SecurityConfig.corsConfigurationSource()` — antes de montar o `CorsConfiguration` — e falha o startup (`IllegalStateException`) se a configuração estiver:
+  - ausente ou em branco (mensagem: `"CORS_ALLOWED_ORIGINS must be configured for this environment."`);
+  - contendo apenas espaços/vírgulas em branco;
+  - contendo `"*"` (mesmo misturado com origens válidas);
+  - contendo uma origem sem `http://`/`https://` explícito.
+- Métodos (`GET`/`POST`/`PUT`/`PATCH`/`DELETE`/`OPTIONS`) e headers (`Authorization`, `Content-Type`, `X-Operador-Token`) permanecem exatamente os mesmos — só a origem passou a ser configurável.
+- `backend/src/test/resources/application.yml` ganhou `allowed-origins: http://localhost:5173,http://localhost:5174` (as mesmas duas de desenvolvimento) — necessário porque, diferente do bootstrap de SUPER_ADMIN (TASK-096, opcional), o bean de CORS é sempre instanciado pelo Spring Security, então as 13 classes `@SpringBootTest` do projeto exigiam essa propriedade.
+- Novo `CorsConfigurationIntegrationTest` (MockMvc, contexto Spring completo): confirma que um preflight `OPTIONS /api/auth/login` com `Origin: http://localhost:5173` retorna `Access-Control-Allow-Origin` correto; que `X-Operador-Token` continua aceito no preflight de uma ação de Caixa; e que uma origem não configurada (`http://malicioso.local`) **não** recebe `Access-Control-Allow-Origin` — a primeira cobertura automatizada de CORS do projeto (antes só validado manualmente via `curl`, TASK-085/093/094).
+
+**Em produção**: `CORS_ALLOWED_ORIGINS` deve conter exatamente a(s) origem(ns) do frontend real (protocolo + domínio + porta) — nunca `*`, nunca um domínio de exemplo commitado como se fosse o real.
+
+**Em desenvolvimento local**: também obrigatório, mesma decisão da TASK-097 (exigir sempre, sem profile `dev` separado). Ver `README.md` seção "Variáveis de ambiente obrigatórias".
+
+**Em teste**: `mvn test` continua determinístico — origens fixas em `backend/src/test/resources/application.yml`, usadas só para satisfazer o bean (nenhum teste de negócio depende delas), com cobertura de comportamento de CORS isolada em `CorsConfigurationIntegrationTest`.
+
+## Observabilidade mínima (TASK-099)
+
+**Objetivo**: dar visibilidade operacional mínima (health/info padronizados + logs dos fluxos sensíveis) sem expor nada que ajude um atacante a mapear a aplicação.
+
+**Actuator exposto**: só dois endpoints ficam públicos, ambos liberados explicitamente em `SecurityConfig.ENDPOINTS_PUBLICOS`:
+- `GET /actuator/health` — `{"status":"UP"}` (`management.endpoint.health.show-details: never`, então nunca inclui detalhes de componentes internos como status do datasource).
+- `GET /actuator/info` — só as propriedades estáticas `info.app.name`/`info.app.description` definidas em `application.yml` (nome/descrição da aplicação); nenhum secret, URL interna, usuário de banco, configuração de JWT/CORS ou variável de ambiente é exposta.
+
+**Actuator não exposto**: `management.endpoints.web.exposure.include` está restrito a `health,info` — qualquer outro endpoint (`/actuator/env`, `/actuator/beans`, `/actuator/configprops`, `/actuator/metrics`, `/actuator/loggers`, `/actuator/threaddump`, `/actuator/heapdump`, etc.) não tem exposição habilitada e por isso **nem existe como rota** no Spring MVC. Como esses paths não estão na lista de públicos, uma requisição sem token para eles recebe `401` (não autenticado) antes mesmo de o Spring MVC decidir 404 — nunca `200` com dado exposto.
+
+**`/api/health` legado**: continua público e sem mudanças (`HealthController`, TASK anterior à observabilidade) — mantido por compatibilidade, resposta estática simples (`{"status":"UP","service":"totem-fast-food"}`), sem dependência de banco/beans. `/actuator/health` é o health operacional padrão recomendado para monitoramento externo daqui em diante; `/api/health` continua existindo, sem plano de remoção nesta task.
+
+**Política de logs**: fluxos sensíveis (login admin, login operacional de operador, ativação/refresh de dispositivo, confirmar pagamento dinheiro, enviar à cozinha, marcar preparo/pronto, retirar, cancelar, bootstrap de SUPER_ADMIN) logam em `INFO`/`WARN` via SLF4J, sempre com IDs técnicos (`usuarioId`, `dispositivoId`, `restauranteId`, `pedidoId`, status anterior/novo) — **nunca** token JWT, refresh token, `operadorToken`, senha ou payload completo de login. Falhas de autenticação (`GlobalExceptionHandler.handleAuthentication`) logam em `DEBUG` só a mensagem genérica ("Email ou senha inválidos"), nunca qual credencial especificamente falhou.

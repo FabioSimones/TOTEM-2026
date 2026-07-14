@@ -62,6 +62,8 @@ Response (`200 OK`):
 
 **`JWT_SECRET` obrigatório (TASK-097)**: `app.security.jwt.secret` não tem mais fallback — sem a variável de ambiente `JWT_SECRET` (mínimo 32 caracteres, nunca o valor antigo de desenvolvimento), a aplicação falha no startup em vez de assinar tokens com um segredo conhecido. Mesma chave assina USER/DEVICE/OPERADOR. Ver `docs/04-seguranca.md`.
 
+**`CORS_ALLOWED_ORIGINS` obrigatório (TASK-098)**: qualquer chamada feita por um navegador (não `curl`/Postman) só recebe `Access-Control-Allow-Origin` se a origem estiver na lista configurada em `app.security.cors.allowed-origins` (`CORS_ALLOWED_ORIGINS`, separado por vírgula) — sem fallback, sem `*`. Métodos permitidos: `GET`/`POST`/`PUT`/`PATCH`/`DELETE`/`OPTIONS`. Headers permitidos: `Authorization`, `Content-Type`, `X-Operador-Token`. Ver `docs/04-seguranca.md`.
+
 ### Refresh token (TASK-063)
 
 `POST /api/auth/refresh` — endpoint público (`permitAll`), mas a validação real é do `refreshToken` no corpo, não de um Bearer token. **Rotação**: o `refreshToken` informado é sempre revogado (uso único), mesmo em caso de sucesso — a resposta traz um `refreshToken` novo, que deve substituir o anterior no cliente. O titular pode ser usuário ou dispositivo; para dispositivo, `usuario` é `null` e `dispositivo` é preenchido.
@@ -899,5 +901,45 @@ Semântica corrigida na TASK-061 (antes, token ausente/inválido retornava `403`
 
 - **`401 Unauthorized`** — **não autenticado**: nenhum token enviado, token malformado, assinatura inválida ou expirado. Produzido por `RestAuthenticationEntryPoint`, registrado em `SecurityConfig` via `.exceptionHandling(handling -> handling.authenticationEntryPoint(...))`. Também usado por `GlobalExceptionHandler` para credenciais inválidas em `POST /api/auth/login` (mensagem específica "Email ou senha inválidos", sem revelar qual campo errou).
 - **`403 Forbidden`** — **autenticado, mas sem permissão**: perfil/tipo de dispositivo sem a role exigida (`@PreAuthorize`) ou violação de escopo por restaurante (`AdminScopeService`, TASK-058). Continua vindo de `GlobalExceptionHandler.handleAccessDenied`, sem mudança nesta task.
+
+## Observabilidade (TASK-099)
+
+### Health legado
+
+`GET /api/health` — público, resposta estática, sem dependência de banco/beans:
+
+```json
+{
+  "status": "UP",
+  "service": "totem-fast-food"
+}
+```
+
+### Health operacional (Actuator)
+
+`GET /actuator/health` — público, `management.endpoint.health.show-details: never` (nunca inclui detalhe de componentes internos, ex.: status do datasource):
+
+```json
+{
+  "status": "UP"
+}
+```
+
+### Info (Actuator)
+
+`GET /actuator/info` — público, só as propriedades estáticas configuradas em `application.yml` (`info.app.*`), sem secret/URL interna/config de JWT/CORS:
+
+```json
+{
+  "app": {
+    "name": "totem-fast-food",
+    "description": "Sistema de Totem de Autoatendimento para Fast Food"
+  }
+}
+```
+
+### Demais endpoints do Actuator
+
+Não expostos — `management.endpoints.web.exposure.include` está restrito a `health,info`. Uma requisição para qualquer outro (`/actuator/env`, `/actuator/beans`, `/actuator/metrics`, etc.) nunca retorna `200`: recebe `401` (não está entre os endpoints públicos de `SecurityConfig`, exige autenticação) já que a rota nem chega a existir no Spring MVC.
 
 Nenhuma regra de autorização mudou — só a semântica do código HTTP para "sem autenticação válida". Isso permite ao frontend distinguir corretamente sessão inválida/expirada (`401` → limpar sessão e pedir novo login) de falta de permissão (`403` → manter sessão, mostrar mensagem de acesso negado).

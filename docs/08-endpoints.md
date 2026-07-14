@@ -168,3 +168,24 @@ Permissão exigida: `SUPER_ADMIN` ou `ADMIN_RESTAURANTE` para envio; `SUPER_ADMI
 |---|---|---|
 | POST | `/api/webhooks/pix` | Receber confirmação Pix futura |
 | POST | `/api/webhooks/pagamentos` | Receber confirmações de provedores futuros |
+
+## Observabilidade (TASK-099)
+
+Ambos públicos. Nenhum outro endpoint do Actuator está exposto (ver `docs/04-seguranca.md` seção "Observabilidade mínima").
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| GET | `/api/health` | Health legado simples — mantido por compatibilidade |
+| GET | `/actuator/health` | Health operacional padrão (Spring Boot Actuator), recomendado para monitoramento externo |
+| GET | `/actuator/info` | Nome/descrição da aplicação, sem dado sensível |
+
+Exemplos:
+
+```bash
+curl http://localhost:8080/api/health
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/info
+
+# Não deve retornar 200 nunca (401 sem token, endpoint não exposto)
+curl -i http://localhost:8080/actuator/env
+```

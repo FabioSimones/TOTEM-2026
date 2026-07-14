@@ -47,6 +47,11 @@ public class SecurityConfig {
             "/api/auth/logout",
             "/api/auth/dispositivos/ativar",
             "/api/health",
+            // TASK-099: apenas health/info do Actuator ficam públicos — a exposição em si já é
+            // restrita a esses dois endpoints via management.endpoints.web.exposure.include
+            // (application.yml), então nenhum outro path do Actuator chega a existir como rota.
+            "/actuator/health",
+            "/actuator/info",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
@@ -58,6 +63,9 @@ public class SecurityConfig {
 
     @Value("${app.uploads.public-path}")
     private String uploadsPublicPath;
+
+    @Value("${app.security.cors.allowed-origins}")
+    private String corsAllowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -85,17 +93,19 @@ public class SecurityConfig {
      * pelo próprio navegador antes mesmo de a requisição chegar aqui (preflight OPTIONS sem
      * Access-Control-Allow-Origin). Só não era percebido antes porque a validação de frontend do
      * projeto usa curl/Postman diretamente contra o backend (sem CORS) ou os módulos operacionais
-     * eram testados manualmente sem se notar o bloqueio. Origens fixas nas duas portas padrão que o
-     * Vite usa em desenvolvimento local (5173, e 5174 quando 5173 já está ocupada por outra
-     * instância) — não usa allowedOriginPatterns/"*" para não abrir a API para qualquer origem.
+     * eram testados manualmente sem se notar o bloqueio.
+     *
+     * TASK-098: as origens deixaram de ser hardcoded — vêm de {@code app.security.cors.allowed-origins}
+     * ({@code CORS_ALLOWED_ORIGINS}, lista separada por vírgula), validadas por
+     * {@link CorsOriginsValidator} (sem "*", cada uma com protocolo explícito). Sem a variável
+     * configurada, o startup falha com mensagem clara em vez de bloquear tudo silenciosamente.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        List<String> allowedOrigins = CorsOriginsValidator.validar(corsAllowedOrigins);
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:5174"
-        ));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // X-Operador-Token (TASK-092): header custom enviado nas ações de Caixa/Cozinha quando há
         // operador identificado — sem estar aqui, o preflight do navegador rejeita silenciosamente

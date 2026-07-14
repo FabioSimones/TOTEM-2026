@@ -38,6 +38,8 @@ VITE_API_BASE_URL=http://localhost:8080
 
 O backend precisa estar rodando (`cd backend && mvn spring-boot:run`) na URL configurada. Veja `docs/testes-backend-mvp.md` e `docs/http/totem-fast-food-mvp.http` na raiz do repositório para o roteiro completo de validação da API.
 
+**CORS (TASK-098)**: a origem que o Vite serve (`http://localhost:5173`, ou `5174` se a 5173 já estiver ocupada) precisa estar na variável `CORS_ALLOWED_ORIGINS` do **backend** — sem fallback desde a TASK-098, o backend não sobe sem essa variável configurada. Ver `README.md` raiz e `docs/04-seguranca.md`.
+
 ## Estrutura de pastas
 
 ```text
