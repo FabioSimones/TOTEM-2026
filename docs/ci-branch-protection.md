@@ -29,7 +29,7 @@ Esses três nomes (exatamente como aparecem na aba "Checks" de um Pull Request) 
 |---|---|---|
 | `Frontend E2E (Playwright)` | `npx playwright install --with-deps chromium && npm run e2e` | Homologação visual headless (login Admin, `OperadorPainel`, Totem/Caixa/Cozinha) — API mockada via `page.route`, sem backend real |
 
-Adicionado na TASK-103, com `needs: frontend` (só roda depois que o job `Frontend (build + lint)` já passou). **Recomendação**: acompanhar alguns runs no GitHub Actions antes de marcá-lo como obrigatório no passo 4 — é a primeira vez que Playwright roda no runner `ubuntu-latest` deste projeto (diferente do ambiente local onde foi validado), então vale confirmar estabilidade (sem flakiness de timing/browser) antes de deixar um PR legítimo bloqueado por ele. Depois de confirmado estável, adicionar `Frontend E2E (Playwright)` à lista de `Required checks` do passo 4 abaixo, junto dos outros três.
+Adicionado na TASK-103, com `needs: frontend` (só roda depois que o job `Frontend (build + lint)` já passou). **Primeiro run real validado na TASK-103.1**: run `29361958515` (commit `0f98475`, `push` para `main`, 2026-07-14) — `success`, ~40s, sem flakiness observada, 0 artifacts gerados (esperado, artifact só sobe em falha). **Recomendação**: ainda tratar como recomendado, não obrigatório — um único run verde não é suficiente para descartar flakiness intermitente do runner `ubuntu-latest` (timing de browser, contenção de CPU/rede compartilhada). Acompanhar mais 1-2 runs reais antes de promovê-lo. Depois de confirmado estável (2-3 runs verdes seguidos), adicionar `Frontend E2E (Playwright)` à lista de `Required checks` do passo 4 abaixo, junto dos outros três.
 
 ## 3. Checklist manual no GitHub
 
