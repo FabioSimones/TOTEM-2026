@@ -1,0 +1,21 @@
+# Build outputs
+target/
+**/target/
+build/
+dist/
+
+# Logs
+*.log
+
+# Dependências
+node_modules/
+
+# Ambiente local
+.env
+!.env.example
+
+# IDE / SO
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
