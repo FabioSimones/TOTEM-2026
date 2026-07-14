@@ -1,5 +1,7 @@
 # Sistema de Totem de Autoatendimento para Fast Food
 
+[![CI](https://github.com/FabioSimones/TOTEM-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/FabioSimones/TOTEM-2026/actions/workflows/ci.yml)
+
 Este repositório de documentação foi estruturado para orientar o desenvolvimento do sistema de totem de autoatendimento para fast food usando IA, especialmente Claude Code e Codex.
 
 A proposta é trabalhar com:

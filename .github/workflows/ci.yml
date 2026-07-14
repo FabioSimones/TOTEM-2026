@@ -60,6 +60,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: npm test
+        working-directory: frontend
+        run: npm test
+
       - name: npm run build
         working-directory: frontend
         run: npm run build

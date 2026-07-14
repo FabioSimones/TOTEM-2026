@@ -4,6 +4,11 @@ target/
 build/
 dist/
 
+# Playwright (TASK-102) — relatórios/traces/vídeos gerados a cada execução, nunca versionados
+test-results/
+playwright-report/
+blob-report/
+
 # Logs
 *.log
 

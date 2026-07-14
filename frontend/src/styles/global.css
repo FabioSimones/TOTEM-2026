@@ -431,6 +431,29 @@ a:hover {
   width: 100%;
 }
 
+/* ===== Carrinho do Totem =====
+   TASK-102: esta regra base precisa vir ANTES do @media (min-width: 960px) abaixo — como as duas
+   têm a mesma especificidade (seletor de classe única), a que aparece depois no arquivo vence a
+   cascata mesmo dentro de uma media query já satisfeita. Com a regra base depois (ordem antiga),
+   `width: 100%` sobrescrevia silenciosamente o `width: 22rem` do desktop, fazendo o carrinho ocupar
+   a largura inteira e o grid de produtos colapsar para ~0px em telas ≥960px — achado ao investigar
+   uma asserção de visibilidade inesperada na suíte Playwright desta task, confirmado inspecionando
+   os estilos computados no navegador. */
+.cart-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
 @media (min-width: 960px) {
   .totem-layout {
     flex-direction: row;
@@ -446,22 +469,6 @@ a:hover {
     width: 22rem;
     flex-shrink: 0;
   }
-}
-
-/* ===== Carrinho do Totem ===== */
-.cart-summary {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  width: 100%;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  box-shadow: var(--shadow-card);
-  transition:
-    background-color var(--transition-base),
-    border-color var(--transition-base);
 }
 
 .cart-summary__titulo {

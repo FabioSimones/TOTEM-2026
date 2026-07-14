@@ -9,6 +9,8 @@ Frontend React + TypeScript + Vite do Sistema de Totem de Autoatendimento para F
 - **react-router-dom** para roteamento
 - **fetch nativo** (sem axios) para chamadas HTTP, centralizado em `src/services/api.ts`
 - CSS puro com tokens/temas (`src/styles/{tokens,themes,global}.css`), sem framework de UI
+- **Vitest + Testing Library** para testes automatizados (TASK-101) — ver seção própria abaixo
+- **Playwright** para testes E2E/homologação visual headless (TASK-102) — ver seção própria abaixo
 
 ## Como instalar e rodar
 
@@ -23,10 +25,83 @@ Abra `http://localhost:5173`.
 Outros comandos:
 
 ```bash
-npm run build    # build de produção (tsc -b && vite build)
-npm run preview  # serve o build de produção localmente
-npm run lint      # oxlint
+npm run build      # build de produção (tsc -b && vite build)
+npm run preview    # serve o build de produção localmente
+npm run lint        # oxlint
+npm test           # roda a suíte de testes unitários uma vez (vitest run)
+npm run test:watch  # roda a suíte de testes unitários em modo watch (vitest)
+npm run e2e         # roda a suíte E2E headless (Playwright, TASK-102)
+npm run e2e:headed  # mesma suíte, com o browser visível
+npm run e2e:ui      # modo interativo do Playwright
+npm run e2e:report  # abre o último relatório HTML gerado
 ```
+
+## Testes automatizados (TASK-101)
+
+Primeira camada de testes automatizados do frontend, usando **Vitest** (ambiente `jsdom`) + **Testing Library** (`@testing-library/react`/`user-event`/`jest-dom`). Convenção adotada: arquivo `*.test.ts`/`*.test.tsx` ao lado do arquivo testado (ex.: `tokenStorage.ts` → `tokenStorage.test.ts`), para facilitar manutenção — não usamos uma pasta `__tests__` separada.
+
+```bash
+npm test          # roda tudo uma vez (usado no CI)
+npm run test:watch  # modo watch, útil durante o desenvolvimento
+```
+
+Configuração: `vite.config.ts` (`test.environment: "jsdom"`, `test.setupFiles: "./src/test/setup.ts"`, `test.globals: true` — `describe`/`it`/`expect`/`vi` disponíveis sem import, mas os testes deste projeto importam explicitamente de `"vitest"` por clareza). `src/test/setup.ts` carrega os matchers do `@testing-library/jest-dom` e fixa `process.env.TZ = "UTC"` para os testes de data/hora serem determinísticos independente da máquina/CI.
+
+### O que está coberto
+
+- `src/services/tokenStorage.test.ts` — sessão de usuário, dispositivo e operador (salvar/ler/limpar), incluindo os casos reais de "o que cada `save*Session` limpa" (ver observações abaixo) e JSON inválido em `localStorage` não quebrando a leitura.
+- `src/utils/dateTime.test.ts` — `parseBackendUtcDateTime` (sem offset tratado como UTC, `Z` não duplica offset, offset explícito respeitado, valor inválido/ausente), `formatarDataReferencia` (string pura, sem `Date`, sem risco de shift de fuso) e um teste de fumaça dos formatadores que usam `Intl`.
+- `src/utils/adminScope.test.ts` — reconhecimento de perfil (`SUPER_ADMIN`/`ADMIN_RESTAURANTE`/operadores) e as regras de escopo por restaurante usadas na UI.
+- `src/components/operador/OperadorPainel.test.tsx` — os dois estados do componente (sem operador identificado / com operador identificado), submissão do formulário chamando `authService.loginOperador` (mockado) e "Trocar operador" limpando a sessão via `tokenStorage` real (não mockado).
+- `src/services/api.test.ts` — renovação automática de sessão em `401` (chama `/api/auth/refresh`, salva a nova sessão, repete a requisição original), `403` não tenta renovar, `401` sem `refreshToken` salvo limpa a sessão sem chamar o backend. `fetch` é mockado (`vi.stubGlobal`); nenhuma chamada de rede real.
+
+**Observações sobre comportamento real encontrado (não assumido) em `tokenStorage.ts`**: `saveUserSession` limpa o dispositivo salvo, mas **não** limpa uma sessão de operador existente; `saveDeviceSession` limpa tanto o usuário quanto o operador salvos (um dispositivo recém-ativado não deveria herdar o operador de uma sessão anterior no mesmo terminal). Os testes cobrem o comportamento real do código, não uma suposição — se essa regra mudar intencionalmente, os testes vão quebrar e sinalizar a mudança.
+
+**Não coberto pela suíte Vitest** (ver seção "Testes E2E (Playwright)" abaixo para a homologação visual, TASK-102):
+- Fluxo completo Totem → Caixa → Cozinha encadeado (um pedido real passando pelos três terminais).
+- Testes visuais/snapshot de UI.
+- A regra "401 com `X-Operador-Token` inválido limpa só a sessão de operador" mencionada no briefing da TASK-101 não existe hoje em `api.ts` (só há renovação de `accessToken`/`refreshToken` em `401`) — não foi testada por não estar implementada; se for implementada depois, deve ganhar teste próprio nessa mesma altura.
+
+## Testes E2E (Playwright, TASK-102)
+
+Homologação visual automatizada com clique real (headless), usando **Playwright** (`@playwright/test`, projeto `chromium`). Resolve a pendência histórica de "clique real" em Totem/Caixa/Cozinha/operador, que dependia de um testador humano disponível (ver TASK-094.1 em `docs/status-mvp.md`).
+
+**Estratégia**: todos os testes mockam a API via `page.route` (`e2e/helpers/mockApi.ts`) — nenhum depende de um backend real rodando nem de banco de dados. A sessão de dispositivo é injetada diretamente no `localStorage` antes da página carregar (`e2e/helpers/storage.ts`, `page.addInitScript`), equivalente a já ter ativado o dispositivo, sem precisar passar pela tela `/ativar-dispositivo` de fato. Isso mantém a suíte rápida e 100% determinística, ao custo de não validar a integração real com o backend — **um E2E integrado com backend real fica para uma task futura** (ver Próximas tasks recomendadas em `docs/roadmap-pos-mvp.md`).
+
+### Instalar os browsers (uma vez por máquina)
+
+```bash
+cd frontend
+npx playwright install --with-deps chromium
+```
+
+### Rodar
+
+```bash
+npm run e2e          # roda tudo headless (o que roda localmente e, no futuro, em CI)
+npm run e2e:headed   # mesma suíte, com o browser visível
+npm run e2e:ui       # modo interativo do Playwright (watch + inspeção passo a passo)
+npm run e2e:report   # abre o último relatório HTML gerado
+```
+
+O `webServer` do `playwright.config.ts` sobe o `npm run dev` automaticamente em `http://127.0.0.1:5173` antes dos testes (reaproveita um servidor já rodando localmente, se houver) — não é preciso subir o frontend manualmente antes de `npm run e2e`.
+
+### O que está coberto
+
+- `e2e/admin-login.spec.ts` — login administrativo real (formulário, clique, navegação para `/admin`, `localStorage` real) com sucesso e com credenciais inválidas (mensagem de erro, permanece em `/admin/login`).
+- `e2e/operador-painel.spec.ts` — `OperadorPainel` dentro do Caixa: formulário de identificação, submissão chamando `POST /api/auth/operador/login` (mockado), troca visual para o card do operador identificado, e "Trocar operador" voltando ao formulário — a mesma regra crítica da TASK-092, agora com clique real automatizado.
+- `e2e/fluxo-operacional-mock.spec.ts` — cada terminal testado isoladamente: Totem carrega o cardápio e "Adicionar" habilita o resumo do pedido; Caixa carrega a lista de pendências e mostra o botão de ação sugerida; Cozinha carrega a lista e mostra o botão de avanço de status. Não encadeia um pedido entre os três (ver "Não coberto" acima).
+
+### Bug real encontrado por esta suíte (TASK-102)
+
+O teste do Totem falhava de forma determinística com o produto "invisível" segundo o Playwright, mesmo aparecendo corretamente na árvore de acessibilidade. Investigação (estilos computados via `page.evaluate`) revelou um bug real em `src/styles/global.css`: a regra base `.cart-summary { width: 100%; }` vinha, no arquivo, **depois** do bloco `@media (min-width: 960px) { .cart-summary { width: 22rem; } }` — com especificidade igual, a ordem no arquivo decide, então a regra base sobrescrevia silenciosamente a de desktop. Resultado real em produção: em qualquer tela ≥960px, o carrinho do Totem ocupava 100% da largura e o grid de produtos colapsava para ~0px (visualmente quebrado, não só um problema do teste). Corrigido reordenando o CSS (mobile-first: regra base antes do `@media`), sem alterar nenhum valor — exatamente o tipo de bug que só aparece com clique real, não em `npm run build`/`oxlint`/revisão de código.
+
+### O que ainda não está coberto
+
+- E2E integrado com backend real (Testcontainers/PostgreSQL de verdade por trás do frontend) — mocks de rede não substituem essa validação, só destravam a homologação visual sem essa dependência.
+- CI: Playwright **não** foi adicionado ao `.github/workflows/ci.yml` nesta task (decisão deliberada — ver `docs/ci-branch-protection.md` e `docs/roadmap-pos-mvp.md`). Rodar localmente por enquanto.
+- Cobertura de telas Admin (CRUD de restaurantes/categorias/produtos/usuários/dispositivos) — só login e as áreas críticas de Caixa/Cozinha/operador foram cobertas nesta primeira leva.
+- Relatórios/traces/vídeos (`test-results/`, `playwright-report/`, `blob-report/`) nunca são versionados — cobertos pelo `.gitignore` da raiz.
 
 ## Configuração de ambiente
 

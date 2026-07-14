@@ -4,6 +4,10 @@ Documento de validação ponta a ponta do backend, produzido na TASK-026 e atual
 
 Ambiente de referência: Windows + PowerShell, comandos com `curl.exe` (mesmo padrão usado em todas as tasks anteriores). Substitua `http://localhost:8080` pela URL real se necessário.
 
+## CI (validação automática mínima)
+
+Todo push/PR roda `.github/workflows/ci.yml` (badge no `README.md`): `Backend (H2)` (`mvn test`), `Backend (PostgreSQL/Testcontainers)` (`mvn verify -Ppostgres-it`) e `Frontend (build + lint)` (`npm test` + `npm run build` + `npm run lint`, TASK-101 adicionou `npm test`). Os três jobs são o mínimo exigido antes de qualquer merge em `main` — ver `docs/ci-branch-protection.md` para a configuração de branch protection e o procedimento de investigação quando o CI falhar. Este documento continua sendo a referência de validação manual ponta a ponta (`curl`) do **backend**; a suíte automatizada do frontend (Vitest + Testing Library, TASK-101) está documentada em `frontend/README.md` seção "Testes automatizados". A homologação visual E2E (Playwright headless, TASK-102) está documentada em `frontend/README.md` seção "Testes E2E (Playwright)" — roda local via `npm run e2e`, **não** faz parte do `ci.yml` ainda (decisão deliberada da TASK-102).
+
 ## 1. Pré-requisitos
 
 - PostgreSQL rodando e configurado conforme `application.yml`/variáveis de ambiente do projeto.
