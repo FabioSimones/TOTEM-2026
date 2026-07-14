@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.totem.fastfood.integration.OperadorLoginIntegrationTest
 -------------------------------------------------------------------------------
-Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 25.09 s -- in com.totem.fastfood.integration.OperadorLoginIntegrationTest
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.13 s -- in com.totem.fastfood.integration.OperadorLoginIntegrationTest

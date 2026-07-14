@@ -1,166 +1,166 @@
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\bootstrap\SuperAdminBootstrapRunner.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\config\ClockConfig.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\config\CorsOriginsValidator.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\config\SecurityConfig.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\config\SwaggerConfig.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\config\WebConfig.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\CategoriaAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\DashboardAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\DispositivoAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\PedidoAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\PedidoExpiracaoAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\ProdutoAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\RestauranteAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\UploadAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\admin\UsuarioAdminController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\auth\AuthController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\auth\DispositivoAuthController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\auth\OperadorAuthController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\caixa\CaixaPagamentoController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\caixa\CaixaPedidoController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\cozinha\CozinhaPedidoController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\HealthController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\totem\CardapioTotemController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\controller\totem\PedidoTotemController.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\admin\DashboardAdminResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LoginRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LoginResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\LogoutRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\RefreshRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\RefreshResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\auth\UsuarioAutenticadoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pagamento\ConfirmarPagamentoDinheiroRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pagamento\ConfirmarPagamentoDinheiroResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pedido\CancelarPedidoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pedido\CancelarPedidoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pedido\EnviarPedidoCozinhaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pedido\ItemPedidoPendenteCaixaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pedido\PedidoPendenteCaixaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\caixa\pedido\RetirarPedidoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\categoria\AtualizarCategoriaRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\categoria\CategoriaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\categoria\CriarCategoriaRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\cozinha\pedido\AtualizarStatusPedidoCozinhaRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\cozinha\pedido\AtualizarStatusPedidoCozinhaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\cozinha\pedido\ItemPedidoCozinhaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\cozinha\pedido\PedidoCozinhaResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\AtivarDispositivoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\AtivarDispositivoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\AtualizarDispositivoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\CriarDispositivoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\DispositivoAutenticadoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\dispositivo\DispositivoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\operador\OperadorAutenticadoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\operador\OperadorLoginRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\operador\OperadorLoginResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\PageResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\ExpirarPedidosResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\HistoricoPedidoAdminResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\ItemPedidoAdminResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\PagamentoAdminResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\PedidoAdminDetalheResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\pedido\admin\PedidoAdminResumoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\produto\AlterarDestaqueProdutoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\produto\AlterarDisponibilidadeProdutoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\produto\AtualizarProdutoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\produto\CriarProdutoRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\produto\ProdutoResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\restaurante\AtualizarRestauranteRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\restaurante\CriarRestauranteRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\restaurante\RestauranteResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\cardapio\CardapioTotemResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\cardapio\CategoriaCardapioResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\cardapio\ProdutoCardapioResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\pagamento\IniciarPagamentoTotemRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\pagamento\PagamentoTotemResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\pedido\CriarPedidoTotemRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\pedido\ItemPedidoTotemRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\pedido\ItemPedidoTotemResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\totem\pedido\PedidoTotemResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\upload\LimpezaUploadsResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\upload\UploadImagemResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\upload\UploadOrfaoItemResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\usuario\AlterarSenhaUsuarioRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\usuario\AtualizarUsuarioRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\usuario\CriarUsuarioRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\dto\usuario\UsuarioAdminResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Auditoria.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Categoria.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Dispositivo.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\HistoricoStatusPedido.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\ItemPedido.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Pagamento.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Pedido.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Produto.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\RefreshToken.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Restaurante.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\entity\Usuario.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\AcaoCaixa.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\FormaPagamento.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\PerfilUsuario.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\StatusOperacionalDispositivo.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\StatusPagamento.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\StatusPedido.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\TipoConsumo.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\enums\TipoDispositivo.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\ApiError.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\FieldErrorResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\GlobalExceptionHandler.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\exception\LoginRateLimitExceededException.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\job\PedidoExpiracaoJob.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CaixaPagamentoMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CaixaPedidoMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CardapioTotemMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CategoriaMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\CozinhaPedidoMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\DispositivoMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\PagamentoTotemMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\PedidoAdminMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\PedidoTotemMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\ProdutoMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\RestauranteMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\UsuarioAdminMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\mapper\UsuarioMapper.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\payment\FakePaymentProvider.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\payment\PaymentProvider.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\payment\PaymentProviderRequest.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\payment\PaymentProviderResponse.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\CategoriaRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\DispositivoRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\HistoricoStatusPedidoRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\ItemPedidoRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\PagamentoRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\PedidoRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\ProdutoRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\RefreshTokenRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\RestauranteRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\repository\UsuarioRepository.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\AdminScopeService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\CustomUserDetailsService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtAuthenticationFilter.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtSecretValidator.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\JwtService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\LoginAttemptService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\OperadorContextService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\OperadorEscopoValidator.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\RefreshTokenService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\security\RestAuthenticationEntryPoint.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\AuthService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CaixaPagamentoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CaixaPedidoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CardapioTotemService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CategoriaService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\CozinhaPedidoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DashboardAdminService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoAcessoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\DispositivoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\OperadorAuthService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PagamentoTotemService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoAdminService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoExpiracaoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\PedidoTotemService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\ProdutoService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\RestauranteService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\UploadImagemService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\service\UsuarioService.java
-C:\Users\fsimones\Documents\Estudos JAVA\Totem 2026\backend\src\main\java\com\totem\fastfood\TotemApplication.java
+/workspace/src/main/java/com/totem/fastfood/TotemApplication.java
+/workspace/src/main/java/com/totem/fastfood/bootstrap/SuperAdminBootstrapRunner.java
+/workspace/src/main/java/com/totem/fastfood/config/ClockConfig.java
+/workspace/src/main/java/com/totem/fastfood/config/CorsOriginsValidator.java
+/workspace/src/main/java/com/totem/fastfood/config/SecurityConfig.java
+/workspace/src/main/java/com/totem/fastfood/config/SwaggerConfig.java
+/workspace/src/main/java/com/totem/fastfood/config/WebConfig.java
+/workspace/src/main/java/com/totem/fastfood/controller/HealthController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/CategoriaAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/DashboardAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/DispositivoAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/PedidoAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/PedidoExpiracaoAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/ProdutoAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/RestauranteAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/UploadAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/admin/UsuarioAdminController.java
+/workspace/src/main/java/com/totem/fastfood/controller/auth/AuthController.java
+/workspace/src/main/java/com/totem/fastfood/controller/auth/DispositivoAuthController.java
+/workspace/src/main/java/com/totem/fastfood/controller/auth/OperadorAuthController.java
+/workspace/src/main/java/com/totem/fastfood/controller/caixa/CaixaPagamentoController.java
+/workspace/src/main/java/com/totem/fastfood/controller/caixa/CaixaPedidoController.java
+/workspace/src/main/java/com/totem/fastfood/controller/cozinha/CozinhaPedidoController.java
+/workspace/src/main/java/com/totem/fastfood/controller/totem/CardapioTotemController.java
+/workspace/src/main/java/com/totem/fastfood/controller/totem/PedidoTotemController.java
+/workspace/src/main/java/com/totem/fastfood/dto/PageResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/admin/DashboardAdminResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/auth/LoginRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/auth/LoginResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/auth/LogoutRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/auth/RefreshRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/auth/RefreshResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/auth/UsuarioAutenticadoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pagamento/ConfirmarPagamentoDinheiroRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pagamento/ConfirmarPagamentoDinheiroResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pedido/CancelarPedidoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pedido/CancelarPedidoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pedido/EnviarPedidoCozinhaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pedido/ItemPedidoPendenteCaixaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pedido/PedidoPendenteCaixaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/caixa/pedido/RetirarPedidoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/categoria/AtualizarCategoriaRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/categoria/CategoriaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/categoria/CriarCategoriaRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/cozinha/pedido/AtualizarStatusPedidoCozinhaRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/cozinha/pedido/AtualizarStatusPedidoCozinhaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/cozinha/pedido/ItemPedidoCozinhaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/cozinha/pedido/PedidoCozinhaResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/dispositivo/AtivarDispositivoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/dispositivo/AtivarDispositivoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/dispositivo/AtualizarDispositivoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/dispositivo/CriarDispositivoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/dispositivo/DispositivoAutenticadoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/dispositivo/DispositivoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/operador/OperadorAutenticadoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/operador/OperadorLoginRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/operador/OperadorLoginResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/pedido/admin/ExpirarPedidosResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/pedido/admin/HistoricoPedidoAdminResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/pedido/admin/ItemPedidoAdminResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/pedido/admin/PagamentoAdminResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/pedido/admin/PedidoAdminDetalheResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/pedido/admin/PedidoAdminResumoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/produto/AlterarDestaqueProdutoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/produto/AlterarDisponibilidadeProdutoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/produto/AtualizarProdutoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/produto/CriarProdutoRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/produto/ProdutoResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/restaurante/AtualizarRestauranteRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/restaurante/CriarRestauranteRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/restaurante/RestauranteResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/cardapio/CardapioTotemResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/cardapio/CategoriaCardapioResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/cardapio/ProdutoCardapioResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/pagamento/IniciarPagamentoTotemRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/pagamento/PagamentoTotemResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/pedido/CriarPedidoTotemRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/pedido/ItemPedidoTotemRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/pedido/ItemPedidoTotemResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/totem/pedido/PedidoTotemResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/upload/LimpezaUploadsResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/upload/UploadImagemResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/upload/UploadOrfaoItemResponse.java
+/workspace/src/main/java/com/totem/fastfood/dto/usuario/AlterarSenhaUsuarioRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/usuario/AtualizarUsuarioRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/usuario/CriarUsuarioRequest.java
+/workspace/src/main/java/com/totem/fastfood/dto/usuario/UsuarioAdminResponse.java
+/workspace/src/main/java/com/totem/fastfood/entity/Auditoria.java
+/workspace/src/main/java/com/totem/fastfood/entity/Categoria.java
+/workspace/src/main/java/com/totem/fastfood/entity/Dispositivo.java
+/workspace/src/main/java/com/totem/fastfood/entity/HistoricoStatusPedido.java
+/workspace/src/main/java/com/totem/fastfood/entity/ItemPedido.java
+/workspace/src/main/java/com/totem/fastfood/entity/Pagamento.java
+/workspace/src/main/java/com/totem/fastfood/entity/Pedido.java
+/workspace/src/main/java/com/totem/fastfood/entity/Produto.java
+/workspace/src/main/java/com/totem/fastfood/entity/RefreshToken.java
+/workspace/src/main/java/com/totem/fastfood/entity/Restaurante.java
+/workspace/src/main/java/com/totem/fastfood/entity/Usuario.java
+/workspace/src/main/java/com/totem/fastfood/enums/AcaoCaixa.java
+/workspace/src/main/java/com/totem/fastfood/enums/FormaPagamento.java
+/workspace/src/main/java/com/totem/fastfood/enums/PerfilUsuario.java
+/workspace/src/main/java/com/totem/fastfood/enums/StatusOperacionalDispositivo.java
+/workspace/src/main/java/com/totem/fastfood/enums/StatusPagamento.java
+/workspace/src/main/java/com/totem/fastfood/enums/StatusPedido.java
+/workspace/src/main/java/com/totem/fastfood/enums/TipoConsumo.java
+/workspace/src/main/java/com/totem/fastfood/enums/TipoDispositivo.java
+/workspace/src/main/java/com/totem/fastfood/exception/ApiError.java
+/workspace/src/main/java/com/totem/fastfood/exception/FieldErrorResponse.java
+/workspace/src/main/java/com/totem/fastfood/exception/GlobalExceptionHandler.java
+/workspace/src/main/java/com/totem/fastfood/exception/LoginRateLimitExceededException.java
+/workspace/src/main/java/com/totem/fastfood/job/PedidoExpiracaoJob.java
+/workspace/src/main/java/com/totem/fastfood/mapper/CaixaPagamentoMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/CaixaPedidoMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/CardapioTotemMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/CategoriaMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/CozinhaPedidoMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/DispositivoMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/PagamentoTotemMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/PedidoAdminMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/PedidoTotemMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/ProdutoMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/RestauranteMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/UsuarioAdminMapper.java
+/workspace/src/main/java/com/totem/fastfood/mapper/UsuarioMapper.java
+/workspace/src/main/java/com/totem/fastfood/payment/FakePaymentProvider.java
+/workspace/src/main/java/com/totem/fastfood/payment/PaymentProvider.java
+/workspace/src/main/java/com/totem/fastfood/payment/PaymentProviderRequest.java
+/workspace/src/main/java/com/totem/fastfood/payment/PaymentProviderResponse.java
+/workspace/src/main/java/com/totem/fastfood/repository/CategoriaRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/DispositivoRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/HistoricoStatusPedidoRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/ItemPedidoRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/PagamentoRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/PedidoRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/ProdutoRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/RefreshTokenRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/RestauranteRepository.java
+/workspace/src/main/java/com/totem/fastfood/repository/UsuarioRepository.java
+/workspace/src/main/java/com/totem/fastfood/security/AdminScopeService.java
+/workspace/src/main/java/com/totem/fastfood/security/CustomUserDetailsService.java
+/workspace/src/main/java/com/totem/fastfood/security/JwtAuthenticationFilter.java
+/workspace/src/main/java/com/totem/fastfood/security/JwtSecretValidator.java
+/workspace/src/main/java/com/totem/fastfood/security/JwtService.java
+/workspace/src/main/java/com/totem/fastfood/security/LoginAttemptService.java
+/workspace/src/main/java/com/totem/fastfood/security/OperadorContextService.java
+/workspace/src/main/java/com/totem/fastfood/security/OperadorEscopoValidator.java
+/workspace/src/main/java/com/totem/fastfood/security/RefreshTokenService.java
+/workspace/src/main/java/com/totem/fastfood/security/RestAuthenticationEntryPoint.java
+/workspace/src/main/java/com/totem/fastfood/service/AuthService.java
+/workspace/src/main/java/com/totem/fastfood/service/CaixaPagamentoService.java
+/workspace/src/main/java/com/totem/fastfood/service/CaixaPedidoService.java
+/workspace/src/main/java/com/totem/fastfood/service/CardapioTotemService.java
+/workspace/src/main/java/com/totem/fastfood/service/CategoriaService.java
+/workspace/src/main/java/com/totem/fastfood/service/CozinhaPedidoService.java
+/workspace/src/main/java/com/totem/fastfood/service/DashboardAdminService.java
+/workspace/src/main/java/com/totem/fastfood/service/DispositivoAcessoService.java
+/workspace/src/main/java/com/totem/fastfood/service/DispositivoService.java
+/workspace/src/main/java/com/totem/fastfood/service/OperadorAuthService.java
+/workspace/src/main/java/com/totem/fastfood/service/PagamentoTotemService.java
+/workspace/src/main/java/com/totem/fastfood/service/PedidoAdminService.java
+/workspace/src/main/java/com/totem/fastfood/service/PedidoExpiracaoService.java
+/workspace/src/main/java/com/totem/fastfood/service/PedidoTotemService.java
+/workspace/src/main/java/com/totem/fastfood/service/ProdutoService.java
+/workspace/src/main/java/com/totem/fastfood/service/RestauranteService.java
+/workspace/src/main/java/com/totem/fastfood/service/UploadImagemService.java
+/workspace/src/main/java/com/totem/fastfood/service/UsuarioService.java

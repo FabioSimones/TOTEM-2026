@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -21,6 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
@@ -271,19 +275,21 @@ class UploadImagemServiceTest {
         criarArquivoNoDiretorioProdutos("livre.png");
         when(produtoRepository.findImagemUrlsEmUso()).thenReturn(List.of());
 
-        // Simula falha de exclusão via atributo somente-leitura — o SO impede o delete mesmo no
-        // mesmo processo, ao contrário de um lock de arquivo (que não bloqueou o teste no Windows).
-        assertTrue(travado.toFile().setWritable(false));
-        try {
+        // Simula a falha de exclusão diretamente em Files.delete, em vez de via atributo
+        // somente-leitura do arquivo (setWritable(false)): no Linux, ao contrário do Windows, a
+        // permissão para excluir é do diretório pai, não do arquivo, então um arquivo somente-leitura
+        // ainda é excluído com sucesso — o que fazia este teste passar no Windows e falhar no CI.
+        try (MockedStatic<Files> filesMock = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+            filesMock.when(() -> Files.delete(eq(travado)))
+                    .thenThrow(new IOException("Falha simulada de exclusão"));
+
             LimpezaUploadsResponse resposta = service.limparUploadsOrfaosProdutos(false);
 
             assertEquals(2, resposta.arquivosOrfaos());
             assertEquals(1, resposta.arquivosExcluidos());
             assertEquals(1, resposta.falhas());
-            assertTrue(Files.exists(travado));
-        } finally {
-            travado.toFile().setWritable(true);
         }
+        assertTrue(Files.exists(travado));
     }
 
     private Path criarArquivoNoDiretorioProdutos(String nome) throws IOException {
