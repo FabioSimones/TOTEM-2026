@@ -47,18 +47,20 @@ Depois de alterar, liste arquivos modificados e validações realizadas.
 
 ## CI e validações
 
-O repositório tem um pipeline de CI (`.github/workflows/ci.yml`, GitHub Actions) que roda em todo `pull_request` e `push` para `main`, com três jobs paralelos:
+O repositório tem um pipeline de CI (`.github/workflows/ci.yml`, GitHub Actions) que roda em todo `pull_request` e `push` para `main`, com quatro jobs:
 
 - `backend-h2` — `cd backend && mvn test` (suíte rápida, sem Docker).
 - `backend-postgres-it` — `cd backend && mvn verify -Ppostgres-it` (suíte contra PostgreSQL real via Testcontainers; exige Docker, disponível nos runners Ubuntu do GitHub Actions).
-- `frontend` — `cd frontend && npm ci && npm run build && npm run lint`.
+- `frontend` — `cd frontend && npm ci && npm test && npm run build && npm run lint`.
+- `frontend-e2e` (TASK-103, `needs: frontend`) — `cd frontend && npx playwright install --with-deps chromium && npm run e2e` (homologação visual headless com Playwright, API mockada — não sobe backend). Em falha, publica o relatório/traces como artifact do GitHub Actions.
 
-Localmente, os mesmos comandos continuam separados (não existe um único "make ci"):
+Os três primeiros rodam em paralelo; `frontend-e2e` só inicia depois que `frontend` passa. Localmente, os mesmos comandos continuam separados (não existe um único "make ci"):
 
 ```bash
 cd backend && mvn test                    # suíte H2, sem Docker
 cd backend && mvn verify -Ppostgres-it    # suíte PostgreSQL real, exige Docker rodando
-cd frontend && npm run build && npm run lint
+cd frontend && npm test && npm run build && npm run lint
+cd frontend && npm run e2e                # E2E Playwright (requer os browsers instalados, ver frontend/README.md)
 ```
 
 Detalhes de cada suíte de teste em `docs/testes-backend-mvp.md`.

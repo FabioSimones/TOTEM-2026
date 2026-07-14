@@ -4,7 +4,7 @@ Criado na TASK-100. Documenta a configuração recomendada de proteção da bran
 
 ## 1. Objetivo
 
-Impedir que código quebrado (backend ou frontend) chegue à branch `main` sem passar pelos três jobs de CI, e reduzir o risco de merges diretos sem revisão em um projeto com histórico de bugs encontrados só por validação manual (ver `docs/status-mvp.md`, TASK-064, TASK-085).
+Impedir que código quebrado (backend ou frontend) chegue à branch `main` sem passar pelos jobs de CI, e reduzir o risco de merges diretos sem revisão em um projeto com histórico de bugs encontrados só por validação manual (ver `docs/status-mvp.md`, TASK-064, TASK-085) — incluindo um bug real de CSS que só a homologação visual automatizada (TASK-102) encontrou.
 
 ## 2. Workflow atual
 
@@ -19,9 +19,17 @@ Impedir que código quebrado (backend ou frontend) chegue à branch `main` sem p
 |---|---|---|
 | `Backend (H2)` | `mvn -B test` | Suíte completa de testes unitários/integração contra H2 em memória |
 | `Backend (PostgreSQL/Testcontainers)` | `mvn -B verify -Ppostgres-it` | Suíte de integração contra PostgreSQL real via Testcontainers (Docker nativo no runner `ubuntu-latest`) |
-| `Frontend (build + lint)` | `npm ci && npm run build && npm run lint` | Compilação TypeScript e lint do frontend |
+| `Frontend (build + lint)` | `npm ci && npm test && npm run build && npm run lint` | Testes unitários (Vitest), compilação TypeScript e lint do frontend |
 
 Esses três nomes (exatamente como aparecem na aba "Checks" de um Pull Request) são os que devem ser marcados como obrigatórios no passo 4 abaixo.
+
+### Job recomendado, mas ainda não obrigatório
+
+| Nome exibido no GitHub | Comando | O que valida |
+|---|---|---|
+| `Frontend E2E (Playwright)` | `npx playwright install --with-deps chromium && npm run e2e` | Homologação visual headless (login Admin, `OperadorPainel`, Totem/Caixa/Cozinha) — API mockada via `page.route`, sem backend real |
+
+Adicionado na TASK-103, com `needs: frontend` (só roda depois que o job `Frontend (build + lint)` já passou). **Recomendação**: acompanhar alguns runs no GitHub Actions antes de marcá-lo como obrigatório no passo 4 — é a primeira vez que Playwright roda no runner `ubuntu-latest` deste projeto (diferente do ambiente local onde foi validado), então vale confirmar estabilidade (sem flakiness de timing/browser) antes de deixar um PR legítimo bloqueado por ele. Depois de confirmado estável, adicionar `Frontend E2E (Playwright)` à lista de `Required checks` do passo 4 abaixo, junto dos outros três.
 
 ## 3. Checklist manual no GitHub
 
@@ -54,7 +62,7 @@ Caminho: **Settings → Branches → Branch protection rules → Add rule**
 ## 5. Quando o CI falhar
 
 1. Abrir o job que falhou e ler o primeiro stacktrace real (não confiar só na anotação genérica "Process completed with exit code 1" — ver TASK-099.1/TASK-100.1 para um exemplo de investigação onde a causa real só apareceu reproduzindo localmente).
-2. Reproduzir localmente com o mesmo comando do job (`mvn test`, `mvn verify -Ppostgres-it`, `npm run build`, `npm run lint`).
+2. Reproduzir localmente com o mesmo comando do job (`mvn test`, `mvn verify -Ppostgres-it`, `npm run build`, `npm run lint`, `npm run e2e`). Para `Frontend E2E (Playwright)`, baixar primeiro o artifact `playwright-report` do run que falhou (só é publicado em falha) — contém o relatório HTML e os traces/screenshots de `frontend/test-results/`, geralmente mais rápido que tentar reproduzir cegamente.
 3. Se o comportamento divergir entre o ambiente local (Windows, neste projeto) e o runner (`ubuntu-latest`, Linux), considerar diferenças de SO antes de suspeitar de variável de ambiente ausente — foi a causa raiz real da falha corrigida na TASK-099.1.
 4. Corrigir a causa raiz, nunca o sintoma (não desabilitar teste, não marcar como `@Disabled` sem justificativa registrada em `docs/status-mvp.md`).
 

@@ -96,12 +96,17 @@ O `webServer` do `playwright.config.ts` sobe o `npm run dev` automaticamente em 
 
 O teste do Totem falhava de forma determinística com o produto "invisível" segundo o Playwright, mesmo aparecendo corretamente na árvore de acessibilidade. Investigação (estilos computados via `page.evaluate`) revelou um bug real em `src/styles/global.css`: a regra base `.cart-summary { width: 100%; }` vinha, no arquivo, **depois** do bloco `@media (min-width: 960px) { .cart-summary { width: 22rem; } }` — com especificidade igual, a ordem no arquivo decide, então a regra base sobrescrevia silenciosamente a de desktop. Resultado real em produção: em qualquer tela ≥960px, o carrinho do Totem ocupava 100% da largura e o grid de produtos colapsava para ~0px (visualmente quebrado, não só um problema do teste). Corrigido reordenando o CSS (mobile-first: regra base antes do `@media`), sem alterar nenhum valor — exatamente o tipo de bug que só aparece com clique real, não em `npm run build`/`oxlint`/revisão de código.
 
+### CI (Playwright, TASK-103)
+
+Job próprio `Frontend E2E (Playwright)` em `.github/workflows/ci.yml`, separado do job `Frontend (build + lint)` — usa `needs: frontend`, então só roda depois que `npm test`/`npm run build`/`npm run lint` já passaram (evita gastar tempo de runner instalando browser se o básico do frontend já está quebrado). Passos: `npm ci` → `npx playwright install --with-deps chromium` → `npm run e2e`. Como toda a suíte é mockada (`page.route`, sem backend real), o job não depende de nenhum job de backend e não precisa deles no `needs`.
+
+Em caso de falha, o relatório HTML (`frontend/playwright-report/`) e os artefatos de diagnóstico (`frontend/test-results/` — screenshots, traces) são publicados como artifact do GitHub Actions (`actions/upload-artifact`, `if: failure()`, nome `playwright-report`, retenção de 7 dias) — baixe o artifact do run que falhou para inspecionar localmente com `npx playwright show-trace` ou abrindo o HTML.
+
 ### O que ainda não está coberto
 
-- E2E integrado com backend real (Testcontainers/PostgreSQL de verdade por trás do frontend) — mocks de rede não substituem essa validação, só destravam a homologação visual sem essa dependência.
-- CI: Playwright **não** foi adicionado ao `.github/workflows/ci.yml` nesta task (decisão deliberada — ver `docs/ci-branch-protection.md` e `docs/roadmap-pos-mvp.md`). Rodar localmente por enquanto.
+- E2E integrado com backend real (Testcontainers/PostgreSQL de verdade por trás do frontend) — mocks de rede não substituem essa validação, só destravam a homologação visual sem essa dependência. O job de CI também não sobe backend nenhum.
 - Cobertura de telas Admin (CRUD de restaurantes/categorias/produtos/usuários/dispositivos) — só login e as áreas críticas de Caixa/Cozinha/operador foram cobertas nesta primeira leva.
-- Relatórios/traces/vídeos (`test-results/`, `playwright-report/`, `blob-report/`) nunca são versionados — cobertos pelo `.gitignore` da raiz.
+- Relatórios/traces/vídeos (`test-results/`, `playwright-report/`, `blob-report/`) nunca são versionados — cobertos pelo `.gitignore` da raiz; no CI, só sobem como artifact temporário quando o job falha.
 
 ## Configuração de ambiente
 
