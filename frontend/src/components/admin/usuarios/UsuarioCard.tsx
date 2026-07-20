@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
 import type { PerfilUsuario, UsuarioAdminResponse } from "../../../types/usuario";
+import { focarPrimeiroErro } from "../../../utils/validacaoFormulario";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
+import { FieldError } from "../../ui/FieldError";
+
+type CampoSenha = "novaSenha" | "confirmarSenha";
+const ORDEM_CAMPOS_SENHA: readonly CampoSenha[] = ["novaSenha", "confirmarSenha"];
 
 const ROTULO_PERFIL: Record<PerfilUsuario, string> = {
   SUPER_ADMIN: "Super administrador",
@@ -40,7 +45,10 @@ export function UsuarioCard({
   const [alterandoSenha, setAlterandoSenha] = useState(false);
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
-  const [erroValidacaoSenha, setErroValidacaoSenha] = useState<string | null>(null);
+  const [errosSenha, setErrosSenha] = useState<Partial<Record<CampoSenha, string>>>({});
+
+  const novaSenhaRef = useRef<HTMLInputElement>(null);
+  const confirmarSenhaRef = useRef<HTMLInputElement>(null);
 
   function handleAtivar() {
     if (!window.confirm(`Ativar o usuário ${usuario.nome}?`)) {
@@ -59,34 +67,61 @@ export function UsuarioCard({
   function handleAbrirAlterarSenha() {
     setNovaSenha("");
     setConfirmarSenha("");
-    setErroValidacaoSenha(null);
+    setErrosSenha({});
     setAlterandoSenha(true);
   }
 
   function handleCancelarAlterarSenha() {
     setNovaSenha("");
     setConfirmarSenha("");
-    setErroValidacaoSenha(null);
+    setErrosSenha({});
     setAlterandoSenha(false);
   }
 
+  function validarSenha(novaSenhaAtual: string, confirmarSenhaAtual: string): Partial<Record<CampoSenha, string>> {
+    const proximosErros: Partial<Record<CampoSenha, string>> = {};
+
+    if (!novaSenhaAtual.trim()) {
+      proximosErros.novaSenha = "Informe a nova senha.";
+    } else if (novaSenhaAtual.length < 8 || novaSenhaAtual.length > 100) {
+      proximosErros.novaSenha = "A nova senha deve ter entre 8 e 100 caracteres.";
+    }
+
+    if (!proximosErros.novaSenha && confirmarSenhaAtual !== novaSenhaAtual) {
+      proximosErros.confirmarSenha = "As senhas não coincidem.";
+    }
+
+    return proximosErros;
+  }
+
+  function revalidarSenhaSeNecessario(campo: CampoSenha, novaSenhaAtual: string, confirmarSenhaAtual: string) {
+    if (!errosSenha[campo]) {
+      return;
+    }
+    const proximosErros = validarSenha(novaSenhaAtual, confirmarSenhaAtual);
+    setErrosSenha((atual) => ({ ...atual, [campo]: proximosErros[campo] }));
+  }
+
   function handleConfirmarAlterarSenha() {
-    if (novaSenha.trim().length < 8) {
-      setErroValidacaoSenha("A nova senha deve ter no mínimo 8 caracteres.");
+    const proximosErros = validarSenha(novaSenha, confirmarSenha);
+    setErrosSenha(proximosErros);
+
+    if (Object.keys(proximosErros).length > 0) {
+      focarPrimeiroErro(ORDEM_CAMPOS_SENHA, proximosErros, {
+        novaSenha: novaSenhaRef,
+        confirmarSenha: confirmarSenhaRef,
+      });
       return;
     }
-    if (novaSenha !== confirmarSenha) {
-      setErroValidacaoSenha("As senhas não coincidem.");
-      return;
-    }
+
     if (!window.confirm(`Alterar a senha do usuário ${usuario.nome}?`)) {
       return;
     }
 
-    setErroValidacaoSenha(null);
     onAlterarSenha(usuario.id, novaSenha);
     setNovaSenha("");
     setConfirmarSenha("");
+    setErrosSenha({});
     setAlterandoSenha(false);
   }
 
@@ -132,82 +167,71 @@ export function UsuarioCard({
         </Button>
 
         {usuario.ativo ? (
-          <button
-            type="button"
-            className="restaurante-card__acao-secundaria"
-            disabled={executando}
-            onClick={handleDesativar}
-          >
-            {executando ? "Aguarde..." : "Desativar"}
-          </button>
+          <Button type="button" variant="secondary" loading={executando} onClick={handleDesativar}>
+            Desativar
+          </Button>
         ) : (
-          <button
-            type="button"
-            className="restaurante-card__acao-secundaria"
-            disabled={executando}
-            onClick={handleAtivar}
-          >
-            {executando ? "Aguarde..." : "Ativar"}
-          </button>
+          <Button type="button" variant="secondary" loading={executando} onClick={handleAtivar}>
+            Ativar
+          </Button>
         )}
 
         {!alterandoSenha && (
-          <button
-            type="button"
-            className="restaurante-card__acao-secundaria"
-            disabled={executando}
-            onClick={handleAbrirAlterarSenha}
-          >
+          <Button type="button" variant="secondary" disabled={executando} onClick={handleAbrirAlterarSenha}>
             Alterar senha
-          </button>
+          </Button>
         )}
       </div>
 
       {alterandoSenha && (
         <div className="pedido-pendente-card__cancelamento">
-          <label className="pedido-pendente-card__observacao">
+          <label className="pedido-pendente-card__observacao" htmlFor={`novaSenha-${usuario.id}`}>
             Nova senha
             <input
+              id={`novaSenha-${usuario.id}`}
+              ref={novaSenhaRef}
               type="password"
               value={novaSenha}
-              onChange={(event) => setNovaSenha(event.target.value)}
+              onChange={(event) => {
+                setNovaSenha(event.target.value);
+                revalidarSenhaSeNecessario("novaSenha", event.target.value, confirmarSenha);
+              }}
               placeholder="Mínimo 8 caracteres"
               disabled={executando}
               autoComplete="new-password"
+              aria-invalid={Boolean(errosSenha.novaSenha)}
+              aria-describedby={errosSenha.novaSenha ? `novaSenha-${usuario.id}-error` : undefined}
             />
           </label>
+          <FieldError id={`novaSenha-${usuario.id}-error`} message={errosSenha.novaSenha} />
 
-          <label className="pedido-pendente-card__observacao">
+          <label className="pedido-pendente-card__observacao" htmlFor={`confirmarSenha-${usuario.id}`}>
             Confirmar nova senha
             <input
+              id={`confirmarSenha-${usuario.id}`}
+              ref={confirmarSenhaRef}
               type="password"
               value={confirmarSenha}
-              onChange={(event) => setConfirmarSenha(event.target.value)}
+              onChange={(event) => {
+                setConfirmarSenha(event.target.value);
+                revalidarSenhaSeNecessario("confirmarSenha", novaSenha, event.target.value);
+              }}
               placeholder="Repita a nova senha"
               disabled={executando}
               autoComplete="new-password"
+              aria-invalid={Boolean(errosSenha.confirmarSenha)}
+              aria-describedby={errosSenha.confirmarSenha ? `confirmarSenha-${usuario.id}-error` : undefined}
             />
           </label>
+          <FieldError id={`confirmarSenha-${usuario.id}-error`} message={errosSenha.confirmarSenha} />
 
-          <ErrorMessage message={erroValidacaoSenha} />
+          <Button type="button" loading={executando} onClick={handleConfirmarAlterarSenha}>
+            Confirmar nova senha
+          </Button>
 
-          <button
-            type="button"
-            className="pedido-pendente-card__cancelar"
-            disabled={executando}
-            onClick={handleConfirmarAlterarSenha}
-          >
-            {executando ? "Aguarde..." : "Confirmar nova senha"}
-          </button>
-
-          <button
-            type="button"
-            className="pedido-pendente-card__cancelar"
-            disabled={executando}
-            onClick={handleCancelarAlterarSenha}
-          >
+          <Button type="button" variant="secondary" disabled={executando} onClick={handleCancelarAlterarSenha}>
             Cancelar
-          </button>
+          </Button>
         </div>
       )}
     </article>

@@ -144,23 +144,13 @@ export function DispositivoCard({ dispositivo, executando, erro, onEditar, onRev
           Editar
         </Button>
 
-        <button
-          type="button"
-          className="restaurante-card__acao-secundaria"
-          disabled={executando}
-          onClick={handleClicarAcao}
-        >
-          {executando ? "Aguarde..." : dispositivo.ativo ? "Revogar" : "Reativar"}
-        </button>
+        <Button type="button" variant="secondary" loading={executando} onClick={handleClicarAcao}>
+          {dispositivo.ativo ? "Revogar" : "Reativar"}
+        </Button>
 
-        <button
-          type="button"
-          className="restaurante-card__acao-secundaria"
-          disabled={executando}
-          onClick={handleRegenerarCodigo}
-        >
+        <Button type="button" variant="secondary" disabled={executando} onClick={handleRegenerarCodigo}>
           Regenerar código
-        </button>
+        </Button>
       </div>
     </article>
   );

@@ -59,4 +59,17 @@ public class OperadorContextService {
 
         return Optional.of(operador);
     }
+
+    /**
+     * Mesma resolução de {@link #resolver}, mas trata o header ausente/em branco como erro (401)
+     * em vez de {@link Optional#empty()} — usado pelas leituras operacionais de Caixa/Cozinha
+     * (TASK-111), que agora exigem operador identificado além do dispositivo. As ações de escrita
+     * continuam usando {@link #resolver} (operador opcional, só para auditoria).
+     *
+     * @throws BadCredentialsException token ausente, além dos casos já cobertos por {@link #resolver}.
+     */
+    public Usuario resolverObrigatorio(String operadorToken, Dispositivo dispositivo) {
+        return resolver(operadorToken, dispositivo)
+                .orElseThrow(() -> new BadCredentialsException("Token de operador obrigatório para esta operação"));
+    }
 }

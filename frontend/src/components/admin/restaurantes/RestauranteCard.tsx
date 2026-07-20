@@ -80,14 +80,9 @@ export function RestauranteCard({ restaurante, executando, erro, onEditar, onAti
           Editar
         </Button>
 
-        <button
-          type="button"
-          className="restaurante-card__acao-secundaria"
-          disabled={executando}
-          onClick={handleClicarAcao}
-        >
-          {executando ? "Aguarde..." : restaurante.ativo ? "Desativar" : "Ativar"}
-        </button>
+        <Button type="button" variant="secondary" loading={executando} onClick={handleClicarAcao}>
+          {restaurante.ativo ? "Desativar" : "Ativar"}
+        </Button>
       </div>
     </article>
   );

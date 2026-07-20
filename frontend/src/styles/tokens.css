@@ -30,6 +30,13 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
+  /* TASK-114: escala de tamanho para os glifos/emoji usados como ícone (×, +, −, 💡 — o projeto não
+     usa SVG). `md` é o valor que `ThemeToggle`/`.ui-modal__fechar` já usavam antes desta task;
+     `sm`/`lg` existem para consistência futura, mas hoje só `md` está em uso real. */
+  --icon-size-sm: 1rem;
+  --icon-size-md: 1.25rem;
+  --icon-size-lg: 1.5rem;
+
   /* Movimento */
   --transition-fast: 150ms ease;
   --transition-base: 300ms ease;

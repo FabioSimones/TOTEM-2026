@@ -26,7 +26,7 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove, onChange
           onClick={() => onDecrement(item.produtoId)}
           aria-label={`Diminuir quantidade de ${item.nome}`}
         >
-          −
+          <span aria-hidden="true">−</span>
         </button>
         <span className="cart-item-row__qtd" aria-live="polite">
           {item.quantidade}
@@ -37,7 +37,7 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove, onChange
           onClick={() => onIncrement(item.produtoId)}
           aria-label={`Aumentar quantidade de ${item.nome}`}
         >
-          +
+          <span aria-hidden="true">+</span>
         </button>
         <button
           type="button"

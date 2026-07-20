@@ -1,8 +1,11 @@
 package com.totem.fastfood.security;
 
+import com.totem.fastfood.entity.Dispositivo;
 import com.totem.fastfood.entity.Restaurante;
 import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.enums.PerfilUsuario;
+import com.totem.fastfood.enums.TipoDispositivo;
+import com.totem.fastfood.repository.DispositivoRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
 import com.totem.fastfood.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
@@ -38,6 +41,9 @@ class SecurityHttpStatusTest {
 
     @Autowired
     private RestauranteRepository restauranteRepository;
+
+    @Autowired
+    private DispositivoRepository dispositivoRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -103,5 +109,39 @@ class SecurityHttpStatusTest {
     void uploadInexistente_naoDeveRetornar401Nem403() throws Exception {
         mockMvc.perform(get("/uploads/produtos/arquivo-que-nao-existe.png"))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Achado 8.1 da auditoria: o operadorToken (tipo=OPERADOR) só deve valer no header
+     * X-Operador-Token. Antes da correção, JwtAuthenticationFilter tratava "tudo que não é
+     * DEVICE" como usuário, então esse token colava como Authorization: Bearer completo.
+     */
+    @Test
+    void operadorTokenComoBearer_deveRetornar401() throws Exception {
+        Restaurante restaurante = restauranteRepository.save(
+                Restaurante.builder().nome("Restaurante Teste Operador").cnpj("00011122233355").build());
+
+        Dispositivo dispositivo = dispositivoRepository.save(Dispositivo.builder()
+                .restaurante(restaurante)
+                .nome("Caixa Teste")
+                .codigoIdentificacao("CAIXA-TESTE-BEARER")
+                .tipoDispositivo(TipoDispositivo.CAIXA)
+                .ativo(true)
+                .ativado(true)
+                .build());
+
+        Usuario operador = usuarioRepository.save(Usuario.builder()
+                .restaurante(restaurante)
+                .nome("Operador Teste Bearer")
+                .email("operador.teste.bearer@totem.local")
+                .senhaHash(passwordEncoder.encode("Senha@2026!"))
+                .perfil(PerfilUsuario.OPERADOR_CAIXA)
+                .ativo(true)
+                .build());
+
+        String operadorToken = jwtService.gerarTokenOperador(operador, dispositivo);
+
+        mockMvc.perform(get("/api/admin/usuarios").header("Authorization", "Bearer " + operadorToken))
+                .andExpect(status().isUnauthorized());
     }
 }

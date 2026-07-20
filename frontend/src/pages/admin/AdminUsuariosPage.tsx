@@ -6,6 +6,7 @@ import { UsuarioCard } from "../../components/admin/usuarios/UsuarioCard";
 import { UsuarioForm } from "../../components/admin/usuarios/UsuarioForm";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { Modal } from "../../components/ui/Modal";
 import {
   alterarSenhaUsuario,
   ativarUsuario,
@@ -15,18 +16,21 @@ import {
   listarUsuarios,
 } from "../../services/adminUsuarioService";
 import { listarRestaurantes } from "../../services/adminRestauranteService";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import { ApiError } from "../../types/api";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
 import type { AtualizarUsuarioRequest, CriarUsuarioRequest, PerfilUsuario, UsuarioAdminResponse } from "../../types/usuario";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
+import { extrairErrosCampoApi } from "../../utils/apiFieldErrors";
 
 /** TASK-090: perfis que um ADMIN_RESTAURANTE pode atribuir/gerenciar — nunca SUPER_ADMIN/ADMIN_RESTAURANTE. */
 const PERFIS_GERENCIAVEIS_POR_ADMIN_RESTAURANTE: PerfilUsuario[] = ["OPERADOR_CAIXA", "OPERADOR_COZINHA"];
 
+const CAMPOS_USUARIO = ["nome", "email", "senha", "restauranteId"] as const;
+
 export function AdminUsuariosPage() {
   const navigate = useNavigate();
-  const usuarioAutenticado = getStoredUsuario();
+  const { user: usuarioAutenticado, logout } = useAuth();
   const adminRestaurante = isAdminRestaurante(usuarioAutenticado);
   const restauranteIdEscopo = getRestauranteIdEscopo(usuarioAutenticado);
 
@@ -40,9 +44,11 @@ export function AdminUsuariosPage() {
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
+  const [modalAberto, setModalAberto] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<UsuarioAdminResponse | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [errosCampoApi, setErrosCampoApi] = useState<Partial<Record<(typeof CAMPOS_USUARIO)[number], string>>>({});
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -82,7 +88,7 @@ export function AdminUsuariosPage() {
         if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
           setSemAutorizacao(true);
           if (error.status === 401) {
-            clearSession();
+            void logout();
             setErro("Sessão expirada. Faça login novamente.");
           } else {
             setErro("Você não tem permissão para acessar usuários.");
@@ -98,17 +104,13 @@ export function AdminUsuariosPage() {
         setLoading(false);
       }
     },
-    [adminRestaurante, restauranteIdEscopo],
+    [adminRestaurante, restauranteIdEscopo, logout],
   );
 
   useEffect(() => {
-    if (!getAccessToken() || !getStoredUsuario()) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     void carregarRestaurantes();
     void carregarUsuarios(null);
-  }, [navigate, carregarRestaurantes, carregarUsuarios]);
+  }, [carregarRestaurantes, carregarUsuarios]);
 
   function handleFiltrar(restauranteId: number | null) {
     setFiltroRestauranteId(restauranteId);
@@ -129,7 +131,7 @@ export function AdminUsuariosPage() {
 
   const tratarErroAcao = useCallback((id: number, error: unknown, mensagemPadrao: string) => {
     if (error instanceof ApiError && error.status === 401) {
-      clearSession();
+      void logout();
       setSemAutorizacao(true);
       setErro("Sessão expirada. Faça login novamente.");
     } else if (error instanceof ApiError && error.status === 403) {
@@ -143,20 +145,22 @@ export function AdminUsuariosPage() {
     } else {
       setErrosAcao((atual) => ({ ...atual, [id]: mensagemPadrao }));
     }
-  }, []);
+  }, [logout]);
 
   const handleCriar = useCallback(
     async (request: CriarUsuarioRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await criarUsuario(request);
         await carregarUsuarios(filtroRestauranteId);
+        setModalAberto(false);
         setMensagemSucesso(`Usuário "${response.nome}" cadastrado.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -164,7 +168,12 @@ export function AdminUsuariosPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Restaurante não encontrado.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(error.message || "Dados inválidos. O email pode já estar em uso.");
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_USUARIO);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O email pode já estar em uso.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -174,22 +183,24 @@ export function AdminUsuariosPage() {
         setSalvando(false);
       }
     },
-    [carregarUsuarios, filtroRestauranteId],
+    [carregarUsuarios, filtroRestauranteId, logout],
   );
 
   const handleAtualizar = useCallback(
     async (id: number, request: AtualizarUsuarioRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await atualizarUsuario(id, request);
         await carregarUsuarios(filtroRestauranteId);
         setUsuarioEmEdicao(null);
+        setModalAberto(false);
         setMensagemSucesso(`Usuário "${response.nome}" atualizado.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -197,7 +208,12 @@ export function AdminUsuariosPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Usuário ou restaurante não encontrado.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(error.message || "Dados inválidos. O email pode já estar em uso.");
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_USUARIO);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O email pode já estar em uso.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -207,7 +223,7 @@ export function AdminUsuariosPage() {
         setSalvando(false);
       }
     },
-    [carregarUsuarios, filtroRestauranteId],
+    [carregarUsuarios, filtroRestauranteId, logout],
   );
 
   const handleAtivar = useCallback(
@@ -264,13 +280,24 @@ export function AdminUsuariosPage() {
     [carregarUsuarios, filtroRestauranteId, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
-  function handleEditar(usuario: UsuarioAdminResponse) {
+  function handleNovo() {
     setErroSalvar(null);
-    setUsuarioEmEdicao(usuario);
+    setErrosCampoApi({});
+    setUsuarioEmEdicao(null);
+    setModalAberto(true);
   }
 
-  function handleCancelarEdicao() {
+  function handleEditar(usuario: UsuarioAdminResponse) {
     setErroSalvar(null);
+    setErrosCampoApi({});
+    setUsuarioEmEdicao(usuario);
+    setModalAberto(true);
+  }
+
+  function handleFecharModal() {
+    setModalAberto(false);
+    setErroSalvar(null);
+    setErrosCampoApi({});
     setUsuarioEmEdicao(null);
   }
 
@@ -279,6 +306,9 @@ export function AdminUsuariosPage() {
       <AdminVoltarLink />
 
       <div className="caixa-toolbar">
+        <Button type="button" onClick={handleNovo}>
+          Novo usuário
+        </Button>
         <Button type="button" onClick={() => void carregarUsuarios(filtroRestauranteId)} loading={loading}>
           Atualizar lista
         </Button>
@@ -334,7 +364,7 @@ export function AdminUsuariosPage() {
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
           {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/admin/login")}>
+            <Button type="button" onClick={() => navigate("/login")}>
               Ir para login
             </Button>
           ) : (
@@ -347,22 +377,29 @@ export function AdminUsuariosPage() {
 
       {!semAutorizacao && (
         <>
-          <UsuarioForm
-            usuarioEmEdicao={usuarioEmEdicao}
-            restaurantes={restaurantes}
-            restauranteSelecionadoPadrao={filtroRestauranteId}
-            restauranteFixo={
-              adminRestaurante && restauranteIdEscopo != null
-                ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
-                : null
-            }
-            perfisPermitidos={adminRestaurante ? PERFIS_GERENCIAVEIS_POR_ADMIN_RESTAURANTE : undefined}
-            onCriar={handleCriar}
-            onAtualizar={handleAtualizar}
-            onCancelarEdicao={handleCancelarEdicao}
-            salvando={salvando}
-            erro={erroSalvar}
-          />
+          <Modal
+            aberto={modalAberto}
+            titulo={usuarioEmEdicao ? `Editar usuário — ${usuarioEmEdicao.nome}` : "Cadastrar usuário"}
+            onFechar={handleFecharModal}
+          >
+            <UsuarioForm
+              usuarioEmEdicao={usuarioEmEdicao}
+              restaurantes={restaurantes}
+              restauranteSelecionadoPadrao={filtroRestauranteId}
+              restauranteFixo={
+                adminRestaurante && restauranteIdEscopo != null
+                  ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
+                  : null
+              }
+              perfisPermitidos={adminRestaurante ? PERFIS_GERENCIAVEIS_POR_ADMIN_RESTAURANTE : undefined}
+              onCriar={handleCriar}
+              onAtualizar={handleAtualizar}
+              onCancelarEdicao={handleFecharModal}
+              salvando={salvando}
+              erro={erroSalvar}
+              errosCampoApi={errosCampoApi}
+            />
+          </Modal>
 
           {loading && <p className="totem-estado">Carregando usuários...</p>}
 

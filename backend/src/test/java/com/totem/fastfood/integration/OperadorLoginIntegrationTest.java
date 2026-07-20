@@ -267,6 +267,78 @@ class OperadorLoginIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // ---------- Leitura de Caixa/Cozinha exige operador (TASK-111) ----------
+
+    @Test
+    void listarPendentesCaixa_semOperador_deveRetornar401() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/caixa/pedidos/pendentes")
+                        .header("Authorization", "Bearer " + tokenCaixaA))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listarPedidosCozinha_semOperador_deveRetornar401() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/cozinha/pedidos")
+                        .header("Authorization", "Bearer " + tokenCozinhaA))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listarPendentesCaixa_comOperadorDeOutroTipo_deveRetornar403() throws Exception {
+        // Token de operador emitido no dispositivo COZINHA, usado numa leitura do CAIXA.
+        String operadorToken = loginOperador(tokenCozinhaA, operadorCozinhaA.getEmail(), 200).get("operadorToken").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/caixa/pedidos/pendentes")
+                        .header("Authorization", "Bearer " + tokenCaixaA)
+                        .header("X-Operador-Token", operadorToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listarPendentesCaixa_comOperadorDeOutroRestaurante_deveRetornar403() throws Exception {
+        // operadorCaixaB pertence ao restauranteB; o dispositivo do teste é do restauranteA.
+        String operadorToken = loginOperadorEmOutroRestaurante();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/caixa/pedidos/pendentes")
+                        .header("Authorization", "Bearer " + tokenCaixaA)
+                        .header("X-Operador-Token", operadorToken))
+                .andExpect(status().isForbidden());
+    }
+
+    private String loginOperadorEmOutroRestaurante() throws Exception {
+        // operadorCaixaB não pode logar no dispositivo do restauranteA (403 já coberto em
+        // operadorDeOutroRestaurante_deveRetornar403) — para obter um token válido de operador de
+        // outro restaurante, ativa um dispositivo CAIXA do restauranteB e loga operadorCaixaB nele.
+        String tokenCaixaB = ativarDispositivo("CAIXA_OPERADOR_B", "COD-CAIXA-B",
+                com.totem.fastfood.enums.TipoDispositivo.CAIXA, restauranteB);
+        return loginOperador(tokenCaixaB, operadorCaixaB.getEmail(), 200).get("operadorToken").asText();
+    }
+
+    @Test
+    void listarPendentesCaixa_comOperadorValido_deveRetornar200() throws Exception {
+        String operadorToken = loginOperador(tokenCaixaA, operadorCaixaA.getEmail(), 200).get("operadorToken").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/caixa/pedidos/pendentes")
+                        .header("Authorization", "Bearer " + tokenCaixaA)
+                        .header("X-Operador-Token", operadorToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void listarPedidosCozinha_comOperadorValido_deveRetornar200() throws Exception {
+        String operadorToken = loginOperador(tokenCozinhaA, operadorCozinhaA.getEmail(), 200).get("operadorToken").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/cozinha/pedidos")
+                        .header("Authorization", "Bearer " + tokenCozinhaA)
+                        .header("X-Operador-Token", operadorToken))
+                .andExpect(status().isOk());
+    }
+
     @Test
     void atualizarStatusCozinha_comOperadorValido_preencheAlteradoPorUsuario() throws Exception {
         Pedido pedido = pedidoRepository.save(Pedido.builder()

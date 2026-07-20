@@ -43,7 +43,8 @@ export function logout(request: LogoutRequest): Promise<void> {
 /**
  * POST /api/auth/operador/login (TASK-092) — identifica um operador humano dentro do dispositivo
  * CAIXA/COZINHA atual. Exige o Authorization do dispositivo (`withAuth` padrão, anexado
- * automaticamente por `api.ts` a partir de `totem.accessToken`) — nunca um token de operador.
+ * automaticamente por `api.ts` a partir do token de dispositivo, `totem.device.accessToken`,
+ * porque este path cai no contexto "device" de `resolveAuthContext`) — nunca um token de operador.
  */
 export function loginOperador(email: string, senha: string): Promise<OperadorLoginResponse> {
   const request: OperadorLoginRequest = { email, senha };

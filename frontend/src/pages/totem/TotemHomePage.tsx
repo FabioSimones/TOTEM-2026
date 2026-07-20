@@ -11,7 +11,7 @@ import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { useCart } from "../../hooks/useCart";
 import { buscarCardapio, consultarPedido, criarPedido, iniciarPagamento } from "../../services/totemService";
-import { clearSession, getAccessToken } from "../../services/tokenStorage";
+import { clearDeviceSession, getDeviceAccessToken, getStoredDispositivo } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
 import type {
   CardapioTotemResponse,
@@ -63,7 +63,7 @@ export function TotemHomePage() {
         setSemAutorizacao(true);
         if (error.status === 401) {
           // Token inválido/expirado: não serve para mais nada, força nova ativação.
-          clearSession();
+          clearDeviceSession();
           setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
         } else {
           // 403: token válido, mas sem permissão de TOTEM — pode ser legítimo
@@ -83,7 +83,11 @@ export function TotemHomePage() {
   }, []);
 
   useEffect(() => {
-    if (!getAccessToken()) {
+    // Achado da auditoria: antes só checava a existência do token, sem validar o tipo do
+    // dispositivo salvo — um dispositivo CAIXA/COZINHA/ADMINISTRACAO ativado neste navegador
+    // passava por este guard e só falhava depois, no 403 do backend.
+    const dispositivo = getStoredDispositivo();
+    if (!getDeviceAccessToken() || !dispositivo || dispositivo.tipoDispositivo !== "TOTEM") {
       navigate("/ativar-dispositivo", { replace: true });
       return;
     }
@@ -112,7 +116,7 @@ export function TotemHomePage() {
         cart.clearCart();
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          clearDeviceSession();
           setPedidoSemAutorizacao(true);
           setErroPedido("Sessão expirada. Ative o dispositivo novamente para continuar.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -156,7 +160,7 @@ export function TotemHomePage() {
         setPedidoAtual({ ...pedidoCriado, statusPedido: response.statusPedido });
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          clearDeviceSession();
           setPagamentoSemAutorizacao(true);
           setErroPagamento("Sessão expirada. Ative o dispositivo novamente para continuar.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -190,7 +194,7 @@ export function TotemHomePage() {
       setPedidoAtual(response);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        clearSession();
+        clearDeviceSession();
         setAtualizacaoSemAutorizacao(true);
         setErroAtualizacaoPedido("Sessão expirada. Ative o dispositivo novamente para continuar.");
       } else if (error instanceof ApiError && error.status === 403) {

@@ -8,14 +8,20 @@ import type {
   UsuarioAutenticadoResponse,
 } from "../types/auth";
 import {
+  __runLegacyMigrationForTests,
+  clearAllSessions,
+  clearDeviceSession,
   clearOperadorSession,
-  clearSession,
-  getAccessToken,
+  clearUserSession,
+  getDeviceAccessToken,
+  getDeviceRefreshToken,
   getOperador,
   getOperadorToken,
-  getRefreshToken,
   getStoredDispositivo,
   getStoredUsuario,
+  getUserAccessToken,
+  getUserRefreshToken,
+  limparSessaoOperacionalCompleta,
   saveDeviceSession,
   saveOperadorSession,
   saveUserSession,
@@ -77,24 +83,25 @@ beforeEach(() => {
 });
 
 describe("sessão de usuário", () => {
-  it("saveUserSession salva accessToken, refreshToken e usuario", () => {
+  it("saveUserSession salva accessToken, refreshToken e usuario em chaves próprias (totem.user.*)", () => {
     saveUserSession(loginResponse);
 
-    expect(getAccessToken()).toBe("access-usuario");
-    expect(getRefreshToken()).toBe("refresh-usuario");
+    expect(getUserAccessToken()).toBe("access-usuario");
+    expect(getUserRefreshToken()).toBe("refresh-usuario");
     expect(getStoredUsuario()).toEqual(usuario);
   });
 
-  it("saveUserSession remove a sessão de dispositivo salva anteriormente", () => {
+  it("saveUserSession NÃO afeta uma sessão de dispositivo já salva (storage fisicamente separado)", () => {
     saveDeviceSession(dispositivoResponse);
     expect(getStoredDispositivo()).not.toBeNull();
 
     saveUserSession(loginResponse);
 
-    expect(getStoredDispositivo()).toBeNull();
+    expect(getStoredDispositivo()).toEqual(dispositivo);
+    expect(getDeviceAccessToken()).toBe("access-dispositivo");
   });
 
-  it("saveUserSession não remove uma sessão de operador existente (comportamento atual de tokenStorage.ts)", () => {
+  it("saveUserSession não remove uma sessão de operador existente", () => {
     saveDeviceSession(dispositivoResponse);
     saveOperadorSession(operadorLoginResponse);
 
@@ -106,21 +113,22 @@ describe("sessão de usuário", () => {
 });
 
 describe("sessão de dispositivo", () => {
-  it("saveDeviceSession salva accessToken, refreshToken e dispositivo", () => {
+  it("saveDeviceSession salva accessToken, refreshToken e dispositivo em chaves próprias (totem.device.*)", () => {
     saveDeviceSession(dispositivoResponse);
 
-    expect(getAccessToken()).toBe("access-dispositivo");
-    expect(getRefreshToken()).toBe("refresh-dispositivo");
+    expect(getDeviceAccessToken()).toBe("access-dispositivo");
+    expect(getDeviceRefreshToken()).toBe("refresh-dispositivo");
     expect(getStoredDispositivo()).toEqual(dispositivo);
   });
 
-  it("saveDeviceSession remove a sessão de usuário salva anteriormente", () => {
+  it("saveDeviceSession NÃO afeta uma sessão de usuário já salva (storage fisicamente separado)", () => {
     saveUserSession(loginResponse);
     expect(getStoredUsuario()).not.toBeNull();
 
     saveDeviceSession(dispositivoResponse);
 
-    expect(getStoredUsuario()).toBeNull();
+    expect(getStoredUsuario()).toEqual(usuario);
+    expect(getUserAccessToken()).toBe("access-usuario");
   });
 
   it("saveDeviceSession remove uma sessão de operador anterior (dispositivo recém-ativado não herda operador de outro terminal)", () => {
@@ -151,34 +159,143 @@ describe("sessão de operador", () => {
 
     expect(getOperadorToken()).toBeNull();
     expect(getOperador()).toBeNull();
-    expect(getAccessToken()).toBe("access-dispositivo");
-    expect(getRefreshToken()).toBe("refresh-dispositivo");
+    expect(getDeviceAccessToken()).toBe("access-dispositivo");
+    expect(getDeviceRefreshToken()).toBe("refresh-dispositivo");
     expect(getStoredDispositivo()).toEqual(dispositivo);
   });
 });
 
-describe("limpeza completa", () => {
-  it("clearSession limpa tokens, dispositivo, usuário e operador", () => {
+describe("logout por contexto (TASK-116)", () => {
+  it("clearUserSession (logout de usuário) preserva sessão de DEVICE e de OPERADOR", () => {
+    saveUserSession(loginResponse);
     saveDeviceSession(dispositivoResponse);
     saveOperadorSession(operadorLoginResponse);
 
-    clearSession();
+    clearUserSession();
 
-    expect(getAccessToken()).toBeNull();
-    expect(getRefreshToken()).toBeNull();
-    expect(getStoredDispositivo()).toBeNull();
+    expect(getUserAccessToken()).toBeNull();
     expect(getStoredUsuario()).toBeNull();
+    expect(getDeviceAccessToken()).toBe("access-dispositivo");
+    expect(getStoredDispositivo()).toEqual(dispositivo);
+    expect(getOperadorToken()).toBe("operador-token");
+    expect(getOperador()).toEqual(operador);
+  });
+
+  it("clearDeviceSession (logout de dispositivo) limpa o operador junto, mas preserva a sessão de USER", () => {
+    saveUserSession(loginResponse);
+    saveDeviceSession(dispositivoResponse);
+    saveOperadorSession(operadorLoginResponse);
+
+    clearDeviceSession();
+    // Por si só, clearDeviceSession não limpa o operador (ver limparSessaoOperacionalCompleta,
+    // que é a função usada nas telas de Caixa/Cozinha para essa combinação) — este teste isola
+    // o comportamento de cada função.
+    clearOperadorSession();
+
+    expect(getDeviceAccessToken()).toBeNull();
+    expect(getStoredDispositivo()).toBeNull();
+    expect(getOperadorToken()).toBeNull();
+    expect(getOperador()).toBeNull();
+    expect(getUserAccessToken()).toBe("access-usuario");
+    expect(getStoredUsuario()).toEqual(usuario);
+  });
+});
+
+describe("limpeza completa", () => {
+  it("clearAllSessions limpa tokens, dispositivo, usuário e operador de todos os contextos", () => {
+    saveUserSession(loginResponse);
+    saveDeviceSession(dispositivoResponse);
+    saveOperadorSession(operadorLoginResponse);
+
+    clearAllSessions();
+
+    expect(getUserAccessToken()).toBeNull();
+    expect(getUserRefreshToken()).toBeNull();
+    expect(getStoredUsuario()).toBeNull();
+    expect(getDeviceAccessToken()).toBeNull();
+    expect(getDeviceRefreshToken()).toBeNull();
+    expect(getStoredDispositivo()).toBeNull();
     expect(getOperadorToken()).toBeNull();
     expect(getOperador()).toBeNull();
   });
 
-  it("JSON inválido em totem.usuario/totem.dispositivo/totem.operador não quebra a leitura (retorna null)", () => {
-    localStorage.setItem("totem.usuario", "{isso não é json");
-    localStorage.setItem("totem.dispositivo", "{isso não é json");
-    localStorage.setItem("totem.operador", "{isso não é json");
+  it("JSON inválido em totem.user.data/totem.device.data/totem.operator.data não quebra a leitura (retorna null)", () => {
+    localStorage.setItem("totem.user.data", "{isso não é json");
+    localStorage.setItem("totem.device.data", "{isso não é json");
+    localStorage.setItem("totem.operator.data", "{isso não é json");
 
     expect(getStoredUsuario()).toBeNull();
     expect(getStoredDispositivo()).toBeNull();
     expect(getOperador()).toBeNull();
+  });
+});
+
+describe("limparSessaoOperacionalCompleta (TASK-112)", () => {
+  it("limpa dispositivo e operador, sem remover a sessão administrativa (totem.user.*)", () => {
+    saveUserSession(loginResponse);
+    saveDeviceSession(dispositivoResponse);
+    saveOperadorSession(operadorLoginResponse);
+
+    limparSessaoOperacionalCompleta();
+
+    expect(getDeviceAccessToken()).toBeNull();
+    expect(getDeviceRefreshToken()).toBeNull();
+    expect(getStoredDispositivo()).toBeNull();
+    expect(getOperadorToken()).toBeNull();
+    expect(getOperador()).toBeNull();
+    expect(getStoredUsuario()).toEqual(usuario);
+    expect(getUserAccessToken()).toBe("access-usuario");
+  });
+});
+
+describe("migração das chaves antigas (compartilhadas)", () => {
+  it("migra um par de tokens antigo pertencente a um usuário para totem.user.*", () => {
+    localStorage.setItem("totem.accessToken", "access-legado");
+    localStorage.setItem("totem.refreshToken", "refresh-legado");
+    localStorage.setItem("totem.usuario", JSON.stringify(usuario));
+
+    __runLegacyMigrationForTests();
+
+    expect(getUserAccessToken()).toBe("access-legado");
+    expect(getUserRefreshToken()).toBe("refresh-legado");
+    expect(getStoredUsuario()).toEqual(usuario);
+    expect(localStorage.getItem("totem.accessToken")).toBeNull();
+    expect(localStorage.getItem("totem.usuario")).toBeNull();
+  });
+
+  it("migra um par de tokens antigo pertencente a um dispositivo para totem.device.*", () => {
+    localStorage.setItem("totem.accessToken", "access-legado");
+    localStorage.setItem("totem.refreshToken", "refresh-legado");
+    localStorage.setItem("totem.dispositivo", JSON.stringify(dispositivo));
+
+    __runLegacyMigrationForTests();
+
+    expect(getDeviceAccessToken()).toBe("access-legado");
+    expect(getStoredDispositivo()).toEqual(dispositivo);
+    expect(localStorage.getItem("totem.dispositivo")).toBeNull();
+  });
+
+  it("descarta os tokens antigos quando o titular é ambíguo (usuário e dispositivo presentes ao mesmo tempo)", () => {
+    localStorage.setItem("totem.accessToken", "access-legado");
+    localStorage.setItem("totem.refreshToken", "refresh-legado");
+    localStorage.setItem("totem.usuario", JSON.stringify(usuario));
+    localStorage.setItem("totem.dispositivo", JSON.stringify(dispositivo));
+
+    __runLegacyMigrationForTests();
+
+    expect(getUserAccessToken()).toBeNull();
+    expect(getDeviceAccessToken()).toBeNull();
+    expect(localStorage.getItem("totem.accessToken")).toBeNull();
+  });
+
+  it("migra a sessão de operador legada independentemente do titular do par accessToken/refreshToken", () => {
+    localStorage.setItem("totem.operadorToken", "operador-token-legado");
+    localStorage.setItem("totem.operador", JSON.stringify(operador));
+
+    __runLegacyMigrationForTests();
+
+    expect(getOperadorToken()).toBe("operador-token-legado");
+    expect(getOperador()).toEqual(operador);
+    expect(localStorage.getItem("totem.operadorToken")).toBeNull();
   });
 });

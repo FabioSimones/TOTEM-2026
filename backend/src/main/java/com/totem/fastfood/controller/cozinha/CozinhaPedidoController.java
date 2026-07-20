@@ -31,6 +31,10 @@ import java.util.List;
  * autenticação principal. Desde a TASK-092, {@code atualizarStatus} aceita opcionalmente o header
  * {@code X-Operador-Token} só para preencher {@code HistoricoStatusPedido.alteradoPorUsuario} —
  * nunca substitui o dispositivo.
+ *
+ * <p>Desde a TASK-111, {@code listarPedidos} passou a <b>exigir</b> operador identificado além do
+ * dispositivo — mesma justificativa do `CaixaPedidoController`: informação operacional não deve
+ * ficar visível só porque o terminal está ativado.
  */
 @Tag(name = "Cozinha - Pedidos", description = "Consulta e atualização de status de pedidos em preparo pelo dispositivo COZINHA (requer Bearer JWT de dispositivo)")
 @RestController
@@ -46,11 +50,13 @@ public class CozinhaPedidoController {
             description = "Retorna os pedidos ENVIADO_PARA_COZINHA e EM_PREPARO do restaurante do dispositivo autenticado, "
                     + "ordenados do mais antigo para o mais recente. Não expõe dados financeiros do pedido.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil ou dispositivo sem permissão")
+    @ApiResponse(responseCode = "401", description = "Token de dispositivo ausente/inválido, ou X-Operador-Token ausente/inválido/expirado (TASK-111)")
+    @ApiResponse(responseCode = "403", description = "Perfil/dispositivo sem permissão, ou operador incompatível com o dispositivo/restaurante (TASK-111)")
     @GetMapping
     public ResponseEntity<List<PedidoCozinhaResponse>> listarPedidos(
-            @AuthenticationPrincipal Dispositivo dispositivo) {
+            @AuthenticationPrincipal Dispositivo dispositivo,
+            @Parameter(description = "Token de operador (TASK-111), obrigatório para esta leitura") @RequestHeader(value = "X-Operador-Token", required = false) String operadorToken) {
+        operadorContextService.resolverObrigatorio(operadorToken, dispositivo);
         return ResponseEntity.ok(cozinhaPedidoService.listarPedidos(dispositivo));
     }
 

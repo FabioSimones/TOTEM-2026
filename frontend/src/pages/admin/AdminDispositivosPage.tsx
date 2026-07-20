@@ -6,6 +6,7 @@ import { DispositivoCard } from "../../components/admin/dispositivos/Dispositivo
 import { DispositivoForm } from "../../components/admin/dispositivos/DispositivoForm";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { Modal } from "../../components/ui/Modal";
 import {
   atualizarDispositivo,
   criarDispositivo,
@@ -15,7 +16,7 @@ import {
   revogarDispositivo,
 } from "../../services/adminDispositivoService";
 import { listarRestaurantes } from "../../services/adminRestauranteService";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import { ApiError } from "../../types/api";
 import type { TipoDispositivo } from "../../types/auth";
 import type {
@@ -26,6 +27,9 @@ import type {
 } from "../../types/dispositivo";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
+import { extrairErrosCampoApi } from "../../utils/apiFieldErrors";
+
+const CAMPOS_DISPOSITIVO = ["restauranteId", "nome", "codigoIdentificacao"] as const;
 
 const OPCOES_FILTRO_TIPO: { valor: TipoDispositivo; rotulo: string }[] = [
   { valor: "TOTEM", rotulo: "Totem" },
@@ -43,7 +47,7 @@ const OPCOES_FILTRO_STATUS: { valor: StatusOperacionalDispositivo; rotulo: strin
 
 export function AdminDispositivosPage() {
   const navigate = useNavigate();
-  const usuario = getStoredUsuario();
+  const { user: usuario, logout } = useAuth();
   const adminRestaurante = isAdminRestaurante(usuario);
   const restauranteIdEscopo = getRestauranteIdEscopo(usuario);
 
@@ -58,9 +62,11 @@ export function AdminDispositivosPage() {
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
+  const [modalAberto, setModalAberto] = useState(false);
   const [dispositivoEmEdicao, setDispositivoEmEdicao] = useState<DispositivoAdminResponse | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [errosCampoApi, setErrosCampoApi] = useState<Partial<Record<(typeof CAMPOS_DISPOSITIVO)[number], string>>>({});
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -96,7 +102,7 @@ export function AdminDispositivosPage() {
         setSemAutorizacao(true);
         if (error.status === 401) {
           // Token inválido/expirado: não serve para mais nada, força novo login.
-          clearSession();
+          void logout();
           setErro("Sessão expirada. Faça login novamente.");
         } else {
           // 403: token válido, mas sem permissão (perfil não é SUPER_ADMIN/ADMIN_RESTAURANTE)
@@ -113,16 +119,12 @@ export function AdminDispositivosPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
-    if (!getAccessToken() || !getStoredUsuario()) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     void carregarRestaurantes();
     void carregarDispositivos();
-  }, [navigate, carregarRestaurantes, carregarDispositivos]);
+  }, [carregarRestaurantes, carregarDispositivos]);
 
   const marcarAcaoEmAndamento = useCallback((id: number, emAndamento: boolean) => {
     setAcoesEmAndamento((atual) => {
@@ -138,7 +140,7 @@ export function AdminDispositivosPage() {
 
   const tratarErroAcao = useCallback((id: number, error: unknown, mensagemPadrao: string) => {
     if (error instanceof ApiError && error.status === 401) {
-      clearSession();
+      void logout();
       setSemAutorizacao(true);
       setErro("Sessão expirada. Faça login novamente.");
     } else if (error instanceof ApiError && error.status === 403) {
@@ -152,22 +154,24 @@ export function AdminDispositivosPage() {
     } else {
       setErrosAcao((atual) => ({ ...atual, [id]: mensagemPadrao }));
     }
-  }, []);
+  }, [logout]);
 
   const handleCriarDispositivo = useCallback(
     async (request: CriarDispositivoRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await criarDispositivo(request);
         await carregarDispositivos();
+        setModalAberto(false);
         setMensagemSucesso(
           `Dispositivo "${response.nome}" cadastrado. Código de ativação: ${response.codigoAtivacao}`,
         );
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -175,9 +179,12 @@ export function AdminDispositivosPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Restaurante não encontrado. Atualize a lista de restaurantes e tente novamente.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(
-            error.message || "Dados inválidos. O código de identificação pode já estar em uso.",
-          );
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_DISPOSITIVO);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O código de identificação pode já estar em uso.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -187,22 +194,24 @@ export function AdminDispositivosPage() {
         setSalvando(false);
       }
     },
-    [carregarDispositivos],
+    [carregarDispositivos, logout],
   );
 
   const handleAtualizarDispositivo = useCallback(
     async (id: number, request: AtualizarDispositivoRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await atualizarDispositivo(id, request);
         await carregarDispositivos();
         setDispositivoEmEdicao(null);
+        setModalAberto(false);
         setMensagemSucesso(`Dispositivo "${response.nome}" atualizado.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -210,9 +219,12 @@ export function AdminDispositivosPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Dispositivo não encontrado.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(
-            error.message || "Dados inválidos. O código de identificação pode já estar em uso.",
-          );
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_DISPOSITIVO);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O código de identificação pode já estar em uso.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -222,7 +234,7 @@ export function AdminDispositivosPage() {
         setSalvando(false);
       }
     },
-    [carregarDispositivos],
+    [carregarDispositivos, logout],
   );
 
   const handleRevogar = useCallback(
@@ -282,13 +294,24 @@ export function AdminDispositivosPage() {
     [carregarDispositivos, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
-  function handleEditar(dispositivo: DispositivoAdminResponse) {
+  function handleNovo() {
     setErroSalvar(null);
-    setDispositivoEmEdicao(dispositivo);
+    setErrosCampoApi({});
+    setDispositivoEmEdicao(null);
+    setModalAberto(true);
   }
 
-  function handleCancelarEdicao() {
+  function handleEditar(dispositivo: DispositivoAdminResponse) {
     setErroSalvar(null);
+    setErrosCampoApi({});
+    setDispositivoEmEdicao(dispositivo);
+    setModalAberto(true);
+  }
+
+  function handleFecharModal() {
+    setModalAberto(false);
+    setErroSalvar(null);
+    setErrosCampoApi({});
     setDispositivoEmEdicao(null);
   }
 
@@ -306,6 +329,9 @@ export function AdminDispositivosPage() {
       <AdminVoltarLink />
 
       <div className="caixa-toolbar">
+        <Button type="button" onClick={handleNovo}>
+          Novo dispositivo
+        </Button>
         <Button type="button" onClick={() => void carregarDispositivos()} loading={loading}>
           Atualizar lista
         </Button>
@@ -333,7 +359,7 @@ export function AdminDispositivosPage() {
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
           {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/admin/login")}>
+            <Button type="button" onClick={() => navigate("/login")}>
               Ir para login
             </Button>
           ) : (
@@ -346,20 +372,27 @@ export function AdminDispositivosPage() {
 
       {!semAutorizacao && (!adminRestaurante || restauranteIdEscopo != null) && (
         <>
-          <DispositivoForm
-            dispositivoEmEdicao={dispositivoEmEdicao}
-            restaurantes={restaurantes}
-            restauranteFixo={
-              adminRestaurante && restauranteIdEscopo != null
-                ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
-                : null
-            }
-            onCriar={handleCriarDispositivo}
-            onAtualizar={handleAtualizarDispositivo}
-            onCancelarEdicao={handleCancelarEdicao}
-            salvando={salvando}
-            erro={erroSalvar}
-          />
+          <Modal
+            aberto={modalAberto}
+            titulo={dispositivoEmEdicao ? `Editar dispositivo — ${dispositivoEmEdicao.nome}` : "Cadastrar dispositivo"}
+            onFechar={handleFecharModal}
+          >
+            <DispositivoForm
+              dispositivoEmEdicao={dispositivoEmEdicao}
+              restaurantes={restaurantes}
+              restauranteFixo={
+                adminRestaurante && restauranteIdEscopo != null
+                  ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
+                  : null
+              }
+              onCriar={handleCriarDispositivo}
+              onAtualizar={handleAtualizarDispositivo}
+              onCancelarEdicao={handleFecharModal}
+              salvando={salvando}
+              erro={erroSalvar}
+              errosCampoApi={errosCampoApi}
+            />
+          </Modal>
 
           {loading && <p className="totem-estado">Carregando dispositivos...</p>}
 

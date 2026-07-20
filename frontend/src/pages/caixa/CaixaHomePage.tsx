@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { DispositivoAcessoCard } from "../../components/dispositivo/DispositivoAcessoCard";
 import { OperadorPainel } from "../../components/operador/OperadorPainel";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { PedidoPendenteCard } from "../../components/caixa/PedidoPendenteCard";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { useDispositivoOperacional } from "../../hooks/useDispositivoOperacional";
 import {
   cancelarPedido,
   confirmarPagamentoDinheiro,
@@ -12,19 +13,26 @@ import {
   listarPendencias,
   marcarPedidoComoRetirado,
 } from "../../services/caixaService";
-import { clearOperadorSession, clearSession, getAccessToken, getOperador, getOperadorToken } from "../../services/tokenStorage";
+import { clearOperadorSession, getOperadorToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { OperadorAutenticadoResponse } from "../../types/auth";
 import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
+import { rotuloTipoDispositivo } from "../../utils/tipoDispositivo";
 
 export function CaixaHomePage() {
-  const navigate = useNavigate();
+  const {
+    dispositivo,
+    operador,
+    dispositivoCompativel,
+    setOperador,
+    invalidarSessaoDispositivo,
+    handleAtivarDispositivo,
+    handleTrocarDispositivo,
+  } = useDispositivoOperacional("CAIXA");
+
   const [pendencias, setPendencias] = useState<PedidoPendenteCaixaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
-  const [operador, setOperador] = useState<OperadorAutenticadoResponse | null>(getOperador());
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -32,24 +40,19 @@ export function CaixaHomePage() {
   const carregarPendencias = useCallback(async () => {
     setLoading(true);
     setErro(null);
-    setSemAutorizacao(false);
     setMensagemSucesso(null);
 
     try {
       const response = await listarPendencias();
       setPendencias(response);
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setSemAutorizacao(true);
-        if (error.status === 401) {
-          // Token inválido/expirado: não serve para mais nada, força nova ativação.
-          clearSession();
-          setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
-        } else {
-          // 403: token válido, mas sem permissão de CAIXA — pode ser legítimo
-          // para outro módulo (Totem/Cozinha), então a sessão não é apagada.
-          setErro("Este dispositivo não tem permissão para acessar o Caixa.");
-        }
+      if (error instanceof ApiError && error.status === 401) {
+        // TASK-112: token de dispositivo ou de operador inválido/expirado — sem distinção possível
+        // aqui (a listagem exige os dois desde a TASK-111), limpa ambos e volta ao card de acesso.
+        setPendencias([]);
+        invalidarSessaoDispositivo();
+      } else if (error instanceof ApiError && error.status === 403) {
+        setErro("Este dispositivo ou operador não tem permissão para acessar o Caixa.");
       } else {
         setErro(
           error instanceof ApiError
@@ -60,15 +63,15 @@ export function CaixaHomePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [invalidarSessaoDispositivo]);
 
   useEffect(() => {
-    if (!getAccessToken()) {
-      navigate("/ativar-dispositivo", { replace: true });
+    if (!dispositivo || !dispositivoCompativel || !operador) {
+      setLoading(false);
       return;
     }
     void carregarPendencias();
-  }, [navigate, carregarPendencias]);
+  }, [dispositivo, dispositivoCompativel, operador, carregarPendencias]);
 
   const marcarAcaoEmAndamento = useCallback((pedidoId: number, emAndamento: boolean) => {
     setAcoesEmAndamento((atual) => {
@@ -93,9 +96,8 @@ export function CaixaHomePage() {
           setOperador(null);
           setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Sessão do operador expirada. Identifique-se novamente." }));
         } else {
-          clearSession();
-          setSemAutorizacao(true);
-          setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+          setPendencias([]);
+          invalidarSessaoDispositivo();
         }
       } else if (error instanceof ApiError && error.status === 403) {
         setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Este dispositivo não tem permissão para executar esta ação." }));
@@ -109,7 +111,7 @@ export function CaixaHomePage() {
         setErrosAcao((atual) => ({ ...atual, [pedidoId]: mensagemPadrao }));
       }
     },
-    [],
+    [invalidarSessaoDispositivo, setOperador],
   );
 
   const handleConfirmarPagamento = useCallback(
@@ -184,12 +186,63 @@ export function CaixaHomePage() {
     [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  // TASK-112: sem dispositivo (nunca ativado, ou sessão invalidada) — card com caminho claro para ativar.
+  if (!dispositivo) {
+    return (
+      <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro, envio à cozinha e retirada." centralizado>
+        <DispositivoAcessoCard
+          titulo="Caixa não ativado"
+          mensagem="Este Caixa ainda não foi ativado. Ative o equipamento para continuar."
+          acaoPrincipal={{ rotulo: "Ativar este dispositivo", onAcionar: handleAtivarDispositivo }}
+        />
+      </AppLayout>
+    );
+  }
+
+  // TASK-112: dispositivo autenticado, mas de outro tipo (ex.: COZINHA abrindo /caixa).
+  if (!dispositivoCompativel) {
+    return (
+      <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro, envio à cozinha e retirada." centralizado>
+        <DispositivoAcessoCard
+          titulo="Dispositivo incompatível"
+          mensagem={`Este equipamento está ativado como ${rotuloTipoDispositivo(dispositivo.tipoDispositivo)}, não como Caixa.`}
+          acaoPrincipal={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
+        />
+      </AppLayout>
+    );
+  }
+
+  // TASK-111/112: sem operador identificado, a tela mostra só o login centralizado — nenhum pedido é
+  // buscado nem renderizado (ver o efeito acima, que só chama carregarPendencias quando há operador).
+  if (!operador) {
+    return (
+      <AppLayout title="Caixa" description="Identifique-se para acessar o Caixa." centralizado>
+        <OperadorPainel
+          operador={null}
+          onIdentificado={(response) => setOperador(response.operador)}
+          onTrocar={() => setOperador(null)}
+          mensagemIdentificacao="Identifique-se para acessar o Caixa."
+          acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
+        />
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro, envio à cozinha e retirada.">
       <OperadorPainel
         operador={operador}
         onIdentificado={(response) => setOperador(response.operador)}
-        onTrocar={() => setOperador(null)}
+        onTrocar={() => {
+          // TASK-111: troca de operador oculta os pedidos imediatamente — a próxima renderização já
+          // cai no branch "!operador" acima, então isto é só higiene de estado (evita reter dados
+          // do operador anterior em memória entre uma troca e a próxima identificação).
+          setOperador(null);
+          setPendencias([]);
+          setErro(null);
+          setMensagemSucesso(null);
+        }}
+        acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
       />
 
       <div className="caixa-toolbar">
@@ -209,15 +262,9 @@ export function CaixaHomePage() {
       {!loading && erro && (
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
-          {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/ativar-dispositivo")}>
-              Ir para ativação de dispositivo
-            </Button>
-          ) : (
-            <Button type="button" onClick={() => void carregarPendencias()}>
-              Tentar novamente
-            </Button>
-          )}
+          <Button type="button" onClick={() => void carregarPendencias()}>
+            Tentar novamente
+          </Button>
         </div>
       )}
 

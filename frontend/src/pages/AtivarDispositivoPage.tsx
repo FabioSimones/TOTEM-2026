@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -81,6 +81,10 @@ export function AtivarDispositivoPage() {
           Ativar dispositivo
         </Button>
       </form>
+
+      <p className="ativar-dispositivo-form__login-link">
+        É um administrador ou operador? <Link to="/login">Entrar como usuário</Link>
+      </p>
     </AppLayout>
   );
 }

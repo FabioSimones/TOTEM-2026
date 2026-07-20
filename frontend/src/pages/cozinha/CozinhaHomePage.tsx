@@ -1,25 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { DispositivoAcessoCard } from "../../components/dispositivo/DispositivoAcessoCard";
 import { OperadorPainel } from "../../components/operador/OperadorPainel";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { PedidoCozinhaCard } from "../../components/cozinha/PedidoCozinhaCard";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { useDispositivoOperacional } from "../../hooks/useDispositivoOperacional";
 import { atualizarStatusPedidoCozinha, listarPedidosCozinha } from "../../services/cozinhaService";
-import { clearOperadorSession, clearSession, getAccessToken, getOperador, getOperadorToken } from "../../services/tokenStorage";
+import { clearOperadorSession, getOperadorToken } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { OperadorAutenticadoResponse } from "../../types/auth";
 import type { PedidoCozinhaResponse } from "../../types/cozinha";
 import { getProximoStatusCozinha } from "../../utils/cozinhaStatus";
+import { rotuloTipoDispositivo } from "../../utils/tipoDispositivo";
 
 export function CozinhaHomePage() {
-  const navigate = useNavigate();
+  const {
+    dispositivo,
+    operador,
+    dispositivoCompativel,
+    setOperador,
+    invalidarSessaoDispositivo,
+    handleAtivarDispositivo,
+    handleTrocarDispositivo,
+  } = useDispositivoOperacional("COZINHA");
+
   const [pedidos, setPedidos] = useState<PedidoCozinhaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
-  const [operador, setOperador] = useState<OperadorAutenticadoResponse | null>(getOperador());
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -27,24 +35,19 @@ export function CozinhaHomePage() {
   const carregarPedidos = useCallback(async () => {
     setLoading(true);
     setErro(null);
-    setSemAutorizacao(false);
     setMensagemSucesso(null);
 
     try {
       const response = await listarPedidosCozinha();
       setPedidos(response);
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setSemAutorizacao(true);
-        if (error.status === 401) {
-          // Token inválido/expirado: não serve para mais nada, força nova ativação.
-          clearSession();
-          setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
-        } else {
-          // 403: token válido, mas sem permissão de COZINHA — pode ser legítimo
-          // para outro módulo (Totem/Caixa), então a sessão não é apagada.
-          setErro("Este dispositivo não tem permissão para acessar a Cozinha.");
-        }
+      if (error instanceof ApiError && error.status === 401) {
+        // TASK-112: token de dispositivo ou de operador inválido/expirado — sem distinção possível
+        // aqui (a listagem exige os dois desde a TASK-111), limpa ambos e volta ao card de acesso.
+        setPedidos([]);
+        invalidarSessaoDispositivo();
+      } else if (error instanceof ApiError && error.status === 403) {
+        setErro("Este dispositivo ou operador não tem permissão para acessar a Cozinha.");
       } else {
         setErro(
           error instanceof ApiError
@@ -55,15 +58,15 @@ export function CozinhaHomePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [invalidarSessaoDispositivo]);
 
   useEffect(() => {
-    if (!getAccessToken()) {
-      navigate("/ativar-dispositivo", { replace: true });
+    if (!dispositivo || !dispositivoCompativel || !operador) {
+      setLoading(false);
       return;
     }
     void carregarPedidos();
-  }, [navigate, carregarPedidos]);
+  }, [dispositivo, dispositivoCompativel, operador, carregarPedidos]);
 
   const marcarAcaoEmAndamento = useCallback((pedidoId: number, emAndamento: boolean) => {
     setAcoesEmAndamento((atual) => {
@@ -101,9 +104,8 @@ export function CozinhaHomePage() {
             setOperador(null);
             setErrosAcao((atual) => ({ ...atual, [pedidoId]: "Sessão do operador expirada. Identifique-se novamente." }));
           } else {
-            clearSession();
-            setSemAutorizacao(true);
-            setErro("Sessão expirada. Ative o dispositivo novamente para continuar.");
+            setPedidos([]);
+            invalidarSessaoDispositivo();
           }
         } else if (error instanceof ApiError && error.status === 403) {
           setErrosAcao((atual) => ({
@@ -126,15 +128,65 @@ export function CozinhaHomePage() {
         marcarAcaoEmAndamento(pedidoId, false);
       }
     },
-    [pedidos, carregarPedidos, marcarAcaoEmAndamento],
+    [pedidos, carregarPedidos, marcarAcaoEmAndamento, invalidarSessaoDispositivo, setOperador],
   );
+
+  // TASK-112: sem dispositivo (nunca ativado, ou sessão invalidada) — card com caminho claro para ativar.
+  if (!dispositivo) {
+    return (
+      <AppLayout title="Cozinha" description="Pedidos enviados para preparo e atualização de status." centralizado>
+        <DispositivoAcessoCard
+          titulo="Cozinha não ativada"
+          mensagem="Este terminal de Cozinha ainda não foi ativado. Ative o equipamento para continuar."
+          acaoPrincipal={{ rotulo: "Ativar este dispositivo", onAcionar: handleAtivarDispositivo }}
+        />
+      </AppLayout>
+    );
+  }
+
+  // TASK-112: dispositivo autenticado, mas de outro tipo (ex.: CAIXA abrindo /cozinha).
+  if (!dispositivoCompativel) {
+    return (
+      <AppLayout title="Cozinha" description="Pedidos enviados para preparo e atualização de status." centralizado>
+        <DispositivoAcessoCard
+          titulo="Dispositivo incompatível"
+          mensagem={`Este equipamento está ativado como ${rotuloTipoDispositivo(dispositivo.tipoDispositivo)}, não como Cozinha.`}
+          acaoPrincipal={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
+        />
+      </AppLayout>
+    );
+  }
+
+  // TASK-111/112: sem operador identificado, a tela mostra só o login centralizado — nenhum pedido é
+  // buscado nem renderizado (ver o efeito acima, que só chama carregarPedidos quando há operador).
+  if (!operador) {
+    return (
+      <AppLayout title="Cozinha" description="Identifique-se para acessar a Cozinha." centralizado>
+        <OperadorPainel
+          operador={null}
+          onIdentificado={(response) => setOperador(response.operador)}
+          onTrocar={() => setOperador(null)}
+          mensagemIdentificacao="Identifique-se para acessar a Cozinha."
+          acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
+        />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Cozinha" description="Pedidos enviados para preparo e atualização de status.">
       <OperadorPainel
         operador={operador}
         onIdentificado={(response) => setOperador(response.operador)}
-        onTrocar={() => setOperador(null)}
+        onTrocar={() => {
+          // TASK-111: troca de operador oculta os pedidos imediatamente — a próxima renderização já
+          // cai no branch "!operador" acima, então isto é só higiene de estado.
+          setOperador(null);
+          setPedidos([]);
+          setErro(null);
+          setMensagemSucesso(null);
+        }}
+        acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
       />
 
       <div className="caixa-toolbar">
@@ -154,15 +206,9 @@ export function CozinhaHomePage() {
       {!loading && erro && (
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
-          {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/ativar-dispositivo")}>
-              Ir para ativação de dispositivo
-            </Button>
-          ) : (
-            <Button type="button" onClick={() => void carregarPedidos()}>
-              Tentar novamente
-            </Button>
-          )}
+          <Button type="button" onClick={() => void carregarPedidos()}>
+            Tentar novamente
+          </Button>
         </div>
       )}
 

@@ -6,6 +6,7 @@ import { RestauranteCard } from "../../components/admin/restaurantes/Restaurante
 import { RestauranteForm } from "../../components/admin/restaurantes/RestauranteForm";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { Modal } from "../../components/ui/Modal";
 import {
   ativarRestaurante,
   atualizarRestaurante,
@@ -13,25 +14,31 @@ import {
   desativarRestaurante,
   listarRestaurantes,
 } from "../../services/adminRestauranteService";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import { ApiError } from "../../types/api";
 import type {
   AtualizarRestauranteRequest,
   CriarRestauranteRequest,
   RestauranteAdminResponse,
 } from "../../types/restaurante";
+import { extrairErrosCampoApi } from "../../utils/apiFieldErrors";
+
+const CAMPOS_RESTAURANTE = ["nome", "cnpj", "endereco"] as const;
 
 export function AdminRestaurantesPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [restaurantes, setRestaurantes] = useState<RestauranteAdminResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
+  const [modalAberto, setModalAberto] = useState(false);
   const [restauranteEmEdicao, setRestauranteEmEdicao] = useState<RestauranteAdminResponse | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [errosCampoApi, setErrosCampoApi] = useState<Partial<Record<(typeof CAMPOS_RESTAURANTE)[number], string>>>({});
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -50,7 +57,7 @@ export function AdminRestaurantesPage() {
         setSemAutorizacao(true);
         if (error.status === 401) {
           // Token inválido/expirado: não serve para mais nada, força novo login.
-          clearSession();
+          void logout();
           setErro("Sessão expirada. Faça login novamente.");
         } else {
           // 403: token válido, mas sem permissão (só SUPER_ADMIN acessa restaurantes)
@@ -67,15 +74,11 @@ export function AdminRestaurantesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
-    if (!getAccessToken() || !getStoredUsuario()) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     void carregarRestaurantes();
-  }, [navigate, carregarRestaurantes]);
+  }, [carregarRestaurantes]);
 
   const marcarAcaoEmAndamento = useCallback((id: number, emAndamento: boolean) => {
     setAcoesEmAndamento((atual) => {
@@ -91,7 +94,7 @@ export function AdminRestaurantesPage() {
 
   const tratarErroAcao = useCallback((id: number, error: unknown, mensagemPadrao: string) => {
     if (error instanceof ApiError && error.status === 401) {
-      clearSession();
+      void logout();
       setSemAutorizacao(true);
       setErro("Sessão expirada. Faça login novamente.");
     } else if (error instanceof ApiError && error.status === 403) {
@@ -105,26 +108,35 @@ export function AdminRestaurantesPage() {
     } else {
       setErrosAcao((atual) => ({ ...atual, [id]: mensagemPadrao }));
     }
-  }, []);
+  }, [logout]);
 
   const handleCriar = useCallback(
     async (request: CriarRestauranteRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await criarRestaurante(request);
         await carregarRestaurantes();
+        setModalAberto(false);
         setMensagemSucesso(`Restaurante "${response.nome}" cadastrado (ID ${response.id}).`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
           setErroSalvar("Você não tem permissão para cadastrar restaurantes.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(error.message || "Dados inválidos. O CNPJ pode já estar cadastrado.");
+          // TASK-115: se a API rejeitou por validação de campo (@Valid), o erro já aparece inline
+          // no campo — a mensagem genérica só aparece se nenhum campo reconhecido foi retornado.
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_RESTAURANTE);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O CNPJ pode já estar cadastrado.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -134,22 +146,24 @@ export function AdminRestaurantesPage() {
         setSalvando(false);
       }
     },
-    [carregarRestaurantes],
+    [carregarRestaurantes, logout],
   );
 
   const handleAtualizar = useCallback(
     async (id: number, request: AtualizarRestauranteRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await atualizarRestaurante(id, request);
         await carregarRestaurantes();
         setRestauranteEmEdicao(null);
+        setModalAberto(false);
         setMensagemSucesso(`Restaurante "${response.nome}" atualizado.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -157,7 +171,12 @@ export function AdminRestaurantesPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Restaurante não encontrado.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(error.message || "Dados inválidos. O CNPJ pode já pertencer a outro restaurante.");
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_RESTAURANTE);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O CNPJ pode já pertencer a outro restaurante.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -167,7 +186,7 @@ export function AdminRestaurantesPage() {
         setSalvando(false);
       }
     },
-    [carregarRestaurantes],
+    [carregarRestaurantes, logout],
   );
 
   const handleAtivar = useCallback(
@@ -206,13 +225,24 @@ export function AdminRestaurantesPage() {
     [carregarRestaurantes, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
-  function handleEditar(restaurante: RestauranteAdminResponse) {
+  function handleNovo() {
     setErroSalvar(null);
-    setRestauranteEmEdicao(restaurante);
+    setErrosCampoApi({});
+    setRestauranteEmEdicao(null);
+    setModalAberto(true);
   }
 
-  function handleCancelarEdicao() {
+  function handleEditar(restaurante: RestauranteAdminResponse) {
     setErroSalvar(null);
+    setErrosCampoApi({});
+    setRestauranteEmEdicao(restaurante);
+    setModalAberto(true);
+  }
+
+  function handleFecharModal() {
+    setModalAberto(false);
+    setErroSalvar(null);
+    setErrosCampoApi({});
     setRestauranteEmEdicao(null);
   }
 
@@ -224,6 +254,9 @@ export function AdminRestaurantesPage() {
       <AdminVoltarLink />
 
       <div className="caixa-toolbar">
+        <Button type="button" onClick={handleNovo}>
+          Novo restaurante
+        </Button>
         <Button type="button" onClick={() => void carregarRestaurantes()} loading={loading}>
           Atualizar lista
         </Button>
@@ -239,7 +272,7 @@ export function AdminRestaurantesPage() {
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
           {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/admin/login")}>
+            <Button type="button" onClick={() => navigate("/login")}>
               Ir para login
             </Button>
           ) : (
@@ -252,14 +285,21 @@ export function AdminRestaurantesPage() {
 
       {!semAutorizacao && (
         <>
-          <RestauranteForm
-            restauranteEmEdicao={restauranteEmEdicao}
-            onCriar={handleCriar}
-            onAtualizar={handleAtualizar}
-            onCancelarEdicao={handleCancelarEdicao}
-            salvando={salvando}
-            erro={erroSalvar}
-          />
+          <Modal
+            aberto={modalAberto}
+            titulo={restauranteEmEdicao ? `Editar restaurante — ${restauranteEmEdicao.nome}` : "Cadastrar restaurante"}
+            onFechar={handleFecharModal}
+          >
+            <RestauranteForm
+              restauranteEmEdicao={restauranteEmEdicao}
+              onCriar={handleCriar}
+              onAtualizar={handleAtualizar}
+              onCancelarEdicao={handleFecharModal}
+              salvando={salvando}
+              erro={erroSalvar}
+              errosCampoApi={errosCampoApi}
+            />
+          </Modal>
 
           {loading && <p className="totem-estado">Carregando restaurantes...</p>}
 

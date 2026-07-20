@@ -11,14 +11,32 @@ interface OperadorPainelProps {
   operador: OperadorAutenticadoResponse | null;
   onIdentificado: (response: OperadorLoginResponse) => void;
   onTrocar: () => void;
+  /**
+   * Mensagem de contexto mostrada abaixo de "Operador não identificado." (TASK-111) — cada página
+   * (Caixa/Cozinha) informa a sua própria, já que o conteúdo operacional fica bloqueado até o login.
+   */
+  mensagemIdentificacao?: string;
+  /**
+   * Ação extra (TASK-112) exibida junto de "Trocar operador" (com operador identificado) e abaixo
+   * do formulário de login (sem operador) — tipicamente "Trocar dispositivo". Opcional para não
+   * forçar toda página que usa este componente a lidar com dispositivo.
+   */
+  acaoTrocarDispositivo?: { rotulo: string; onAcionar: () => void };
 }
 
 /**
- * Identificação de operador humano dentro de um dispositivo CAIXA/COZINHA já ativo (TASK-092) —
- * puramente aditivo: a tela continua funcionando normalmente sem operador identificado (aviso
- * abaixo), só passa a registrar quem agiu quando alguém se identifica.
+ * Identificação de operador humano dentro de um dispositivo CAIXA/COZINHA já ativo (TASK-092).
+ * Desde a TASK-111, Caixa/Cozinha só renderizam este componente (sem o restante da tela) enquanto
+ * não houver operador identificado — a ação de login é obrigatória para ver dados operacionais,
+ * não apenas para fins de auditoria.
  */
-export function OperadorPainel({ operador, onIdentificado, onTrocar }: OperadorPainelProps) {
+export function OperadorPainel({
+  operador,
+  onIdentificado,
+  onTrocar,
+  mensagemIdentificacao = "Identifique-se para continuar.",
+  acaoTrocarDispositivo,
+}: OperadorPainelProps) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
@@ -64,9 +82,16 @@ export function OperadorPainel({ operador, onIdentificado, onTrocar }: OperadorP
     return (
       <div className="operador-painel">
         <span className="operador-painel__nome">Operador: {operador.nome}</span>
-        <button type="button" className="operador-painel__trocar" onClick={handleTrocar}>
-          Trocar operador
-        </button>
+        <div className="operador-painel__acoes">
+          <Button type="button" variant="secondary" onClick={handleTrocar}>
+            Trocar operador
+          </Button>
+          {acaoTrocarDispositivo && (
+            <Button type="button" variant="secondary" onClick={acaoTrocarDispositivo.onAcionar}>
+              {acaoTrocarDispositivo.rotulo}
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -74,7 +99,7 @@ export function OperadorPainel({ operador, onIdentificado, onTrocar }: OperadorP
   return (
     <div className="operador-painel operador-painel--identificacao">
       <p className="totem-estado">
-        Operador não identificado. As ações serão registradas apenas pelo dispositivo.
+        Operador não identificado. {mensagemIdentificacao}
       </p>
       <form onSubmit={(event) => void handleSubmit(event)} className="operador-painel__form">
         <Input
@@ -101,6 +126,11 @@ export function OperadorPainel({ operador, onIdentificado, onTrocar }: OperadorP
           Identificar operador
         </Button>
       </form>
+      {acaoTrocarDispositivo && (
+        <Button type="button" variant="secondary" onClick={acaoTrocarDispositivo.onAcionar}>
+          {acaoTrocarDispositivo.rotulo}
+        </Button>
+      )}
     </div>
   );
 }

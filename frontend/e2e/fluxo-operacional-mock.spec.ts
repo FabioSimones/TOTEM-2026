@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { cardapioMock, mockJson, pedidoCozinhaMock, pedidoPendenteCaixaMock } from "./helpers/mockApi";
+import {
+  cardapioMock,
+  mockJson,
+  operadorLoginResponseMock,
+  operadorMock,
+  pedidoCozinhaMock,
+  pedidoPendenteCaixaMock,
+} from "./helpers/mockApi";
 import { dispositivoMock, seedDeviceSession } from "./helpers/storage";
 
 /**
@@ -24,21 +31,43 @@ test.describe("Fluxo operacional — homologação visual mínima (mockado)", ()
     await expect(page.getByRole("button", { name: "Finalizar pedido" })).toBeVisible();
   });
 
-  test("Caixa: carrega a lista de pendências e mostra o botão de ação sugerida", async ({ page }) => {
+  test("Caixa: sem operador mostra só o login; após identificar, carrega a lista e mostra ação sugerida", async ({
+    page,
+  }) => {
     await seedDeviceSession(page, dispositivoMock("CAIXA"));
     await mockJson(page, "**/api/caixa/pedidos/pendentes", 200, pedidoPendenteCaixaMock());
+    await mockJson(page, "**/api/auth/operador/login", 200, operadorLoginResponseMock());
 
     await page.goto("/caixa");
+
+    // TASK-111: sem operador identificado, nenhum pedido aparece.
+    await expect(page.getByText(/Operador não identificado/)).toBeVisible();
+    await expect(page.getByText("A1")).not.toBeVisible();
+
+    await page.getByLabel("Email do operador").fill(operadorMock.email);
+    await page.getByLabel("Senha").fill("senha-operador-e2e");
+    await page.getByRole("button", { name: "Identificar operador" }).click();
 
     await expect(page.getByText("A1")).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirmar dinheiro" })).toBeVisible();
   });
 
-  test("Cozinha: carrega a lista de pedidos e mostra o botão de avanço de status", async ({ page }) => {
+  test("Cozinha: sem operador mostra só o login; após identificar, carrega a fila e mostra avanço de status", async ({
+    page,
+  }) => {
     await seedDeviceSession(page, dispositivoMock("COZINHA"));
     await mockJson(page, "**/api/cozinha/pedidos", 200, pedidoCozinhaMock());
+    await mockJson(page, "**/api/auth/operador/login", 200, operadorLoginResponseMock());
 
     await page.goto("/cozinha");
+
+    // TASK-111: sem operador identificado, nenhum pedido aparece.
+    await expect(page.getByText(/Operador não identificado/)).toBeVisible();
+    await expect(page.getByText("A2")).not.toBeVisible();
+
+    await page.getByLabel("Email do operador").fill(operadorMock.email);
+    await page.getByLabel("Senha").fill("senha-operador-e2e");
+    await page.getByRole("button", { name: "Identificar operador" }).click();
 
     await expect(page.getByText("A2")).toBeVisible();
     await expect(page.getByRole("button", { name: "Iniciar preparo" })).toBeVisible();

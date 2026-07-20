@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../../components/layout/AppLayout";
-import { logout } from "../../services/authService";
-import { clearSession, getAccessToken, getRefreshToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import type { UsuarioAutenticadoResponse } from "../../types/auth";
 import { isOperador, isSuperAdmin } from "../../utils/adminScope";
 
@@ -36,31 +34,18 @@ const AREAS_ADMIN: AreaAdmin[] = [
   { nome: "Pedidos", rota: "/admin/pedidos" },
 ];
 
+/**
+ * Sessão de usuário e redirecionamento para /login (quando não autenticado) já são resolvidos por
+ * `ProtectedRoute` em AppRoutes.tsx — esta página assume `user` sempre presente (auditoria,
+ * eliminação da duplicação de guards nas 8 páginas administrativas).
+ */
 export function AdminHomePage() {
   const navigate = useNavigate();
-  const [usuario, setUsuario] = useState<UsuarioAutenticadoResponse | null>(null);
-
-  useEffect(() => {
-    const usuarioSalvo = getStoredUsuario();
-    if (!getAccessToken() || !usuarioSalvo) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
-    setUsuario(usuarioSalvo);
-  }, [navigate]);
+  const { user: usuario, logout } = useAuth();
 
   async function handleSair() {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      try {
-        await logout({ refreshToken });
-      } catch {
-        // Best-effort: mesmo se o backend falhar (ex.: já expirado, rede indisponível),
-        // a sessão local é sempre limpa — o usuário não pode ficar "preso" logado.
-      }
-    }
-    clearSession();
-    navigate("/admin/login", { replace: true });
+    await logout();
+    navigate("/login", { replace: true });
   }
 
   if (!usuario) {

@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
 import type { AtualizarUsuarioRequest, CriarUsuarioRequest, PerfilUsuario, UsuarioAdminResponse } from "../../../types/usuario";
+import { focarPrimeiroErro, isValidEmail } from "../../../utils/validacaoFormulario";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
+import { FieldError } from "../../ui/FieldError";
 import { Input } from "../../ui/Input";
 
 const PERFIS: { valor: PerfilUsuario; rotulo: string }[] = [
@@ -12,6 +14,9 @@ const PERFIS: { valor: PerfilUsuario; rotulo: string }[] = [
   { valor: "OPERADOR_CAIXA", rotulo: "Operador de caixa" },
   { valor: "OPERADOR_COZINHA", rotulo: "Operador de cozinha" },
 ];
+
+type CampoUsuario = "nome" | "email" | "senha" | "restauranteId";
+const ORDEM_CAMPOS: readonly CampoUsuario[] = ["nome", "email", "senha", "restauranteId"];
 
 interface UsuarioFormProps {
   usuarioEmEdicao: UsuarioAdminResponse | null;
@@ -34,6 +39,8 @@ interface UsuarioFormProps {
   onCancelarEdicao: () => void;
   salvando: boolean;
   erro: string | null;
+  /** TASK-115: erros de campo vindos da API (`errors[]` do backend), mapeados pela página. */
+  errosCampoApi?: Partial<Record<CampoUsuario, string>>;
 }
 
 export function UsuarioForm({
@@ -47,6 +54,7 @@ export function UsuarioForm({
   onCancelarEdicao,
   salvando,
   erro,
+  errosCampoApi,
 }: UsuarioFormProps) {
   const perfisExibidos = perfisPermitidos ? PERFIS.filter((item) => perfisPermitidos.includes(item.valor)) : PERFIS;
 
@@ -55,7 +63,12 @@ export function UsuarioForm({
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [perfil, setPerfil] = useState<PerfilUsuario>(perfisExibidos[0]?.valor ?? "OPERADOR_CAIXA");
-  const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  const [erros, setErros] = useState<Partial<Record<CampoUsuario, string>>>({});
+
+  const nomeRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const senhaRef = useRef<HTMLInputElement>(null);
+  const restauranteGrupoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (usuarioEmEdicao) {
@@ -70,33 +83,67 @@ export function UsuarioForm({
       setSenha("");
       setPerfil(perfisExibidos[0]?.valor ?? "OPERADOR_CAIXA");
     }
-    setErroValidacao(null);
+    setErros({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarioEmEdicao, restauranteSelecionadoPadrao, restauranteFixo, restaurantes]);
 
   const restauranteIdEfetivo = restauranteFixo?.id ?? restauranteId;
 
+  function validar(): Partial<Record<CampoUsuario, string>> {
+    const proximosErros: Partial<Record<CampoUsuario, string>> = {};
+
+    if (!nome.trim()) {
+      proximosErros.nome = "Informe o nome do usuário.";
+    } else if (nome.trim().length > 200) {
+      proximosErros.nome = "O nome deve ter no máximo 200 caracteres.";
+    }
+
+    if (!email.trim()) {
+      proximosErros.email = "Informe o e-mail do usuário.";
+    } else if (!isValidEmail(email.trim())) {
+      proximosErros.email = "Informe um e-mail válido, no formato nome@dominio.com.";
+    } else if (email.trim().length > 255) {
+      proximosErros.email = "O e-mail deve ter no máximo 255 caracteres.";
+    }
+
+    if (!usuarioEmEdicao) {
+      if (!senha.trim()) {
+        proximosErros.senha = "Informe uma senha.";
+      } else if (senha.length < 8 || senha.length > 100) {
+        proximosErros.senha = "A senha deve ter entre 8 e 100 caracteres.";
+      }
+    }
+
+    if (perfil !== "SUPER_ADMIN" && !restauranteIdEfetivo) {
+      proximosErros.restauranteId = "Selecione um restaurante para este perfil.";
+    }
+
+    return proximosErros;
+  }
+
+  function revalidarSeNecessario(campo: CampoUsuario) {
+    if (!erros[campo]) {
+      return;
+    }
+    const proximosErros = validar();
+    setErros((atual) => ({ ...atual, [campo]: proximosErros[campo] }));
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!nome.trim()) {
-      setErroValidacao("Informe o nome do usuário.");
-      return;
-    }
-    if (!email.trim() || !email.includes("@")) {
-      setErroValidacao("Informe um email válido.");
-      return;
-    }
-    if (!usuarioEmEdicao && senha.trim().length < 8) {
-      setErroValidacao("Informe uma senha com no mínimo 8 caracteres.");
-      return;
-    }
-    if (perfil !== "SUPER_ADMIN" && !restauranteIdEfetivo) {
-      setErroValidacao("Selecione um restaurante para este perfil.");
-      return;
-    }
+    const proximosErros = validar();
+    setErros(proximosErros);
 
-    setErroValidacao(null);
+    if (Object.keys(proximosErros).length > 0) {
+      focarPrimeiroErro(ORDEM_CAMPOS, proximosErros, {
+        nome: nomeRef,
+        email: emailRef,
+        senha: senhaRef,
+        restauranteId: restauranteGrupoRef,
+      });
+      return;
+    }
 
     const restauranteIdFinal = perfil === "SUPER_ADMIN" ? undefined : (restauranteIdEfetivo as number);
 
@@ -121,7 +168,6 @@ export function UsuarioForm({
   if (!restauranteFixo && perfil !== "SUPER_ADMIN" && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
-        <h2 className="dispositivo-form__titulo">Cadastrar usuário</h2>
         <p className="totem-estado">
           Cadastre um restaurante antes de criar usuários que não sejam SUPER_ADMIN — veja{" "}
           <Link to="/admin/restaurantes">Admin — Restaurantes</Link>.
@@ -130,12 +176,10 @@ export function UsuarioForm({
     );
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="dispositivo-form">
-      <h2 className="dispositivo-form__titulo">
-        {usuarioEmEdicao ? `Editar usuário — ${usuarioEmEdicao.nome}` : "Cadastrar usuário"}
-      </h2>
+  const erroRestaurante = erros.restauranteId ?? errosCampoApi?.restauranteId;
 
+  return (
+    <form onSubmit={handleSubmit} className="dispositivo-form" noValidate>
       <div className="dispositivo-form__tipo">
         <span className="dispositivo-form__tipo-rotulo">Perfil</span>
         <div className="dispositivo-form__tipo-opcoes">
@@ -145,7 +189,10 @@ export function UsuarioForm({
               type="button"
               className={"dispositivo-form__tipo-botao" + (perfil === item.valor ? " dispositivo-form__tipo-botao--ativo" : "")}
               aria-pressed={perfil === item.valor}
-              onClick={() => setPerfil(item.valor)}
+              onClick={() => {
+                setPerfil(item.valor);
+                revalidarSeNecessario("restauranteId");
+              }}
               disabled={salvando}
             >
               {item.rotulo}
@@ -155,12 +202,19 @@ export function UsuarioForm({
       </div>
 
       {perfil !== "SUPER_ADMIN" && (
-        <div className="dispositivo-form__tipo">
+        <div className={"dispositivo-form__tipo" + (erroRestaurante ? " dispositivo-form__tipo--invalid" : "")}>
           <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
           {restauranteFixo ? (
             <p className="dispositivo-form__restaurante-fixo">{restauranteFixo.rotulo}</p>
           ) : (
-            <div className="dispositivo-form__tipo-opcoes">
+            <div
+              className="dispositivo-form__tipo-opcoes"
+              ref={restauranteGrupoRef}
+              tabIndex={-1}
+              role="group"
+              aria-label="Restaurante"
+              aria-describedby={erroRestaurante ? "restauranteUsuario-error" : undefined}
+            >
               {restaurantes.map((restaurante) => (
                 <button
                   key={restaurante.id}
@@ -170,7 +224,10 @@ export function UsuarioForm({
                     (restauranteId === restaurante.id ? " dispositivo-form__tipo-botao--ativo" : "")
                   }
                   aria-pressed={restauranteId === restaurante.id}
-                  onClick={() => setRestauranteId(restaurante.id)}
+                  onClick={() => {
+                    setRestauranteId(restaurante.id);
+                    revalidarSeNecessario("restauranteId");
+                  }}
                   disabled={salvando}
                 >
                   {restaurante.nome}
@@ -178,52 +235,66 @@ export function UsuarioForm({
               ))}
             </div>
           )}
+          {!restauranteFixo && <FieldError id="restauranteUsuario-error" message={erroRestaurante} />}
         </div>
       )}
 
       <Input
         id="nomeUsuario"
+        ref={nomeRef}
         label="Nome"
         value={nome}
-        onChange={(event) => setNome(event.target.value)}
+        onChange={(event) => {
+          setNome(event.target.value);
+          revalidarSeNecessario("nome");
+        }}
         placeholder="Ex.: Maria Operadora"
         disabled={salvando}
+        error={erros.nome ?? errosCampoApi?.nome}
       />
 
       <Input
         id="emailUsuario"
+        ref={emailRef}
         label="Email"
         type="email"
         value={email}
-        onChange={(event) => setEmail(event.target.value)}
+        onChange={(event) => {
+          setEmail(event.target.value);
+          revalidarSeNecessario("email");
+        }}
         placeholder="Ex.: maria@totem.local"
         disabled={salvando}
+        error={erros.email ?? errosCampoApi?.email}
       />
 
       {!usuarioEmEdicao && (
         <Input
           id="senhaUsuario"
+          ref={senhaRef}
           label="Senha"
           type="password"
           value={senha}
-          onChange={(event) => setSenha(event.target.value)}
+          onChange={(event) => {
+            setSenha(event.target.value);
+            revalidarSeNecessario("senha");
+          }}
           placeholder="Mínimo 8 caracteres"
           disabled={salvando}
+          error={erros.senha ?? errosCampoApi?.senha}
         />
       )}
 
-      <ErrorMessage message={erroValidacao ?? erro} />
+      <ErrorMessage message={erro} />
 
       <div className="dispositivo-form__acoes">
         <Button type="submit" loading={salvando}>
           {usuarioEmEdicao ? "Salvar alterações" : "Cadastrar usuário"}
         </Button>
 
-        {usuarioEmEdicao && (
-          <button type="button" className="dispositivo-form__cancelar" onClick={onCancelarEdicao} disabled={salvando}>
-            Cancelar edição
-          </button>
-        )}
+        <Button type="button" variant="secondary" onClick={onCancelarEdicao} disabled={salvando}>
+          {usuarioEmEdicao ? "Cancelar edição" : "Cancelar"}
+        </Button>
       </div>
     </form>
   );

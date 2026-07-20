@@ -107,3 +107,103 @@ jobs:
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
+
+  frontend-e2e-integrado:
+    name: Frontend E2E Integrado (Backend real)
+    runs-on: ubuntu-latest
+    # Gate atrás dos jobs mais baratos primeiro (TASK-106) — este é o job mais lento (sobe
+    # PostgreSQL + compila e roda o backend real antes de qualquer teste), não vale gastar esse
+    # tempo se o básico do frontend, o E2E mockado ou a integração real do backend já falharam.
+    needs:
+      - frontend
+      - frontend-e2e
+      - backend-postgres-it
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: totem_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # Valores só para este banco/backend efêmeros do runner — nunca reais, nunca produção (ver
+      # frontend/README.md seção "E2E integrado" para o mesmo padrão usado localmente).
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_NAME: totem_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: ci-e2e-integrado-jwt-secret-descartavel-com-mais-de-32-caracteres
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:5174
+      SUPER_ADMIN_BOOTSTRAP_ENABLED: 'true'
+      SUPER_ADMIN_EMAIL: e2e-admin@totem.local
+      SUPER_ADMIN_PASSWORD: SenhaE2EIntegradoCI@2026!
+      E2E_API_BASE_URL: http://127.0.0.1:8080
+      E2E_ADMIN_EMAIL: e2e-admin@totem.local
+      E2E_ADMIN_PASSWORD: SenhaE2EIntegradoCI@2026!
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Configurar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Subir backend real em background (mvn spring-boot:run)
+        working-directory: backend
+        run: |
+          nohup mvn -B spring-boot:run > ../backend-e2e-integrado.log 2>&1 &
+          disown
+
+      - name: Aguardar backend responder (actuator/health)
+        run: |
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8080/actuator/health; then
+              echo "Backend respondeu após $((i*3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Backend não respondeu a tempo — últimas linhas do log:"
+          tail -n 100 backend-e2e-integrado.log
+          exit 1
+
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+
+      - name: Instalar browsers do Playwright (chromium)
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: npm run e2e:integrado
+        working-directory: frontend
+        run: npm run e2e:integrado
+
+      - name: Publicar relatório do E2E integrado e log do backend (em falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-integrado
+          path: |
+            frontend/playwright-report-integrado/
+            frontend/test-results-integrado/
+            backend-e2e-integrado.log
+          retention-days: 7

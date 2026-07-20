@@ -31,6 +31,16 @@ Esses três nomes (exatamente como aparecem na aba "Checks" de um Pull Request) 
 
 Adicionado na TASK-103, com `needs: frontend` (só roda depois que o job `Frontend (build + lint)` já passou). **Primeiro run real validado na TASK-103.1**: run `29361958515` (commit `0f98475`, `push` para `main`, 2026-07-14) — `success`, ~40s, sem flakiness observada, 0 artifacts gerados (esperado, artifact só sobe em falha). **Recomendação**: ainda tratar como recomendado, não obrigatório — um único run verde não é suficiente para descartar flakiness intermitente do runner `ubuntu-latest` (timing de browser, contenção de CPU/rede compartilhada). Acompanhar mais 1-2 runs reais antes de promovê-lo. Depois de confirmado estável (2-3 runs verdes seguidos), adicionar `Frontend E2E (Playwright)` à lista de `Required checks` do passo 4 abaixo, junto dos outros três.
 
+### Job recomendado, mais lento — E2E integrado (TASK-106)
+
+| Nome exibido no GitHub | Comando | O que valida |
+|---|---|---|
+| `Frontend E2E Integrado (Backend real)` | `mvn spring-boot:run` (background) + `npx playwright install --with-deps chromium` + `npm run e2e:integrado` | Fluxo Totem e fluxo Caixa/Cozinha/operador de ponta a ponta contra um **backend Spring Boot real** e um **PostgreSQL real** (`services: postgres:16`, efêmero, destruído ao fim do job) — zero mocks de API |
+
+Adicionado na TASK-106, com `needs: [frontend, frontend-e2e, backend-postgres-it]` — só roda depois que o básico do frontend, o E2E mockado **e** a suíte de integração real do backend (Testcontainers) já passaram, já que é o job mais caro do workflow (sobe PostgreSQL + compila e inicia o backend antes de qualquer teste). `JWT_SECRET`/`SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD` usados são valores descartáveis definidos direto no `env:` do job (banco efêmero por run, nunca produção) — não são segredos reais, não há necessidade de GitHub Secrets aqui.
+
+**Ainda mais longe de virar obrigatório do que o `Frontend E2E (Playwright)` mockado**: além da flakiness normal de UI headless, este job soma o tempo/risco de subir um banco real e um Spring Boot real no runner (mais superfície para instabilidade transitória — timeout de boot, contenção de recursos). Recomendação: acompanhar vários runs reais (bem mais que os 2-3 do job mockado) antes sequer de cogitar torná-lo obrigatório; **não foi adicionado à lista de `Required checks` do passo 4 nesta task**, por decisão explícita do escopo da TASK-106.
+
 ## 3. Checklist manual no GitHub
 
 Caminho: **Settings → Branches → Branch protection rules → Add rule**
@@ -62,7 +72,7 @@ Caminho: **Settings → Branches → Branch protection rules → Add rule**
 ## 5. Quando o CI falhar
 
 1. Abrir o job que falhou e ler o primeiro stacktrace real (não confiar só na anotação genérica "Process completed with exit code 1" — ver TASK-099.1/TASK-100.1 para um exemplo de investigação onde a causa real só apareceu reproduzindo localmente).
-2. Reproduzir localmente com o mesmo comando do job (`mvn test`, `mvn verify -Ppostgres-it`, `npm run build`, `npm run lint`, `npm run e2e`). Para `Frontend E2E (Playwright)`, baixar primeiro o artifact `playwright-report` do run que falhou (só é publicado em falha) — contém o relatório HTML e os traces/screenshots de `frontend/test-results/`, geralmente mais rápido que tentar reproduzir cegamente.
+2. Reproduzir localmente com o mesmo comando do job (`mvn test`, `mvn verify -Ppostgres-it`, `npm run build`, `npm run lint`, `npm run e2e`, `npm run e2e:integrado` — este último exige backend real rodando, ver `frontend/README.md` seção "E2E integrado"). Para `Frontend E2E (Playwright)`/`Frontend E2E Integrado (Backend real)`, baixar primeiro o artifact do run que falhou (`playwright-report`/`playwright-report-integrado`, só publicado em falha) — o segundo também inclui `backend-e2e-integrado.log`, útil para distinguir falha do backend (não subiu, erro de migration, etc.) de falha do teste em si.
 3. Se o comportamento divergir entre o ambiente local (Windows, neste projeto) e o runner (`ubuntu-latest`, Linux), considerar diferenças de SO antes de suspeitar de variável de ambiente ausente — foi a causa raiz real da falha corrigida na TASK-099.1.
 4. Corrigir a causa raiz, nunca o sintoma (não desabilitar teste, não marcar como `@Disabled` sem justificativa registrada em `docs/status-mvp.md`).
 

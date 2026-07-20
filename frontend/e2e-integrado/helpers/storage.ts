@@ -8,9 +8,9 @@ import type { AtivarDispositivoResponse } from "../../src/types/auth";
  * interceptada; aqui não há interceptação nenhuma, o backend valida o token de verdade).
  */
 const STORAGE_KEYS = {
-  accessToken: "totem.accessToken",
-  refreshToken: "totem.refreshToken",
-  dispositivo: "totem.dispositivo",
+  accessToken: "totem.device.accessToken",
+  refreshToken: "totem.device.refreshToken",
+  dispositivo: "totem.device.data",
 } as const;
 
 /** Injeta a sessão de dispositivo real (resposta de POST /api/auth/dispositivos/ativar) antes da página carregar. */

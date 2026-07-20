@@ -5,7 +5,7 @@ import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { obterDashboard } from "../../services/adminDashboardService";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import { ApiError } from "../../types/api";
 import type { DashboardAdminResponse } from "../../types/dashboardAdmin";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
@@ -33,7 +33,7 @@ function montarCards(resumo: DashboardAdminResponse): CardResumo[] {
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const usuario = getStoredUsuario();
+  const { user: usuario, logout } = useAuth();
   const adminRestaurante = isAdminRestaurante(usuario);
   const restauranteIdEscopo = getRestauranteIdEscopo(usuario);
 
@@ -54,7 +54,7 @@ export function AdminDashboardPage() {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         setSemAutorizacao(true);
         if (error.status === 401) {
-          clearSession();
+          await logout();
           setErro("Sessão expirada. Faça login novamente.");
         } else {
           setErro("Você não tem permissão para acessar o dashboard.");
@@ -65,15 +65,11 @@ export function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [restauranteIdEscopo]);
+  }, [restauranteIdEscopo, logout]);
 
   useEffect(() => {
-    if (!getAccessToken() || !getStoredUsuario()) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     void carregarResumo();
-  }, [navigate, carregarResumo]);
+  }, [carregarResumo]);
 
   return (
     <AppLayout
@@ -98,7 +94,7 @@ export function AdminDashboardPage() {
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
           {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/admin/login")}>
+            <Button type="button" onClick={() => navigate("/login")}>
               Ir para login
             </Button>
           ) : (

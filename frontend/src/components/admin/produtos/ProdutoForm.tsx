@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../../../services/api";
 import { uploadImagemProduto } from "../../../services/adminUploadService";
@@ -7,12 +7,24 @@ import { ApiError } from "../../../types/api";
 import type { AtualizarProdutoRequest, CriarProdutoRequest, ProdutoAdminResponse } from "../../../types/produto";
 import type { RestauranteAdminResponse } from "../../../types/restaurante";
 import { isValidHttpUrl } from "../../../utils/url";
+import { focarPrimeiroErro } from "../../../utils/validacaoFormulario";
 import { Button } from "../../ui/Button";
 import { ErrorMessage } from "../../ui/ErrorMessage";
+import { FieldError } from "../../ui/FieldError";
 import { Input } from "../../ui/Input";
 
 const TIPOS_IMAGEM_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
 const TAMANHO_MAXIMO_IMAGEM_BYTES = 5 * 1024 * 1024; // 5MB, mesmo limite do backend
+
+type CampoProduto = "restauranteId" | "categoriaId" | "nome" | "preco" | "imagemUrl" | "ordemExibicao";
+const ORDEM_CAMPOS: readonly CampoProduto[] = [
+  "restauranteId",
+  "categoriaId",
+  "nome",
+  "preco",
+  "imagemUrl",
+  "ordemExibicao",
+];
 
 interface ProdutoFormProps {
   produtoEmEdicao: ProdutoAdminResponse | null;
@@ -29,6 +41,8 @@ interface ProdutoFormProps {
   onCancelarEdicao: () => void;
   salvando: boolean;
   erro: string | null;
+  /** TASK-115: erros de campo vindos da API (`errors[]` do backend), mapeados pela página. */
+  errosCampoApi?: Partial<Record<CampoProduto, string>>;
 }
 
 function AlternadorSimNao({
@@ -80,6 +94,7 @@ export function ProdutoForm({
   onCancelarEdicao,
   salvando,
   erro,
+  errosCampoApi,
 }: ProdutoFormProps) {
   const [restauranteId, setRestauranteId] = useState<number | null>(null);
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
@@ -91,12 +106,19 @@ export function ProdutoForm({
   const [disponivel, setDisponivel] = useState(true);
   const [destaque, setDestaque] = useState(false);
   const [recomendado, setRecomendado] = useState(false);
-  const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  const [erros, setErros] = useState<Partial<Record<CampoProduto, string>>>({});
   const [imagemFalhouAoCarregar, setImagemFalhouAoCarregar] = useState(false);
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
   const [previewLocalUrl, setPreviewLocalUrl] = useState<string | null>(null);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
+
+  const restauranteGrupoRef = useRef<HTMLDivElement>(null);
+  const categoriaGrupoRef = useRef<HTMLDivElement>(null);
+  const nomeRef = useRef<HTMLInputElement>(null);
+  const precoRef = useRef<HTMLInputElement>(null);
+  const imagemUrlRef = useRef<HTMLInputElement>(null);
+  const ordemRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (produtoEmEdicao) {
@@ -121,7 +143,7 @@ export function ProdutoForm({
       setDestaque(false);
       setRecomendado(false);
     }
-    setErroValidacao(null);
+    setErros({});
     setArquivoSelecionado(null);
     setErroUpload(null);
   }, [produtoEmEdicao, restauranteSelecionadoPadrao, restauranteFixo, restaurantes, categorias]);
@@ -170,6 +192,7 @@ export function ProdutoForm({
       const response = await uploadImagemProduto(arquivoSelecionado);
       setImagemUrl(`${API_BASE_URL}${response.url}`);
       setArquivoSelecionado(null);
+      revalidarSeNecessario("imagemUrl");
     } catch (error) {
       setErroUpload(error instanceof ApiError ? error.message : "Não foi possível enviar a imagem.");
     } finally {
@@ -180,7 +203,6 @@ export function ProdutoForm({
   if (!restauranteFixo && !produtoEmEdicao && restaurantes.length === 0) {
     return (
       <div className="dispositivo-form">
-        <h2 className="dispositivo-form__titulo">Cadastrar produto</h2>
         <p className="totem-estado">
           Cadastre um restaurante antes de criar produtos — veja{" "}
           <Link to="/admin/restaurantes">Admin — Restaurantes</Link>.
@@ -197,50 +219,83 @@ export function ProdutoForm({
   function handleSelecionarRestaurante(id: number) {
     setRestauranteId(id);
     setCategoriaId(categorias.find((categoria) => categoria.restauranteId === id)?.id ?? null);
+    revalidarSeNecessario("restauranteId");
+    revalidarSeNecessario("categoriaId");
+  }
+
+  function validar(): Partial<Record<CampoProduto, string>> {
+    const proximosErros: Partial<Record<CampoProduto, string>> = {};
+
+    if (!restauranteFixo && !produtoEmEdicao && !restauranteId) {
+      proximosErros.restauranteId = "Selecione um restaurante.";
+    }
+    if (!categoriaId) {
+      proximosErros.categoriaId = "Selecione uma categoria.";
+    }
+    if (!nome.trim()) {
+      proximosErros.nome = "Informe o nome do produto.";
+    } else if (nome.trim().length < 2 || nome.trim().length > 200) {
+      proximosErros.nome = "O nome deve ter entre 2 e 200 caracteres.";
+    }
+
+    const precoNumero = Number(preco.replace(",", "."));
+    if (!preco.trim() || Number.isNaN(precoNumero) || precoNumero <= 0) {
+      proximosErros.preco = "Informe um preço válido maior que zero.";
+    }
+
+    const imagemUrlValidacao = imagemUrl.trim();
+    if (imagemUrlValidacao) {
+      if (!isValidHttpUrl(imagemUrlValidacao)) {
+        proximosErros.imagemUrl = "Informe uma URL válida, começando com http:// ou https://.";
+      } else if (imagemUrlValidacao.length > 500) {
+        proximosErros.imagemUrl = "A URL deve ter no máximo 500 caracteres.";
+      }
+    }
+
+    if (ordemExibicao.trim()) {
+      const numero = Number(ordemExibicao);
+      if (Number.isNaN(numero) || numero < 0) {
+        proximosErros.ordemExibicao = "A ordem de exibição deve ser um número zero ou positivo.";
+      }
+    }
+
+    return proximosErros;
+  }
+
+  function revalidarSeNecessario(campo: CampoProduto) {
+    if (!erros[campo]) {
+      return;
+    }
+    const proximosErros = validar();
+    setErros((atual) => ({ ...atual, [campo]: proximosErros[campo] }));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!restauranteFixo && !produtoEmEdicao && !restauranteId) {
-      setErroValidacao("Selecione um restaurante.");
-      return;
-    }
-    if (!categoriaId) {
-      setErroValidacao("Selecione uma categoria.");
-      return;
-    }
-    if (!nome.trim()) {
-      setErroValidacao("Informe o nome do produto.");
+    const proximosErros = validar();
+    setErros(proximosErros);
+
+    if (Object.keys(proximosErros).length > 0) {
+      focarPrimeiroErro(ORDEM_CAMPOS, proximosErros, {
+        restauranteId: restauranteGrupoRef,
+        categoriaId: categoriaGrupoRef,
+        nome: nomeRef,
+        preco: precoRef,
+        imagemUrl: imagemUrlRef,
+        ordemExibicao: ordemRef,
+      });
       return;
     }
 
     const precoNumero = Number(preco.replace(",", "."));
-    if (!preco.trim() || Number.isNaN(precoNumero) || precoNumero <= 0) {
-      setErroValidacao("Informe um preço válido maior que zero.");
-      return;
-    }
-
-    const imagemUrlTrimmed = imagemUrl.trim();
-    if (imagemUrlTrimmed && !isValidHttpUrl(imagemUrlTrimmed)) {
-      setErroValidacao("Informe uma URL válida, começando com http:// ou https://.");
-      return;
-    }
-
     let ordemExibicaoNumero: number | undefined;
     if (ordemExibicao.trim()) {
-      const numero = Number(ordemExibicao);
-      if (Number.isNaN(numero) || numero < 0) {
-        setErroValidacao("Ordem de exibição deve ser um número zero ou positivo.");
-        return;
-      }
-      ordemExibicaoNumero = numero;
+      ordemExibicaoNumero = Number(ordemExibicao);
     }
 
-    setErroValidacao(null);
-
     const camposComuns = {
-      categoriaId,
+      categoriaId: categoriaId as number,
       nome: nome.trim(),
       preco: precoNumero,
       recomendado,
@@ -256,13 +311,13 @@ export function ProdutoForm({
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="dispositivo-form">
-      <h2 className="dispositivo-form__titulo">
-        {produtoEmEdicao ? `Editar produto — ${produtoEmEdicao.nome}` : "Cadastrar produto"}
-      </h2>
+  const erroRestaurante = erros.restauranteId ?? errosCampoApi?.restauranteId;
+  const erroCategoria = erros.categoriaId ?? errosCampoApi?.categoriaId;
+  const erroImagemUrl = erros.imagemUrl ?? errosCampoApi?.imagemUrl;
 
-      <div className="dispositivo-form__tipo">
+  return (
+    <form onSubmit={handleSubmit} className="dispositivo-form" noValidate>
+      <div className={"dispositivo-form__tipo" + (erroRestaurante ? " dispositivo-form__tipo--invalid" : "")}>
         <span className="dispositivo-form__tipo-rotulo">Restaurante</span>
         {restauranteFixo ? (
           <p className="dispositivo-form__restaurante-fixo">{restauranteFixo.rotulo}</p>
@@ -273,7 +328,14 @@ export function ProdutoForm({
             (não pode ser alterado)
           </p>
         ) : (
-          <div className="dispositivo-form__tipo-opcoes">
+          <div
+            className="dispositivo-form__tipo-opcoes"
+            ref={restauranteGrupoRef}
+            tabIndex={-1}
+            role="group"
+            aria-label="Restaurante"
+            aria-describedby={erroRestaurante ? "restauranteProduto-error" : undefined}
+          >
             {restaurantes.map((restaurante) => (
               <button
                 key={restaurante.id}
@@ -291,6 +353,7 @@ export function ProdutoForm({
             ))}
           </div>
         )}
+        {!restauranteFixo && !produtoEmEdicao && <FieldError id="restauranteProduto-error" message={erroRestaurante} />}
       </div>
 
       {categoriasDoRestaurante.length === 0 ? (
@@ -299,9 +362,16 @@ export function ProdutoForm({
           <Link to="/admin/categorias">Admin — Categorias</Link>.
         </p>
       ) : (
-        <div className="dispositivo-form__tipo">
+        <div className={"dispositivo-form__tipo" + (erroCategoria ? " dispositivo-form__tipo--invalid" : "")}>
           <span className="dispositivo-form__tipo-rotulo">Categoria</span>
-          <div className="dispositivo-form__tipo-opcoes">
+          <div
+            className="dispositivo-form__tipo-opcoes"
+            ref={categoriaGrupoRef}
+            tabIndex={-1}
+            role="group"
+            aria-label="Categoria"
+            aria-describedby={erroCategoria ? "categoriaProduto-error" : undefined}
+          >
             {categoriasDoRestaurante.map((categoria) => (
               <button
                 key={categoria.id}
@@ -311,7 +381,10 @@ export function ProdutoForm({
                   (categoriaId === categoria.id ? " dispositivo-form__tipo-botao--ativo" : "")
                 }
                 aria-pressed={categoriaId === categoria.id}
-                onClick={() => setCategoriaId(categoria.id)}
+                onClick={() => {
+                  setCategoriaId(categoria.id);
+                  revalidarSeNecessario("categoriaId");
+                }}
                 disabled={salvando}
               >
                 {categoria.nome}
@@ -319,16 +392,22 @@ export function ProdutoForm({
               </button>
             ))}
           </div>
+          <FieldError id="categoriaProduto-error" message={erroCategoria} />
         </div>
       )}
 
       <Input
         id="nomeProduto"
+        ref={nomeRef}
         label="Nome"
         value={nome}
-        onChange={(event) => setNome(event.target.value)}
+        onChange={(event) => {
+          setNome(event.target.value);
+          revalidarSeNecessario("nome");
+        }}
         placeholder="Ex.: X-Burger"
         disabled={salvando}
+        error={erros.nome ?? errosCampoApi?.nome}
       />
 
       <Input
@@ -342,14 +421,19 @@ export function ProdutoForm({
 
       <Input
         id="precoProduto"
+        ref={precoRef}
         label="Preço (R$)"
         type="number"
         min={0.01}
         step={0.01}
         value={preco}
-        onChange={(event) => setPreco(event.target.value)}
+        onChange={(event) => {
+          setPreco(event.target.value);
+          revalidarSeNecessario("preco");
+        }}
         placeholder="Ex.: 29.90"
         disabled={salvando}
+        error={erros.preco ?? errosCampoApi?.preco}
       />
 
       <div className="produto-form__upload">
@@ -379,22 +463,20 @@ export function ProdutoForm({
 
       <Input
         id="imagemUrlProduto"
+        ref={imagemUrlRef}
         label="URL da imagem (opcional)"
         value={imagemUrl}
-        onChange={(event) => setImagemUrl(event.target.value)}
+        onChange={(event) => {
+          setImagemUrl(event.target.value);
+          revalidarSeNecessario("imagemUrl");
+        }}
         placeholder="https://exemplo.com/produto.png"
         disabled={salvando}
+        error={erroImagemUrl}
+        helpText="Informe uma URL pública da imagem do produto, ou envie um arquivo acima — o campo é preenchido automaticamente após o envio."
       />
-      <p className="produto-form__imagem-ajuda">
-        Informe uma URL pública da imagem do produto, ou envie um arquivo acima — o campo é preenchido
-        automaticamente após o envio.
-      </p>
 
-      {imagemUrlTrimmed && !imagemUrlEhValida && (
-        <ErrorMessage message="URL inválida. Deve começar com http:// ou https://." />
-      )}
-
-      {imagemUrlTrimmed && imagemUrlEhValida && !imagemFalhouAoCarregar && (
+      {!erroImagemUrl && imagemUrlTrimmed && imagemUrlEhValida && !imagemFalhouAoCarregar && (
         <img
           className="produto-form__imagem-preview"
           src={imagemUrlTrimmed}
@@ -404,19 +486,24 @@ export function ProdutoForm({
         />
       )}
 
-      {imagemUrlTrimmed && imagemUrlEhValida && imagemFalhouAoCarregar && (
+      {!erroImagemUrl && imagemUrlTrimmed && imagemUrlEhValida && imagemFalhouAoCarregar && (
         <div className="produto-form__imagem-preview-fallback">Não foi possível carregar a prévia da imagem.</div>
       )}
 
       <Input
         id="ordemExibicaoProduto"
+        ref={ordemRef}
         label="Ordem de exibição (opcional)"
         type="number"
         min={0}
         value={ordemExibicao}
-        onChange={(event) => setOrdemExibicao(event.target.value)}
+        onChange={(event) => {
+          setOrdemExibicao(event.target.value);
+          revalidarSeNecessario("ordemExibicao");
+        }}
         placeholder="Ex.: 1"
         disabled={salvando}
+        error={erros.ordemExibicao ?? errosCampoApi?.ordemExibicao}
       />
 
       {!produtoEmEdicao && (
@@ -428,18 +515,16 @@ export function ProdutoForm({
 
       <AlternadorSimNao rotulo="Recomendado" valor={recomendado} onAlterar={setRecomendado} desabilitado={salvando} />
 
-      <ErrorMessage message={erroValidacao ?? erro} />
+      <ErrorMessage message={erro} />
 
       <div className="dispositivo-form__acoes">
         <Button type="submit" loading={salvando}>
           {produtoEmEdicao ? "Salvar alterações" : "Cadastrar produto"}
         </Button>
 
-        {produtoEmEdicao && (
-          <button type="button" className="dispositivo-form__cancelar" onClick={onCancelarEdicao} disabled={salvando}>
-            Cancelar edição
-          </button>
-        )}
+        <Button type="button" variant="secondary" onClick={onCancelarEdicao} disabled={salvando}>
+          {produtoEmEdicao ? "Cancelar edição" : "Cancelar"}
+        </Button>
       </div>
     </form>
   );

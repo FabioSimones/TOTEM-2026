@@ -50,6 +50,30 @@ a:hover {
   color: var(--color-primary-hover);
 }
 
+/* TASK-113: foco visível único e coerente para todo elemento interativo — antes só existia em 3
+   inputs (regras duplicadas com o mesmo valor); botões/links dependiam do outline padrão do
+   navegador. :focus-visible (não :focus) evita o anel aparecer em clique de mouse, só em navegação
+   por teclado. Reaproveita --color-primary, já usado nesse papel pelos inputs — sem token de cor
+   novo. :where() mantém especificidade zero, para não haver conflito com nenhuma regra existente. */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* TASK-113: respeita a preferência de menos movimento do sistema operacional — reduz transições/
+   animações a praticamente instantâneas, sem removê-las (o feedback de estado continua existindo,
+   só sem a animação). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .app-layout {
   min-height: 100%;
   display: flex;
@@ -90,19 +114,27 @@ a:hover {
   padding: var(--spacing-lg) var(--spacing-md);
 }
 
+.app-layout__content--centralizado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ===== Alternador de tema ===== */
 .theme-toggle {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  /* TASK-113: min-width/min-height (não width/height fixo) — 44px é o alvo de toque mínimo, mas o
+     botão pode crescer um pouco mais sem quebrar layout. */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
   background-color: var(--color-surface-elevated);
   color: var(--color-text);
-  font-size: 1.25rem;
+  font-size: var(--icon-size-md);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -128,7 +160,8 @@ a:hover {
   padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--radius-md);
   border: none;
-  background-color: var(--color-primary);
+  /* TASK-113: --color-primary-button (não --color-primary) — ver themes.css para o porquê. */
+  background-color: var(--color-primary-button);
   color: var(--color-primary-contrast);
   box-shadow: var(--shadow-primary);
   cursor: pointer;
@@ -149,6 +182,37 @@ a:hover {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* TASK-114: variantes fantasma (fundo transparente, borda sutil) do Button — substituem 4 classes
+   que duplicavam exatamente esta receita (dispositivo-form__cancelar, restaurante-card__acao-
+   secundaria, pedido-pendente-card__cancelar, cart-summary__limpar, operador-painel__trocar). */
+.ui-button--secondary,
+.ui-button--danger {
+  min-height: 2.75rem;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  background-color: transparent;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: none;
+}
+
+.ui-button--danger:hover:not(:disabled) {
+  background-color: transparent;
+  border-color: var(--color-error);
+  color: var(--color-error);
+  transform: none;
+}
+
+.ui-button--full {
+  width: 100%;
 }
 
 /* ===== Campo de formulário ===== */
@@ -180,13 +244,30 @@ a:hover {
     color var(--transition-base);
 }
 
-.ui-input input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
-
 .ui-input input::placeholder {
   color: var(--color-text-soft);
+}
+
+/* TASK-115: campo com erro inline — borda muda de cor, texto de erro/ajuda ficam logo abaixo.
+   Nunca depende só da cor: a mensagem (`.ui-field__error`) é sempre renderizada em texto. */
+.ui-field--invalid input,
+.ui-field--invalid select,
+.ui-field--invalid textarea {
+  border-color: var(--color-error);
+}
+
+.ui-field__error {
+  margin: calc(-1 * var(--spacing-xs)) 0 0 0;
+  color: var(--color-error);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.ui-field__help {
+  margin: calc(-1 * var(--spacing-xs)) 0 0 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
 }
 
 /* ===== Mensagens de estado ===== */
@@ -213,6 +294,15 @@ a:hover {
   transition:
     background-color var(--transition-base),
     border-color var(--transition-base);
+}
+
+/* TASK-117: navegação secundária para o login central — mesma largura do card acima. */
+.ativar-dispositivo-form__login-link {
+  max-width: 28rem;
+  margin: var(--spacing-md) 0 0 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
 }
 
 /* ===== Estados genéricos de tela (loading / erro / vazio) ===== */
@@ -323,7 +413,7 @@ a:hover {
 }
 
 .produto-card__selo--destaque {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-button);
   color: var(--color-primary-contrast);
 }
 
@@ -508,33 +598,14 @@ a:hover {
 
 .cart-summary__aviso {
   margin: 0;
-  color: var(--color-text-soft);
+  /* TASK-113: era --color-text-soft (2.38:1, abaixo de AA) — este é texto real, não placeholder. */
+  color: var(--color-text-muted);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
 }
 
 .cart-summary__finalizar {
   width: 100%;
-}
-
-.cart-summary__limpar {
-  width: 100%;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: none;
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.cart-summary__limpar:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
 }
 
 .cart-item-row {
@@ -572,17 +643,22 @@ a:hover {
 .cart-item-row__controles {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  /* TASK-113: 8px (spacing-sm) entre alvos de toque adjacentes — 4px (spacing-xs) era apertado
+     demais para os botões de 44px abaixo. */
+  gap: var(--spacing-sm);
 }
 
 .cart-item-row__qtd-botao {
-  width: 1.75rem;
-  height: 1.75rem;
+  /* TASK-113: min-width/min-height (44px) — eram width/height fixos de 28px, bem abaixo do mínimo
+     de toque, no controle mais usado por clientes no Totem. */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
   background-color: var(--color-surface-elevated);
   color: var(--color-text);
-  font-size: var(--font-size-md);
+  /* TASK-114: --icon-size-md (não --font-size-md) — mesma escala visual de ThemeToggle/modal-fechar. */
+  font-size: var(--icon-size-md);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -609,7 +685,8 @@ a:hover {
   margin-left: auto;
   background: none;
   border: none;
-  color: var(--color-text-soft);
+  /* TASK-113: era --color-text-soft (2.38:1, abaixo de AA) — botão real, não placeholder. */
+  color: var(--color-text-muted);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   cursor: pointer;
@@ -639,10 +716,6 @@ a:hover {
   color: var(--color-text);
 }
 
-.cart-item-row__observacao input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
 
 /* ===== Formulário de finalização do pedido ===== */
 .cart-summary__form {
@@ -689,8 +762,8 @@ a:hover {
 }
 
 .cart-summary__tipo-consumo-botao--ativo {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
+  border-color: var(--color-primary-button);
+  background-color: var(--color-primary-button);
   color: var(--color-primary-contrast);
 }
 
@@ -867,8 +940,8 @@ a:hover {
 }
 
 .pagamento-pedido__opcao--ativa {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
+  border-color: var(--color-primary-button);
+  background-color: var(--color-primary-button);
   color: var(--color-primary-contrast);
 }
 
@@ -1103,21 +1176,37 @@ a:hover {
 .operador-painel--identificacao {
   flex-direction: column;
   align-items: stretch;
+  /* TASK-111: este card passou a ser, sozinho, o conteúdo inteiro de /caixa e /cozinha enquanto
+     não há operador identificado (via AppLayout centralizado) — precisa de largura própria em vez
+     de esticar por todo o container. */
+  width: 100%;
+  max-width: 28rem;
+}
+
+/* ===== Ações extras do operador (TASK-112) — "Trocar operador" + "Trocar dispositivo" lado a lado ===== */
+.operador-painel__acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* ===== Estado de acesso ao dispositivo (TASK-112) — Caixa/Cozinha sem terminal pronto ===== */
+.dispositivo-acesso-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  max-width: 28rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
 }
 
 .operador-painel__nome {
   font-family: var(--font-body);
   font-weight: 600;
-}
-
-.operador-painel__trocar {
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-xs) var(--spacing-md);
-  color: var(--color-text);
-  cursor: pointer;
-  font-family: var(--font-body);
 }
 
 .operador-painel__form {
@@ -1134,7 +1223,9 @@ a:hover {
 /* ===== Caixa — lista de pendências ===== */
 .caixa-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
 }
 
@@ -1189,16 +1280,12 @@ a:hover {
   font-size: var(--font-size-lg);
 }
 
+/* TASK-114: propriedades estruturais (padding/radius/fonte) vêm de .dispositivo-card__status —
+   este pedido não tem variantes de status (sempre a mesma cor), só a cor/fundo são próprios. */
 .pedido-pendente-card__status {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-full);
   background-color: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
   color: var(--color-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
 }
 
 .pedido-pendente-card__orientacao {
@@ -1293,10 +1380,6 @@ a:hover {
   color: var(--color-text);
 }
 
-.pedido-pendente-card__observacao input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
 
 .pedido-pendente-card__observacao input:disabled {
   opacity: 0.6;
@@ -1310,33 +1393,9 @@ a:hover {
   border-top: 1px dashed var(--color-border);
 }
 
-.pedido-pendente-card__cancelar {
-  width: 100%;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: none;
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.pedido-pendente-card__cancelar:hover:not(:disabled) {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.pedido-pendente-card__cancelar:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
 /* ===== Login administrativo ===== */
 .admin-login-form {
+  width: 100%;
   max-width: 28rem;
   display: flex;
   flex-direction: column;
@@ -1349,6 +1408,358 @@ a:hover {
   transition:
     background-color var(--transition-base),
     border-color var(--transition-base);
+}
+
+/* ===== Login central — layout dividido (TASK-117) ===== */
+
+/* Mobile-first: coluna única, formulário aparece primeiro (column-reverse — o painel institucional
+   é o primeiro filho no DOM, mas visualmente fica depois em telas estreitas). A partir de 960px,
+   vira duas colunas lado a lado. */
+.auth-split {
+  display: flex;
+  flex-direction: column-reverse;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+@media (min-width: 960px) {
+  .auth-split {
+    flex-direction: row;
+  }
+}
+
+.auth-split__brand {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  background-color: var(--color-auth-brand-background);
+  color: var(--color-auth-brand-text);
+  transition: background-color var(--transition-base);
+}
+
+@media (min-width: 960px) {
+  .auth-split__brand {
+    flex: 0 0 52%;
+    padding: var(--spacing-xl);
+  }
+}
+
+.auth-split__brand-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Formas decorativas de fundo — só visual, nunca capturam clique nem entram na leitura de tela. */
+.auth-split__blob {
+  position: absolute;
+  border-radius: var(--radius-full);
+  background-color: var(--color-auth-brand-surface);
+  pointer-events: none;
+  filter: blur(2rem);
+}
+
+.auth-split__blob--top {
+  width: 16rem;
+  height: 16rem;
+  top: -6rem;
+  left: -6rem;
+}
+
+.auth-split__blob--bottom {
+  width: 20rem;
+  height: 20rem;
+  bottom: -8rem;
+  right: -8rem;
+}
+
+.auth-split__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+}
+
+.auth-split__logo-mark {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-auth-brand-accent);
+  flex-shrink: 0;
+}
+
+.auth-split__title {
+  font-size: var(--font-size-xl);
+  line-height: 1.2;
+}
+
+.auth-split__description {
+  margin: 0;
+  color: var(--color-auth-brand-text-muted);
+  font-family: var(--font-body);
+  max-width: 42ch;
+}
+
+.auth-split__features {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0 0;
+  padding: 0;
+  display: none;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+@media (min-width: 960px) {
+  .auth-split__features {
+    display: flex;
+  }
+}
+
+.auth-split__feature {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-auth-brand-text);
+}
+
+.auth-split__feature::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-auth-brand-accent);
+}
+
+/* ===== Ícones decorativos de comida (TASK-117) ===== */
+.food-icons {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-lg);
+  color: var(--color-auth-brand-text);
+  margin: var(--spacing-sm) 0;
+}
+
+.food-icons__item {
+  display: inline-flex;
+  will-change: transform;
+}
+
+@keyframes food-icon-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.6rem);
+  }
+}
+
+@keyframes food-icon-float-rotate {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-0.5rem) rotate(-4deg);
+  }
+}
+
+.food-icons__item--burger {
+  animation: food-icon-float 4.5s ease-in-out infinite;
+}
+
+.food-icons__item--fries {
+  animation: food-icon-float-rotate 5.2s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+.food-icons__item--drink {
+  animation: food-icon-float 4.8s ease-in-out infinite;
+  animation-delay: 0.9s;
+}
+
+.auth-split__panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  /* --color-surface (não --color-bg): no dark, precisa ficar visivelmente mais claro que o painel
+     institucional (--color-auth-brand-background, "ainda mais profundo") para o layout dividido
+     não parecer uma tela inteiramente preta — no light, os dois já contrastam por natureza. */
+  background-color: var(--color-surface);
+  transition: background-color var(--transition-base);
+}
+
+@media (min-width: 960px) {
+  .auth-split__panel {
+    flex: 0 0 48%;
+  }
+}
+
+.auth-split__panel-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing-md);
+}
+
+.auth-split__panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  padding: 0 var(--spacing-md) var(--spacing-xl);
+  overflow-y: auto;
+}
+
+.auth-form-header {
+  width: 100%;
+  max-width: 28rem;
+  text-align: left;
+}
+
+.auth-form-header__eyebrow {
+  margin: 0 0 var(--spacing-xs) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.auth-form-header__title {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-xl);
+}
+
+.auth-form-header__description {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+}
+
+.auth-form-footer {
+  width: 100%;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  text-align: center;
+}
+
+.auth-form-footer__link {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.auth-form-footer__hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ===== Modal reutilizável (TASK-110) ===== */
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  background-color: rgb(0 0 0 / 0.5);
+  z-index: var(--z-overlay);
+}
+
+.ui-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100vh - 2 * var(--spacing-md));
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  outline: none;
+}
+
+.ui-modal--pequeno {
+  max-width: 24rem;
+}
+
+.ui-modal--medio {
+  max-width: 32rem;
+}
+
+.ui-modal--grande {
+  max-width: 48rem;
+}
+
+.ui-modal__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.ui-modal__titulo {
+  font-size: var(--font-size-lg);
+}
+
+.ui-modal__fechar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* TASK-113: min-width/min-height para atingir 44px de área de toque sem forçar um botão maior
+     que o necessário visualmente no cabeçalho. */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--icon-size-md);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.ui-modal__fechar:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.ui-modal__conteudo {
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.ui-modal__conteudo .dispositivo-form {
+  max-width: none;
+  margin-bottom: 0;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
 /* ===== Painel administrativo ===== */
@@ -1530,6 +1941,13 @@ a:hover {
   color: var(--color-text-muted);
 }
 
+/* TASK-115: grupos de botão-toggle (restaurante/tipo/categoria/perfil) não são <input>, então usam
+   este modificador em vez de `.ui-field--invalid` — mesma ideia (destaque visual + FieldError
+   abaixo, nunca só cor). */
+.dispositivo-form__tipo--invalid .dispositivo-form__tipo-rotulo {
+  color: var(--color-error);
+}
+
 .dispositivo-form__tipo-opcoes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
@@ -1556,13 +1974,16 @@ a:hover {
 }
 
 .dispositivo-form__tipo-botao--ativo {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
+  border-color: var(--color-primary-button);
+  background-color: var(--color-primary-button);
   color: var(--color-primary-contrast);
 }
 
 /* ===== Admin — card de dispositivo ===== */
-.dispositivo-card__status {
+/* TASK-114: base compartilhada de badge (padding/radius/fonte) — .pedido-pendente-card__status
+   (Caixa/Cozinha) reaproveita, só definindo sua própria cor/fundo (sem variantes). */
+.dispositivo-card__status,
+.pedido-pendente-card__status {
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-full);
   font-family: var(--font-body);
@@ -1654,33 +2075,6 @@ a:hover {
   width: auto;
   flex: 1;
   min-width: 10rem;
-}
-
-.dispositivo-form__cancelar,
-.restaurante-card__acao-secundaria {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: none;
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.dispositivo-form__cancelar:hover:not(:disabled),
-.restaurante-card__acao-secundaria:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.dispositivo-form__cancelar:disabled,
-.restaurante-card__acao-secundaria:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 
 /* ===== Admin — categorias ===== */

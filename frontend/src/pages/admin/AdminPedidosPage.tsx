@@ -8,7 +8,7 @@ import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
 import { buscarPedido, listarPedidos } from "../../services/adminPedidoService";
 import { listarRestaurantes } from "../../services/adminRestauranteService";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import { ApiError } from "../../types/api";
 import type { PedidoAdminDetalheResponse, PedidoAdminResumoResponse } from "../../types/pedidoAdmin";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
@@ -32,7 +32,7 @@ const STATUS_FILTRAVEIS: StatusPedido[] = [
 
 export function AdminPedidosPage() {
   const navigate = useNavigate();
-  const usuario = getStoredUsuario();
+  const { user: usuario, logout } = useAuth();
   const adminRestaurante = isAdminRestaurante(usuario);
   const restauranteIdEscopo = getRestauranteIdEscopo(usuario);
 
@@ -107,7 +107,7 @@ export function AdminPedidosPage() {
         if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
           setSemAutorizacao(true);
           if (error.status === 401) {
-            clearSession();
+            void logout();
             setErro("Sessão expirada. Faça login novamente.");
           } else {
             setErro("Você não tem permissão para acessar pedidos.");
@@ -121,17 +121,13 @@ export function AdminPedidosPage() {
         setLoading(false);
       }
     },
-    [],
+    [logout],
   );
 
   useEffect(() => {
-    if (!getAccessToken() || !getStoredUsuario()) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     void carregarRestaurantes();
     void carregarPedidos(restauranteIdEscopo, null, 0);
-  }, [navigate, carregarRestaurantes, carregarPedidos, restauranteIdEscopo]);
+  }, [carregarRestaurantes, carregarPedidos, restauranteIdEscopo]);
 
   function handleFiltrarRestaurante(restauranteId: number | null) {
     setFiltroRestauranteId(restauranteId);
@@ -159,7 +155,7 @@ export function AdminPedidosPage() {
       setPedidoDetalhe(detalhe);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        clearSession();
+        void logout();
         setErro("Sessão expirada. Faça login novamente.");
         setSemAutorizacao(true);
       } else if (error instanceof ApiError && error.status === 403) {
@@ -255,7 +251,7 @@ export function AdminPedidosPage() {
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
           {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/admin/login")}>
+            <Button type="button" onClick={() => navigate("/login")}>
               Ir para login
             </Button>
           ) : (

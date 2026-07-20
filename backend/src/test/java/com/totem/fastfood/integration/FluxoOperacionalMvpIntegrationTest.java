@@ -8,7 +8,9 @@ import com.totem.fastfood.entity.Pagamento;
 import com.totem.fastfood.entity.Pedido;
 import com.totem.fastfood.entity.Produto;
 import com.totem.fastfood.entity.Restaurante;
+import com.totem.fastfood.entity.Usuario;
 import com.totem.fastfood.enums.FormaPagamento;
+import com.totem.fastfood.enums.PerfilUsuario;
 import com.totem.fastfood.enums.StatusPagamento;
 import com.totem.fastfood.enums.StatusPedido;
 import com.totem.fastfood.enums.TipoDispositivo;
@@ -19,12 +21,14 @@ import com.totem.fastfood.repository.PagamentoRepository;
 import com.totem.fastfood.repository.PedidoRepository;
 import com.totem.fastfood.repository.ProdutoRepository;
 import com.totem.fastfood.repository.RestauranteRepository;
+import com.totem.fastfood.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,10 +87,19 @@ class FluxoOperacionalMvpIntegrationTest {
     @Autowired
     private HistoricoStatusPedidoRepository historicoStatusPedidoRepository;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private Produto produto;
     private String tokenTotem;
     private String tokenCaixa;
     private String tokenCozinha;
+    /** TASK-111: leitura de Caixa/Cozinha agora exige operador identificado, além do dispositivo. */
+    private String operadorTokenCaixa;
+    private String operadorTokenCozinha;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -113,6 +126,29 @@ class FluxoOperacionalMvpIntegrationTest {
         tokenTotem = ativarDispositivo(restaurante, TipoDispositivo.TOTEM, "totem-fluxo-mvp");
         tokenCaixa = ativarDispositivo(restaurante, TipoDispositivo.CAIXA, "caixa-fluxo-mvp");
         tokenCozinha = ativarDispositivo(restaurante, TipoDispositivo.COZINHA, "cozinha-fluxo-mvp");
+
+        String senha = "Senha@2026!";
+        Usuario operadorCaixa = usuarioRepository.save(Usuario.builder()
+                .nome("Operador Caixa Fluxo MVP").email("operador.caixa.fluxo-mvp@totem.local")
+                .senhaHash(passwordEncoder.encode(senha)).perfil(PerfilUsuario.OPERADOR_CAIXA)
+                .restaurante(restaurante).ativo(true).build());
+        Usuario operadorCozinha = usuarioRepository.save(Usuario.builder()
+                .nome("Operador Cozinha Fluxo MVP").email("operador.cozinha.fluxo-mvp@totem.local")
+                .senhaHash(passwordEncoder.encode(senha)).perfil(PerfilUsuario.OPERADOR_COZINHA)
+                .restaurante(restaurante).ativo(true).build());
+
+        operadorTokenCaixa = loginOperador(tokenCaixa, operadorCaixa.getEmail(), senha);
+        operadorTokenCozinha = loginOperador(tokenCozinha, operadorCozinha.getEmail(), senha);
+    }
+
+    private String loginOperador(String tokenDispositivo, String email, String senha) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/auth/operador/login")
+                        .header("Authorization", "Bearer " + tokenDispositivo)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"senha\":\"" + senha + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("operadorToken").asText();
     }
 
     private String ativarDispositivo(Restaurante restaurante, TipoDispositivo tipo, String codigoIdentificacao)
@@ -184,7 +220,8 @@ class FluxoOperacionalMvpIntegrationTest {
 
         // 4. Caixa lista pendências: pedido pago, ação sugerida ENVIAR_PARA_COZINHA.
         mockMvc.perform(get("/api/caixa/pedidos/pendentes")
-                        .header("Authorization", "Bearer " + tokenCaixa))
+                        .header("Authorization", "Bearer " + tokenCaixa)
+                        .header("X-Operador-Token", operadorTokenCaixa))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].pedidoId").value(pedidoId))
                 .andExpect(jsonPath("$[0].acaoSugerida").value("ENVIAR_PARA_COZINHA"));
@@ -197,7 +234,8 @@ class FluxoOperacionalMvpIntegrationTest {
 
         // 6. Cozinha lista o pedido enviado.
         mockMvc.perform(get("/api/cozinha/pedidos")
-                        .header("Authorization", "Bearer " + tokenCozinha))
+                        .header("Authorization", "Bearer " + tokenCozinha)
+                        .header("X-Operador-Token", operadorTokenCozinha))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].pedidoId").value(pedidoId))
                 .andExpect(jsonPath("$[0].statusPedido").value("ENVIADO_PARA_COZINHA"));
@@ -220,7 +258,8 @@ class FluxoOperacionalMvpIntegrationTest {
 
         // 9. Caixa lista o pedido pronto: ação sugerida MARCAR_RETIRADO.
         mockMvc.perform(get("/api/caixa/pedidos/pendentes")
-                        .header("Authorization", "Bearer " + tokenCaixa))
+                        .header("Authorization", "Bearer " + tokenCaixa)
+                        .header("X-Operador-Token", operadorTokenCaixa))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].pedidoId").value(pedidoId))
                 .andExpect(jsonPath("$[0].acaoSugerida").value("MARCAR_RETIRADO"));
@@ -281,7 +320,8 @@ class FluxoOperacionalMvpIntegrationTest {
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/cozinha/pedidos")
-                        .header("Authorization", "Bearer " + tokenCozinha))
+                        .header("Authorization", "Bearer " + tokenCozinha)
+                        .header("X-Operador-Token", operadorTokenCozinha))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0));
@@ -316,7 +356,8 @@ class FluxoOperacionalMvpIntegrationTest {
                 .andExpect(jsonPath("$.statusPedido").value("AGUARDANDO_PAGAMENTO_DINHEIRO"));
 
         mockMvc.perform(get("/api/caixa/pedidos/pendentes")
-                        .header("Authorization", "Bearer " + tokenCaixa))
+                        .header("Authorization", "Bearer " + tokenCaixa)
+                        .header("X-Operador-Token", operadorTokenCaixa))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].pedidoId").value(pedidoId))
                 .andExpect(jsonPath("$[0].acaoSugerida").value("CONFIRMAR_PAGAMENTO"));

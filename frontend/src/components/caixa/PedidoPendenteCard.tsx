@@ -152,14 +152,9 @@ export function PedidoPendenteCard({
 
           <ErrorMessage message={erroValidacaoCancelamento} />
 
-          <button
-            type="button"
-            className="pedido-pendente-card__cancelar"
-            disabled={executando}
-            onClick={handleClicarCancelar}
-          >
+          <Button type="button" variant="danger" fullWidth disabled={executando} onClick={handleClicarCancelar}>
             Cancelar pedido
-          </button>
+          </Button>
         </div>
       )}
     </article>

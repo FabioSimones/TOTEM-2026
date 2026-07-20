@@ -23,12 +23,27 @@
   --color-primary: #e63329;
   --color-primary-hover: #c0261e;
   --color-primary-contrast: #ffffff;
+  /* TASK-113: #e63329 com texto branco por cima dá só 4.31:1 (abaixo de 4.5:1 AA) — mas escurecer
+     --color-primary diretamente pioraria seu uso como TEXTO (preços, links, badges), que já é mais
+     apertado contra fundos escuros. Token à parte só para fundo de elementos preenchidos
+     (Button, badges, toggles ativos) resolve sem regredir os ~35 usos de --color-primary como texto/
+     borda. Ver docs/design-system/cores.md, seção "Contraste (TASK-113)". */
+  --color-primary-button: #e4261b;
 
   --font-heading: "Oswald", sans-serif;
   --font-body: "DM Sans", sans-serif;
 
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.5);
   --shadow-primary: 0 4px 16px rgba(230, 51, 41, 0.35);
+
+  /* TASK-117: painel institucional do login (`AuthSplitLayout`/`LoginBrandPanel`) — sempre escuro
+     nos dois temas (identidade de marca, não segue o tema geral do app), mas "ainda mais profundo"
+     que --color-bg aqui no dark, para se diferenciar visualmente do resto do app. */
+  --color-auth-brand-background: #050202;
+  --color-auth-brand-surface: rgba(255, 255, 255, 0.06);
+  --color-auth-brand-text: #ffffff;
+  --color-auth-brand-text-muted: rgba(255, 255, 255, 0.68);
+  --color-auth-brand-accent: var(--color-primary);
 }
 
 /* ===== Clean & Warm ===== */
@@ -43,16 +58,30 @@
   --color-border: #ead8cc;
 
   --color-text: #1a1209;
-  --color-text-muted: #8b7a6b;
+  /* TASK-113: #8b7a6b dava só 4.12:1 sobre --color-surface (#fff) — abaixo de 4.5:1 AA. Escurecido
+     para 4.60:1+ contra surface/surface-elevated/bg. */
+  --color-text-muted: #7a6a5c;
   --color-text-soft: #b8a898;
 
   --color-primary: #e8440a;
   --color-primary-hover: #c83808;
   --color-primary-contrast: #ffffff;
+  /* TASK-113: mesmo raciocínio do tema dark — token à parte para fundo preenchido (4.67:1 com texto
+     branco), sem alterar --color-primary usado como texto/borda. */
+  --color-primary-button: #d43e09;
 
   --font-heading: "Sora", sans-serif;
   --font-body: "Plus Jakarta Sans", sans-serif;
 
   --shadow-card: 0 4px 20px rgba(26, 18, 9, 0.08);
   --shadow-primary: 0 4px 16px rgba(232, 68, 10, 0.25);
+
+  /* TASK-117: painel institucional do login continua escuro mesmo no tema claro (a referência
+     visual usa um painel escuro fixo + formulário claro) — tom quente para combinar com a marca
+     laranja deste tema, mais claro que o do dark (que precisa ficar "ainda mais profundo"). */
+  --color-auth-brand-background: #2a1712;
+  --color-auth-brand-surface: rgba(255, 255, 255, 0.08);
+  --color-auth-brand-text: #fff8f2;
+  --color-auth-brand-text-muted: rgba(255, 248, 242, 0.72);
+  --color-auth-brand-accent: var(--color-primary);
 }

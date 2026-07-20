@@ -36,6 +36,26 @@ export function loginResponseMock() {
   };
 }
 
+export const adminRestauranteUsuarioMock = {
+  id: 2,
+  nome: "Admin Restaurante E2E",
+  email: "admin.restaurante.e2e@totem.local",
+  perfil: "ADMIN_RESTAURANTE" as const,
+  restauranteId: 1,
+  ativo: true,
+};
+
+export function loginResponseAdminRestauranteMock() {
+  return {
+    accessToken: "e2e-access-token-admin-restaurante",
+    refreshToken: "e2e-refresh-token-admin-restaurante",
+    tokenType: "Bearer",
+    expiresIn: 3600,
+    refreshExpiresIn: 604800,
+    usuario: adminRestauranteUsuarioMock,
+  };
+}
+
 export const operadorMock = {
   id: 9,
   nome: "Operador E2E",
@@ -49,6 +69,47 @@ export function operadorLoginResponseMock() {
     operadorToken: "e2e-operador-token",
     expiresIn: 1800,
     operador: operadorMock,
+  };
+}
+
+/** Login de usuário humano (POST /api/auth/login) com perfil OPERADOR_CAIXA — usado no fluxo de /login central, distinto do login de OPERADOR dentro do terminal (operadorLoginResponseMock). */
+export const operadorCaixaUsuarioMock = {
+  id: 9,
+  nome: "Operador Caixa E2E",
+  email: "operador.caixa.e2e@totem.local",
+  perfil: "OPERADOR_CAIXA" as const,
+  restauranteId: 1,
+  ativo: true,
+};
+
+export function loginResponseOperadorCaixaMock() {
+  return {
+    accessToken: "e2e-access-token-operador-caixa",
+    refreshToken: "e2e-refresh-token-operador-caixa",
+    tokenType: "Bearer",
+    expiresIn: 3600,
+    refreshExpiresIn: 604800,
+    usuario: operadorCaixaUsuarioMock,
+  };
+}
+
+export const operadorCozinhaUsuarioMock = {
+  id: 10,
+  nome: "Operador Cozinha E2E",
+  email: "operador.cozinha.e2e@totem.local",
+  perfil: "OPERADOR_COZINHA" as const,
+  restauranteId: 1,
+  ativo: true,
+};
+
+export function loginResponseOperadorCozinhaMock() {
+  return {
+    accessToken: "e2e-access-token-operador-cozinha",
+    refreshToken: "e2e-refresh-token-operador-cozinha",
+    tokenType: "Bearer",
+    expiresIn: 3600,
+    refreshExpiresIn: 604800,
+    usuario: operadorCozinhaUsuarioMock,
   };
 }
 

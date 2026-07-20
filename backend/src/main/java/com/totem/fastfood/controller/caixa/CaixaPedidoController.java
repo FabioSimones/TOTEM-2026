@@ -31,9 +31,14 @@ import java.util.List;
 /**
  * Escopo atual: dispositivo CAIXA autenticado (ROLE_DEVICE_CAIXA) continua sendo a autenticação
  * principal — o isolamento por restaurante vem sempre do dispositivo. Desde a TASK-092, as ações
- * abaixo aceitam opcionalmente o header {@code X-Operador-Token} (identificação de operador
- * humano, resolvida por {@link OperadorContextService}) só para fins de auditoria
- * (`HistoricoStatusPedido.alteradoPorUsuario`) — nunca é exigido nem substitui o dispositivo.
+ * de escrita abaixo aceitam opcionalmente o header {@code X-Operador-Token} (identificação de
+ * operador humano, resolvida por {@link OperadorContextService}) só para fins de auditoria
+ * (`HistoricoStatusPedido.alteradoPorUsuario`) — nunca substitui o dispositivo.
+ *
+ * <p>Desde a TASK-111, a leitura ({@code listarPendentes}) passou a <b>exigir</b> operador
+ * identificado além do dispositivo — informações operacionais não devem ficar visíveis só porque
+ * o terminal está ativado. O frontend só busca esta lista depois do login do operador; o backend
+ * não confia nessa ocultação e valida de novo aqui via {@link OperadorContextService#resolverObrigatorio}.
  */
 @Tag(name = "Caixa - Pedidos", description = "Ações de ciclo de vida do pedido pelo dispositivo CAIXA (requer Bearer JWT de dispositivo)")
 @RestController
@@ -50,11 +55,13 @@ public class CaixaPedidoController {
                     + "AGUARDANDO_PAGAMENTO_DINHEIRO (acaoSugerida=CONFIRMAR_PAGAMENTO) e PAGO "
                     + "(acaoSugerida=ENVIAR_PARA_COZINHA), ordenados do mais antigo para o mais recente.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil ou dispositivo sem permissão")
+    @ApiResponse(responseCode = "401", description = "Token de dispositivo ausente/inválido, ou X-Operador-Token ausente/inválido/expirado (TASK-111)")
+    @ApiResponse(responseCode = "403", description = "Perfil/dispositivo sem permissão, ou operador incompatível com o dispositivo/restaurante (TASK-111)")
     @GetMapping("/pendentes")
     public ResponseEntity<List<PedidoPendenteCaixaResponse>> listarPendentes(
-            @AuthenticationPrincipal Dispositivo dispositivo) {
+            @AuthenticationPrincipal Dispositivo dispositivo,
+            @Parameter(description = "Token de operador (TASK-111), obrigatório para esta leitura") @RequestHeader(value = "X-Operador-Token", required = false) String operadorToken) {
+        operadorContextService.resolverObrigatorio(operadorToken, dispositivo);
         return ResponseEntity.ok(caixaPedidoService.listarPendentes(dispositivo));
     }
 

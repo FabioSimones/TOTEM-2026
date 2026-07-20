@@ -122,15 +122,15 @@ export function CartSummary({
 
               <ErrorMessage message={erroValidacao ?? erroPedido} />
 
-              <Button type="submit" className="cart-summary__finalizar" loading={criandoPedido}>
+              <Button type="submit" fullWidth loading={criandoPedido}>
                 Criar pedido
               </Button>
             </form>
           )}
 
-          <button type="button" className="cart-summary__limpar" onClick={onClear} disabled={criandoPedido}>
+          <Button type="button" variant="danger" fullWidth onClick={onClear} disabled={criandoPedido}>
             Limpar carrinho
-          </button>
+          </Button>
         </>
       )}
     </aside>

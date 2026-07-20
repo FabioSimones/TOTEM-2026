@@ -68,14 +68,9 @@ export function CategoriaCard({ categoria, restaurantes, executando, erro, onEdi
         </Button>
 
         {categoria.ativa && (
-          <button
-            type="button"
-            className="restaurante-card__acao-secundaria"
-            disabled={executando}
-            onClick={handleInativar}
-          >
-            {executando ? "Aguarde..." : "Inativar"}
-          </button>
+          <Button type="button" variant="secondary" loading={executando} onClick={handleInativar}>
+            Inativar
+          </Button>
         )}
       </div>
     </article>

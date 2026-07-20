@@ -8,7 +8,7 @@ Ambiente de referência: Windows + PowerShell, comandos com `curl.exe` (mesmo pa
 
 Todo push/PR roda `.github/workflows/ci.yml` (badge no `README.md`): `Backend (H2)` (`mvn test`), `Backend (PostgreSQL/Testcontainers)` (`mvn verify -Ppostgres-it`), `Frontend (build + lint)` (`npm test` + `npm run build` + `npm run lint`, TASK-101 adicionou `npm test`) e `Frontend E2E (Playwright)` (`npm run e2e`, TASK-103, com `needs: frontend`). Os quatro jobs são o mínimo exigido antes de qualquer merge em `main` — ver `docs/ci-branch-protection.md` para a configuração de branch protection e o procedimento de investigação quando o CI falhar. Este documento continua sendo a referência de validação manual ponta a ponta (`curl`) do **backend**; a suíte automatizada do frontend (Vitest + Testing Library, TASK-101) e a homologação visual E2E mockada (Playwright headless, TASK-102, no CI desde a TASK-103) estão documentadas em `frontend/README.md`, seções "Testes automatizados" e "Testes E2E (Playwright)".
 
-**E2E integrado com backend real (TASK-104/TASK-105)**: `frontend/e2e-integrado/` roda contra um backend Spring Boot real + PostgreSQL real (as mesmas variáveis obrigatórias deste documento: `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, bootstrap de SUPER_ADMIN) — sem `page.route`, sem mock. Dois specs: Totem (TASK-104) e Caixa→Cozinha→Caixa com operadores reais, incluindo validação do histórico de auditoria (`alteradoPorUsuarioNome`/`alteradoPorDispositivoNome`) via `GET /api/admin/pedidos/{id}` (TASK-105). Documentado em `frontend/README.md` seção "E2E integrado"; comando `npm run e2e:integrado`. Execução manual/local por enquanto, **não está no `ci.yml`** (decisão mantida desde a TASK-104).
+**E2E integrado com backend real (TASK-104/TASK-105/TASK-106)**: `frontend/e2e-integrado/` roda contra um backend Spring Boot real + PostgreSQL real (as mesmas variáveis obrigatórias deste documento: `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, bootstrap de SUPER_ADMIN) — sem `page.route`, sem mock. Dois specs: Totem (TASK-104) e Caixa→Cozinha→Caixa com operadores reais, incluindo validação do histórico de auditoria (`alteradoPorUsuarioNome`/`alteradoPorDispositivoNome`) via `GET /api/admin/pedidos/{id}` (TASK-105). Documentado em `frontend/README.md` seção "E2E integrado"; comando `npm run e2e:integrado`. Desde a TASK-106, **roda no `ci.yml`** (job `Frontend E2E Integrado (Backend real)`, que sobe PostgreSQL via `services:` e o backend real via `mvn spring-boot:run` em background no próprio runner) — ainda **não é check obrigatório** em branch protection.
 
 ## 1. Pré-requisitos
 
@@ -125,7 +125,7 @@ A TASK-056 implementou a limpeza manual de uploads órfãos (`limpar-orfas`), re
 
 | Método | Rota |
 |---|---|
-| GET | `/api/caixa/pedidos/pendentes` |
+| GET | `/api/caixa/pedidos/pendentes` (exige também `X-Operador-Token`, TASK-111) |
 | POST | `/api/caixa/pedidos/{id}/confirmar-pagamento` |
 | POST | `/api/caixa/pedidos/{id}/enviar-cozinha` |
 | POST | `/api/caixa/pedidos/{id}/retirar` |
@@ -142,7 +142,7 @@ Pedidos `CRIADO`/`AGUARDANDO_PAGAMENTO` (aguardando o cliente no Totem) e `ENVIA
 
 | Método | Rota |
 |---|---|
-| GET | `/api/cozinha/pedidos` |
+| GET | `/api/cozinha/pedidos` (exige também `X-Operador-Token`, TASK-111) |
 | PATCH | `/api/cozinha/pedidos/{id}/status` |
 
 ### Infra (público)
@@ -704,6 +704,35 @@ Primeiro item P1 do roadmap pós-MVP (TASK-095), executado logo após a leva de 
 `mvn test` → **347/347, BUILD SUCCESS** (341 anteriores + 6 novos: 5 de `ActuatorSecurityIntegrationTest` + 1 de `SuperAdminBootstrapRunnerTest`). Nenhuma alteração de frontend, autenticação de usuário/dispositivo/operador, ou regra de negócio de pedidos.
 
 **Fora do escopo, deliberadamente**: Prometheus/Grafana, tracing distribuído, ELK/Loki, dashboard operacional, log estruturado (JSON) — a task pede observabilidade mínima, não uma stack de monitoramento completa (ver `docs/roadmap-pos-mvp.md`).
+
+## 7-septendecies. TASK-111 — bloquear leitura de Caixa/Cozinha sem operador identificado
+
+Até esta task, `GET /api/caixa/pedidos/pendentes` e `GET /api/cozinha/pedidos` exigiam só o token de dispositivo — o header `X-Operador-Token` (TASK-092) era lido e validado somente nas 4 ações de escrita, e ali de forma opcional (só para preencher `HistoricoStatusPedido.alteradoPorUsuario`, nunca como gate de acesso). Um dispositivo CAIXA/COZINHA ativado, sozinho, já enxergava a fila operacional inteira — informação que deveria depender de um humano identificado, não só do terminal.
+
+**Decisão explícita** (pedida pela task): a ocultação no frontend, sozinha, não é suficiente — o backend precisa validar de novo, já que o frontend é só UX. As duas listagens passaram a **exigir** `X-Operador-Token`; as 4 ações de escrita continuam com o operador **opcional** (comportamento da TASK-092 inalterado, inclusive o teste que confirma que `enviar-cozinha` sem operador continua funcionando).
+
+**Mudanças de código**:
+- `OperadorContextService`: novo método `resolverObrigatorio(token, dispositivo)` — reaproveita `resolver()` (mesma validação de token válido/expirado, perfil compatível, mesmo restaurante), mas trata header ausente/em branco como erro (`BadCredentialsException` → 401) em vez de `Optional.empty()`.
+- `CaixaPedidoController.listarPendentes` / `CozinhaPedidoController.listarPedidos`: passaram a receber `@RequestHeader(value = "X-Operador-Token", required = false) String operadorToken` e chamam `resolverObrigatorio` antes de listar. Assinatura do service (`listarPendentes(dispositivo)`/`listarPedidos(dispositivo)`) não mudou — o operador não filtra dados, só é validado como pré-condição de acesso.
+- Nenhuma mudança em `SecurityConfig`, `JwtAuthenticationFilter`, nas 4 ações de escrita, ou nas regras de transição de status do pedido.
+
+**Testes novos/alterados**:
+- `OperadorLoginIntegrationTest`: 5 casos novos — `listarPendentesCaixa`/`listarPedidosCozinha` sem header → `401`; operador de outro tipo de dispositivo → `403`; operador de outro restaurante → `403`; operador válido → `200`.
+- `FluxoOperacionalMvpIntegrationTest`: `setUp` passou a criar e logar um `OPERADOR_CAIXA`/`OPERADOR_COZINHA` do restaurante do teste; os 5 GETs de listagem que esperavam `200` (fluxo completo, dinheiro, pedido sem pagamento) ganharam o header `X-Operador-Token`. Os 2 testes que esperam `403` por dispositivo incompatível (`cozinha_naoDeveConseguirChamarEndpointDoCaixa`/`totem_naoDeveConseguirChamarEndpointDaCozinha`) não precisaram de header — `@PreAuthorize("hasRole('DEVICE_CAIXA')")`/`hasRole('DEVICE_COZINHA')` já barra a requisição antes do controller ler o header.
+
+`mvn test` → **353/353, BUILD SUCCESS** (347 anteriores + 6 novos). Nenhuma regressão nos testes unitários de `CaixaPedidoServiceTest`/`CozinhaPedidoServiceTest` (a mudança fica só na camada de controller, o service continua com a mesma assinatura).
+
+**Frontend** (`CaixaHomePage.tsx`/`CozinhaHomePage.tsx`): a busca de pendências/pedidos só dispara quando há operador identificado no estado local (`useEffect` com `operador` nas dependências); sem operador, a página renderiza só o `OperadorPainel` centralizado (reaproveitando `AppLayout centralizado`, da TASK-110), sem toolbar/lista/erro operacional. Ver `frontend/README.md` para o detalhamento e `docs/checklists/fluxo-operacional-mvp.md` seção 2/3/4 para o roteiro manual atualizado.
+
+**Fora do escopo, deliberadamente**: PIN de operador, painel público, mudança nas regras de transição de status do pedido, alteração das 4 ações de escrita (continuam com operador opcional).
+
+## 7-octodecies. TASK-112 — recuperar ativação de dispositivo nas telas operacionais (só frontend)
+
+Task puramente de frontend — **nenhum arquivo de `backend/src` foi alterado**, `mvn test` não foi reexecutado (não necessário; os 353/353 da TASK-111 permanecem válidos). Corrigiu um efeito colateral não intencional da TASK-111: sem dispositivo ativado, `/caixa`/`/cozinha` passaram a redirecionar silenciosamente para `/ativar-dispositivo` (sem card nem botão visível), e não havia nenhuma ação na tela para trocar de equipamento depois de ativado — o login do operador (TASK-092) não pode substituir a autenticação do dispositivo, mas também não pode ser a única porta de saída quando o dispositivo está errado/ausente/expirado.
+
+Investigação confirmou dois pontos que **já estavam corretos** e não precisaram de mudança: `AtivarDispositivoPage` já limpava operador residual ao salvar a sessão do dispositivo (`saveDeviceSession` já chamava `clearOperadorSession()` desde a TASK-092) e já redirecionava pela rota do **tipo retornado** pela API, nunca por uma origem armazenada; `TotemHomePage` já tinha um card de erro com botão "Ir para ativação de dispositivo" nos casos de incompatibilidade/expiração — só o Caixa/Cozinha (pós TASK-111) tinham a lacuna.
+
+Ver `frontend/README.md` para o detalhamento completo do frontend (novo `DispositivoAcessoCard`, hook `useDispositivoOperacional`, `tokenStorage.limparSessaoOperacionalCompleta`). `npm test` → 66/66; `npm run build`/`npx oxlint` limpos; `npm run e2e` → 10/10 (7 anteriores + 3 novos em `ativacao-dispositivo.spec.ts`). `npm run e2e:integrado` não executado — mesma razão da TASK-111 (backend local em uso para outro fim durante a sessão, sem credencial de `SUPER_ADMIN` conhecida para essa instância).
 
 ## 8. Divergências encontradas entre `docs/08-endpoints.md` e a implementação
 

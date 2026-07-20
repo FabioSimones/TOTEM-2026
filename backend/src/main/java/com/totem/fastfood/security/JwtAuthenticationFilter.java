@@ -54,9 +54,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // como 500 — trata como "não autenticado", igual a um token ausente/inválido, e deixa
             // o RestAuthenticationEntryPoint (TASK-061) responder 401 se o endpoint exigir login.
             try {
-                Authentication authentication = JwtService.TIPO_DISPOSITIVO.equals(jwtService.extrairTipo(token))
-                        ? autenticarDispositivo(token, request)
-                        : autenticarUsuario(token, request);
+                String tipo = jwtService.extrairTipo(token);
+                Authentication authentication;
+                if (JwtService.TIPO_DISPOSITIVO.equals(tipo)) {
+                    authentication = autenticarDispositivo(token, request);
+                } else if (JwtService.TIPO_USUARIO.equals(tipo)) {
+                    authentication = autenticarUsuario(token, request);
+                } else {
+                    // TIPO_OPERADOR (ou qualquer tipo desconhecido/ausente) nunca autentica
+                    // via Authorization: Bearer — o token de operador só é aceito no fluxo
+                    // dedicado de X-Operador-Token (OperadorContextService).
+                    authentication = null;
+                }
 
                 if (authentication != null) {
                     SecurityContextHolder.getContext().setAuthentication(authentication);

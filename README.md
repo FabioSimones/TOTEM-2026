@@ -118,6 +118,33 @@ export SUPER_ADMIN_PASSWORD="escolha uma senha sua aqui"
 
 Na próxima subida (`mvn spring-boot:run`), o `SuperAdminBootstrapRunner` cria o usuário com a senha informada (BCrypt) — só executa se ainda não houver nenhum `SUPER_ADMIN` ativo. Sem essas variáveis, o bootstrap fica desligado por padrão e nenhuma credencial é criada — não há senha padrão de produção em lugar nenhum do código.
 
+## Como subir o backend localmente (Windows/PowerShell e IntelliJ)
+
+Um exemplo com valores fictícios para todas as variáveis acima está em `backend/.env.example` (não é lido automaticamente pelo Maven/Spring Boot — serve só de referência para copiar os valores).
+
+**PowerShell** (defina antes de rodar `mvn spring-boot:run` na mesma sessão do terminal):
+
+```powershell
+$env:JWT_SECRET="chave-local-de-desenvolvimento-com-mais-de-32-caracteres"
+$env:CORS_ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
+$env:SUPER_ADMIN_BOOTSTRAP_ENABLED="true"
+$env:SUPER_ADMIN_EMAIL="admin.local@totem.local"
+$env:SUPER_ADMIN_PASSWORD="AdminLocal@2026!"
+
+cd backend
+mvn spring-boot:run
+```
+
+`DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USERNAME`/`DB_PASSWORD` não precisam ser definidas se o PostgreSQL local já usar os defaults do `application.yml` (`localhost`/`5432`/`totem_db`/`postgres`/`postgres`); defina-as só se o seu ambiente local for diferente.
+
+**IntelliJ (Run/Debug Configurations)**: na configuração da aplicação (`TotemApplication`), aba *Environment variables*, adicione as mesmas variáveis separadas por ponto e vírgula, por exemplo:
+
+```text
+JWT_SECRET=chave-local-de-desenvolvimento-com-mais-de-32-caracteres;CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174;SUPER_ADMIN_BOOTSTRAP_ENABLED=true;SUPER_ADMIN_EMAIL=admin.local@totem.local;SUPER_ADMIN_PASSWORD=AdminLocal@2026!
+```
+
+Variáveis definidas com `$env:` ou `export` valem só para a sessão de terminal atual — feche o terminal e será preciso defini-las de novo (ou use um script local, ver `scripts/run-backend-local.ps1`).
+
 ## Ordem recomendada
 
 1. Fase 1 - Planejamento

@@ -6,6 +6,7 @@ import { CategoriaCard } from "../../components/admin/categorias/CategoriaCard";
 import { CategoriaForm } from "../../components/admin/categorias/CategoriaForm";
 import { Button } from "../../components/ui/Button";
 import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { Modal } from "../../components/ui/Modal";
 import {
   atualizarCategoria,
   criarCategoria,
@@ -13,15 +14,18 @@ import {
   listarCategorias,
 } from "../../services/adminCategoriaService";
 import { listarRestaurantes } from "../../services/adminRestauranteService";
-import { clearSession, getAccessToken, getStoredUsuario } from "../../services/tokenStorage";
+import { useAuth } from "../../auth/useAuth";
 import { ApiError } from "../../types/api";
 import type { AtualizarCategoriaRequest, CategoriaAdminResponse, CriarCategoriaRequest } from "../../types/categoria";
 import type { RestauranteAdminResponse } from "../../types/restaurante";
 import { getRestauranteIdEscopo, isAdminRestaurante } from "../../utils/adminScope";
+import { extrairErrosCampoApi } from "../../utils/apiFieldErrors";
+
+const CAMPOS_CATEGORIA = ["restauranteId", "nome", "ordemExibicao"] as const;
 
 export function AdminCategoriasPage() {
   const navigate = useNavigate();
-  const usuario = getStoredUsuario();
+  const { user: usuario, logout } = useAuth();
   const adminRestaurante = isAdminRestaurante(usuario);
   const restauranteIdEscopo = getRestauranteIdEscopo(usuario);
 
@@ -35,9 +39,11 @@ export function AdminCategoriasPage() {
   const [semAutorizacao, setSemAutorizacao] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
+  const [modalAberto, setModalAberto] = useState(false);
   const [categoriaEmEdicao, setCategoriaEmEdicao] = useState<CategoriaAdminResponse | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [errosCampoApi, setErrosCampoApi] = useState<Partial<Record<(typeof CAMPOS_CATEGORIA)[number], string>>>({});
 
   const [acoesEmAndamento, setAcoesEmAndamento] = useState<Set<number>>(new Set());
   const [errosAcao, setErrosAcao] = useState<Record<number, string | null>>({});
@@ -73,7 +79,7 @@ export function AdminCategoriasPage() {
         setSemAutorizacao(true);
         if (error.status === 401) {
           // Token inválido/expirado: não serve para mais nada, força novo login.
-          clearSession();
+          void logout();
           setErro("Sessão expirada. Faça login novamente.");
         } else {
           // 403: token válido, mas sem permissão — sessão continua válida para outras áreas.
@@ -89,16 +95,12 @@ export function AdminCategoriasPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
-    if (!getAccessToken() || !getStoredUsuario()) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     void carregarRestaurantes();
     void carregarCategorias(restauranteIdEscopo);
-  }, [navigate, carregarRestaurantes, carregarCategorias, restauranteIdEscopo]);
+  }, [carregarRestaurantes, carregarCategorias, restauranteIdEscopo]);
 
   function handleFiltrar(restauranteId: number | null) {
     setFiltroRestauranteId(restauranteId);
@@ -119,7 +121,7 @@ export function AdminCategoriasPage() {
 
   const tratarErroAcao = useCallback((id: number, error: unknown, mensagemPadrao: string) => {
     if (error instanceof ApiError && error.status === 401) {
-      clearSession();
+      void logout();
       setSemAutorizacao(true);
       setErro("Sessão expirada. Faça login novamente.");
     } else if (error instanceof ApiError && error.status === 403) {
@@ -133,20 +135,22 @@ export function AdminCategoriasPage() {
     } else {
       setErrosAcao((atual) => ({ ...atual, [id]: mensagemPadrao }));
     }
-  }, []);
+  }, [logout]);
 
   const handleCriar = useCallback(
     async (request: CriarCategoriaRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await criarCategoria(request);
         await carregarCategorias(filtroRestauranteId);
+        setModalAberto(false);
         setMensagemSucesso(`Categoria "${response.nome}" cadastrada.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -154,7 +158,12 @@ export function AdminCategoriasPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Restaurante não encontrado.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(error.message || "Dados inválidos. O nome pode já estar em uso neste restaurante.");
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_CATEGORIA);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O nome pode já estar em uso neste restaurante.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -164,22 +173,24 @@ export function AdminCategoriasPage() {
         setSalvando(false);
       }
     },
-    [carregarCategorias, filtroRestauranteId],
+    [carregarCategorias, filtroRestauranteId, logout],
   );
 
   const handleAtualizar = useCallback(
     async (id: number, request: AtualizarCategoriaRequest) => {
       setErroSalvar(null);
+      setErrosCampoApi({});
       setSalvando(true);
 
       try {
         const response = await atualizarCategoria(id, request);
         await carregarCategorias(filtroRestauranteId);
         setCategoriaEmEdicao(null);
+        setModalAberto(false);
         setMensagemSucesso(`Categoria "${response.nome}" atualizada.`);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+          void logout();
           setSemAutorizacao(true);
           setErro("Sessão expirada. Faça login novamente.");
         } else if (error instanceof ApiError && error.status === 403) {
@@ -187,7 +198,12 @@ export function AdminCategoriasPage() {
         } else if (error instanceof ApiError && error.status === 404) {
           setErroSalvar("Categoria não encontrada.");
         } else if (error instanceof ApiError && error.status === 400) {
-          setErroSalvar(error.message || "Dados inválidos. O nome pode já estar em uso neste restaurante.");
+          const camposApi = extrairErrosCampoApi(error, CAMPOS_CATEGORIA);
+          if (Object.keys(camposApi).length > 0) {
+            setErrosCampoApi(camposApi);
+          } else {
+            setErroSalvar(error.message || "Dados inválidos. O nome pode já estar em uso neste restaurante.");
+          }
         } else if (error instanceof ApiError) {
           setErroSalvar(error.message);
         } else {
@@ -197,7 +213,7 @@ export function AdminCategoriasPage() {
         setSalvando(false);
       }
     },
-    [carregarCategorias, filtroRestauranteId],
+    [carregarCategorias, filtroRestauranteId, logout],
   );
 
   const handleInativar = useCallback(
@@ -218,13 +234,24 @@ export function AdminCategoriasPage() {
     [carregarCategorias, filtroRestauranteId, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
-  function handleEditar(categoria: CategoriaAdminResponse) {
+  function handleNovo() {
     setErroSalvar(null);
-    setCategoriaEmEdicao(categoria);
+    setErrosCampoApi({});
+    setCategoriaEmEdicao(null);
+    setModalAberto(true);
   }
 
-  function handleCancelarEdicao() {
+  function handleEditar(categoria: CategoriaAdminResponse) {
     setErroSalvar(null);
+    setErrosCampoApi({});
+    setCategoriaEmEdicao(categoria);
+    setModalAberto(true);
+  }
+
+  function handleFecharModal() {
+    setModalAberto(false);
+    setErroSalvar(null);
+    setErrosCampoApi({});
     setCategoriaEmEdicao(null);
   }
 
@@ -233,6 +260,9 @@ export function AdminCategoriasPage() {
       <AdminVoltarLink />
 
       <div className="caixa-toolbar">
+        <Button type="button" onClick={handleNovo}>
+          Nova categoria
+        </Button>
         <Button type="button" onClick={() => void carregarCategorias(filtroRestauranteId)} loading={loading}>
           Atualizar lista
         </Button>
@@ -292,7 +322,7 @@ export function AdminCategoriasPage() {
         <div className="totem-estado totem-estado--erro">
           <ErrorMessage message={erro} />
           {semAutorizacao ? (
-            <Button type="button" onClick={() => navigate("/admin/login")}>
+            <Button type="button" onClick={() => navigate("/login")}>
               Ir para login
             </Button>
           ) : (
@@ -305,21 +335,28 @@ export function AdminCategoriasPage() {
 
       {!semAutorizacao && (!adminRestaurante || restauranteIdEscopo != null) && (
         <>
-          <CategoriaForm
-            categoriaEmEdicao={categoriaEmEdicao}
-            restaurantes={restaurantes}
-            restauranteSelecionadoPadrao={filtroRestauranteId}
-            restauranteFixo={
-              adminRestaurante && restauranteIdEscopo != null
-                ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
-                : null
-            }
-            onCriar={handleCriar}
-            onAtualizar={handleAtualizar}
-            onCancelarEdicao={handleCancelarEdicao}
-            salvando={salvando}
-            erro={erroSalvar}
-          />
+          <Modal
+            aberto={modalAberto}
+            titulo={categoriaEmEdicao ? `Editar categoria — ${categoriaEmEdicao.nome}` : "Cadastrar categoria"}
+            onFechar={handleFecharModal}
+          >
+            <CategoriaForm
+              categoriaEmEdicao={categoriaEmEdicao}
+              restaurantes={restaurantes}
+              restauranteSelecionadoPadrao={filtroRestauranteId}
+              restauranteFixo={
+                adminRestaurante && restauranteIdEscopo != null
+                  ? { id: restauranteIdEscopo, rotulo: "Restaurante vinculado à sua conta" }
+                  : null
+              }
+              onCriar={handleCriar}
+              onAtualizar={handleAtualizar}
+              onCancelarEdicao={handleFecharModal}
+              salvando={salvando}
+              erro={erroSalvar}
+              errosCampoApi={errosCampoApi}
+            />
+          </Modal>
 
           {loading && <p className="totem-estado">Carregando categorias...</p>}
 

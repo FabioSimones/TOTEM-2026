@@ -108,23 +108,23 @@ export function ProdutoCard({
           Editar
         </Button>
 
-        <button
+        <Button
           type="button"
-          className="restaurante-card__acao-secundaria"
-          disabled={executando}
+          variant="secondary"
+          loading={executando}
           onClick={() => onAlternarDisponibilidade(produto.id, !produto.disponivel)}
         >
-          {executando ? "Aguarde..." : produto.disponivel ? "Marcar indisponível" : "Marcar disponível"}
-        </button>
+          {produto.disponivel ? "Marcar indisponível" : "Marcar disponível"}
+        </Button>
 
-        <button
+        <Button
           type="button"
-          className="restaurante-card__acao-secundaria"
-          disabled={executando}
+          variant="secondary"
+          loading={executando}
           onClick={() => onAlternarDestaque(produto.id, !produto.destaque)}
         >
-          {executando ? "Aguarde..." : produto.destaque ? "Remover destaque" : "Marcar destaque"}
-        </button>
+          {produto.destaque ? "Remover destaque" : "Marcar destaque"}
+        </Button>
       </div>
     </article>
   );
