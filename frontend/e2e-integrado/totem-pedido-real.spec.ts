@@ -21,9 +21,13 @@ test.describe("Totem — pedido real (E2E integrado, sem mocks)", () => {
 
     await expect(page.getByText(nomeProduto)).toBeVisible();
 
+    // TASK-120.1/120.3: "Adicionar" abre o modal de seleção do produto (quantidade/observação) —
+    // só confirma o item no carrinho depois de "Adicionar ao carrinho". O carrinho, por sua vez,
+    // só abre explicitamente pelo botão da topbar (nunca automaticamente após adicionar).
     await page.getByRole("button", { name: "Adicionar" }).click();
-    await page.getByRole("button", { name: "Finalizar pedido" }).click();
+    await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
 
+    await page.getByRole("button", { name: "Abrir carrinho, 1 item" }).click();
     await page.getByLabel("Seu nome").fill("Cliente E2E Integrado");
     await page.getByRole("button", { name: "Criar pedido" }).click();
 

@@ -16,14 +16,17 @@ import { dispositivoMock, seedDeviceSession } from "./helpers/storage";
  * mínima (44×44px) foi realmente aplicada no navegador, não só declarada no CSS.
  */
 test.describe("Acessibilidade visual e touch targets (TASK-113)", () => {
-  test("Totem: botão de quantidade tem alvo de toque >= 44px e continua incrementando", async ({ page }) => {
+  test("Totem: botão de quantidade do modal de produto tem alvo de toque >= 44px e continua incrementando (TASK-120.1)", async ({
+    page,
+  }) => {
     await seedDeviceSession(page, dispositivoMock("TOTEM"));
     await mockJson(page, "**/api/totem/cardapio", 200, cardapioMock());
 
     await page.goto("/totem");
     await page.getByRole("button", { name: "Adicionar" }).click();
 
-    const botaoAumentar = page.getByRole("button", { name: /Aumentar quantidade/ });
+    const dialogProduto = page.getByRole("dialog");
+    const botaoAumentar = dialogProduto.getByRole("button", { name: "Aumentar quantidade" });
     await expect(botaoAumentar).toBeVisible();
 
     const caixa = await botaoAumentar.boundingBox();
@@ -31,7 +34,12 @@ test.describe("Acessibilidade visual e touch targets (TASK-113)", () => {
     expect(caixa?.height).toBeGreaterThanOrEqual(44);
 
     await botaoAumentar.click();
-    await expect(page.getByText("2", { exact: true })).toBeVisible();
+    await expect(dialogProduto.getByText("2", { exact: true })).toBeVisible();
+
+    // Confirmar adiciona a quantidade escolhida no modal (2), não abre o carrinho automaticamente.
+    await dialogProduto.getByRole("button", { name: "Adicionar ao carrinho" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Abrir carrinho, 2 itens" })).toBeVisible();
   });
 
   test("ThemeToggle tem alvo de toque >= 44px e continua alternando o tema", async ({ page }) => {

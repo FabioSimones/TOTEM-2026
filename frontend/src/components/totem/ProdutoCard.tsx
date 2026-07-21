@@ -1,22 +1,18 @@
 import type { ProdutoCardapioResponse } from "../../types/totem";
 import { formatCurrencyBRL } from "../../utils/formatters";
 import { Button } from "../ui/Button";
+import { ProductImage } from "./ProductImage";
 
 interface ProdutoCardProps {
   produto: ProdutoCardapioResponse;
-  onAdd?: (produto: ProdutoCardapioResponse) => void;
+  /** TASK-120.1: abre o `ProductSelectionModal` — não adiciona ao carrinho diretamente. */
+  onSelecionar?: (produto: ProdutoCardapioResponse) => void;
 }
 
-export function ProdutoCard({ produto, onAdd }: ProdutoCardProps) {
+export function ProdutoCard({ produto, onSelecionar }: ProdutoCardProps) {
   return (
     <article className="produto-card">
-      {produto.imagemUrl ? (
-        <img className="produto-card__imagem" src={produto.imagemUrl} alt={produto.nome} loading="lazy" />
-      ) : (
-        <div className="produto-card__imagem produto-card__imagem--placeholder" aria-hidden="true">
-          🍔
-        </div>
-      )}
+      <ProductImage src={produto.imagemUrl} productName={produto.nome} size="card" />
 
       <div className="produto-card__corpo">
         {(produto.destaque || produto.recomendado) && (
@@ -33,7 +29,7 @@ export function ProdutoCard({ produto, onAdd }: ProdutoCardProps) {
 
         <div className="produto-card__rodape">
           <span className="produto-card__preco">{formatCurrencyBRL(produto.preco)}</span>
-          <Button type="button" className="produto-card__botao" onClick={() => onAdd?.(produto)}>
+          <Button type="button" className="produto-card__botao" onClick={() => onSelecionar?.(produto)}>
             Adicionar
           </Button>
         </div>

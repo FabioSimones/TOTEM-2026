@@ -59,6 +59,16 @@
   --operational-topbar-height: 4rem;
   --operational-action-height: 3rem;
 
+  /* TASK-120: dimensões estruturais da sidebar/topbar do Totem — chave própria (não reaproveita
+     --admin-sidebar-*), já que a semântica é diferente (navegação de categorias voltada ao cliente,
+     não ao operador) mesmo usando a mesma técnica de colapso/drawer. Botão "Adicionar" do card de
+     produto usa --totem-add-button-height (56px), acima do mínimo geral, por ser a ação principal e
+     mais repetida da tela em um terminal touch. */
+  --totem-sidebar-width: 15rem;
+  --totem-sidebar-collapsed-width: 5rem;
+  --totem-topbar-height: 4rem;
+  --totem-add-button-height: 3.5rem;
+
   /* Cores semânticas de status — fixas nos dois temas (contraste ok em
      fundo quase-preto e em fundo quente-claro), não fazem parte da
      identidade visual dark/light. */

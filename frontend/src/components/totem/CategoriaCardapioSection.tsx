@@ -3,10 +3,10 @@ import { ProdutoCard } from "./ProdutoCard";
 
 interface CategoriaCardapioSectionProps {
   categoria: CategoriaCardapioResponse;
-  onAddProduct?: (produto: ProdutoCardapioResponse) => void;
+  onSelecionarProduto?: (produto: ProdutoCardapioResponse) => void;
 }
 
-export function CategoriaCardapioSection({ categoria, onAddProduct }: CategoriaCardapioSectionProps) {
+export function CategoriaCardapioSection({ categoria, onSelecionarProduto }: CategoriaCardapioSectionProps) {
   return (
     <section className="categoria-section">
       <div className="categoria-section__cabecalho">
@@ -16,7 +16,7 @@ export function CategoriaCardapioSection({ categoria, onAddProduct }: CategoriaC
 
       <div className="categoria-section__grid">
         {categoria.produtos.map((produto) => (
-          <ProdutoCard key={produto.id} produto={produto} onAdd={onAddProduct} />
+          <ProdutoCard key={produto.id} produto={produto} onSelecionar={onSelecionarProduto} />
         ))}
       </div>
     </section>

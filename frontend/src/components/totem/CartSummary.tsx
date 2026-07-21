@@ -1,43 +1,48 @@
 import { useState, type FormEvent } from "react";
+import { FaBox, FaUtensils } from "react-icons/fa6";
 import type { CartItem } from "../../types/cart";
 import type { TipoConsumo } from "../../types/totem";
 import { formatCurrencyBRL } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { ErrorMessage } from "../ui/ErrorMessage";
 import { Input } from "../ui/Input";
-import { CartItemRow } from "./CartItemRow";
+import { CartReviewItem } from "./CartReviewItem";
 
 interface CartSummaryProps {
   itens: CartItem[];
   totalEstimado: number;
-  onIncrement: (produtoId: number) => void;
-  onDecrement: (produtoId: number) => void;
+  onEditarItem: (item: CartItem) => void;
   onRemove: (produtoId: number) => void;
-  onChangeObservacao: (produtoId: number, observacao: string) => void;
   onClear: () => void;
   onCreateOrder: (dados: { clienteNome: string; tipoConsumo: TipoConsumo }) => void;
   criandoPedido: boolean;
   erroPedido: string | null;
+  /** TASK-120.1: só relevante quando reaproveitado dentro do `CartModal` — mostra "Continuar
+   * escolhendo" no estado vazio, fechando o modal sem alterar o carrinho. */
+  onContinuarEscolhendo?: () => void;
 }
 
-const OPCOES_TIPO_CONSUMO: { valor: TipoConsumo; rotulo: string }[] = [
-  { valor: "LOCAL", rotulo: "Comer no local" },
-  { valor: "VIAGEM", rotulo: "Para viagem" },
+/** TASK-120.3: opções de consumo com ícone + descrição curta — reaproveita `react-icons/fa6` já
+ * instalado, sem biblioteca nova. `FaUtensils` (talheres) para "comer no local", `FaBox` (embalagem
+ * para viagem) para "para viagem" — nenhum dos dois entra em conflito com o uso de `FaUtensils`
+ * como fallback de imagem em `CartReviewItem` (contextos diferentes, mesmo símbolo é reaproveitado
+ * de propósito para "refeição servida"). */
+const OPCOES_TIPO_CONSUMO: { valor: TipoConsumo; rotulo: string; descricao: string; Icone: typeof FaUtensils }[] = [
+  { valor: "LOCAL", rotulo: "Comer no local", descricao: "Servido na mesa ou balcão", Icone: FaUtensils },
+  { valor: "VIAGEM", rotulo: "Para viagem", descricao: "Embalado para levar", Icone: FaBox },
 ];
 
 export function CartSummary({
   itens,
   totalEstimado,
-  onIncrement,
-  onDecrement,
+  onEditarItem,
   onRemove,
-  onChangeObservacao,
   onClear,
   onCreateOrder,
   criandoPedido,
   erroPedido,
+  onContinuarEscolhendo,
 }: CartSummaryProps) {
-  const [formAberto, setFormAberto] = useState(false);
   const [clienteNome, setClienteNome] = useState("");
   const [tipoConsumo, setTipoConsumo] = useState<TipoConsumo>("LOCAL");
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
@@ -54,85 +59,92 @@ export function CartSummary({
     onCreateOrder({ clienteNome: clienteNome.trim(), tipoConsumo });
   }
 
+  if (carrinhoVazio) {
+    return (
+      <div className="cart-summary">
+        <p className="cart-summary__vazio">Seu carrinho está vazio. Escolha produtos no cardápio para adicionar aqui.</p>
+        {onContinuarEscolhendo && (
+          <Button type="button" fullWidth onClick={onContinuarEscolhendo}>
+            Continuar escolhendo
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <aside className="cart-summary">
-      <h2 className="cart-summary__titulo">Seu pedido</h2>
+    <div className="cart-summary">
+      <p className="cart-summary__descricao">Revise os itens e confirme como deseja receber o pedido.</p>
 
-      {carrinhoVazio ? (
-        <p className="cart-summary__vazio">Seu carrinho está vazio. Adicione produtos do cardápio ao lado.</p>
-      ) : (
-        <>
-          <ul className="cart-summary__lista">
-            {itens.map((item) => (
-              <CartItemRow
-                key={item.produtoId}
-                item={item}
-                onIncrement={onIncrement}
-                onDecrement={onDecrement}
-                onRemove={onRemove}
-                onChangeObservacao={onChangeObservacao}
-              />
+      <ul className="cart-summary__lista">
+        {itens.map((item) => (
+          <CartReviewItem key={item.produtoId} item={item} onEditar={onEditarItem} onRemover={onRemove} />
+        ))}
+      </ul>
+
+      <form className="cart-summary__confirmacao" onSubmit={handleSubmit}>
+        <div className="cart-summary__total">
+          <span>Total estimado</span>
+          <strong>{formatCurrencyBRL(totalEstimado)}</strong>
+        </div>
+
+        <p className="cart-summary__aviso">O valor final será confirmado pelo restaurante ao criar o pedido.</p>
+
+        <fieldset className="cart-summary__tipo-consumo">
+          <legend className="cart-summary__tipo-consumo-legenda">Tipo de consumo</legend>
+          <div className="cart-summary__tipo-consumo-opcoes">
+            {OPCOES_TIPO_CONSUMO.map((opcao) => (
+              <label
+                key={opcao.valor}
+                className={
+                  "cart-summary__tipo-consumo-opcao" +
+                  (tipoConsumo === opcao.valor ? " cart-summary__tipo-consumo-opcao--ativa" : "")
+                }
+              >
+                <input
+                  type="radio"
+                  name="tipoConsumo"
+                  value={opcao.valor}
+                  checked={tipoConsumo === opcao.valor}
+                  onChange={() => setTipoConsumo(opcao.valor)}
+                  className="cart-summary__tipo-consumo-input"
+                />
+                <opcao.Icone className="cart-summary__tipo-consumo-icone" aria-hidden="true" focusable="false" />
+                <span className="cart-summary__tipo-consumo-texto">
+                  <span className="cart-summary__tipo-consumo-titulo">{opcao.rotulo}</span>
+                  <span className="cart-summary__tipo-consumo-descricao">{opcao.descricao}</span>
+                </span>
+              </label>
             ))}
-          </ul>
-
-          <div className="cart-summary__total">
-            <span>Total estimado</span>
-            <strong>{formatCurrencyBRL(totalEstimado)}</strong>
           </div>
+        </fieldset>
 
-          <p className="cart-summary__aviso">
-            O valor final será confirmado pelo restaurante ao criar o pedido.
-          </p>
+        <Input
+          id="clienteNome"
+          label="Seu nome"
+          value={clienteNome}
+          onChange={(event) => setClienteNome(event.target.value)}
+          placeholder="Ex.: Fabio"
+          error={erroValidacao}
+        />
 
-          {!formAberto && (
-            <Button type="button" className="cart-summary__finalizar" onClick={() => setFormAberto(true)}>
-              Finalizar pedido
+        <ErrorMessage message={erroPedido} />
+
+        <Button type="submit" fullWidth loading={criandoPedido}>
+          Criar pedido
+        </Button>
+
+        <div className="cart-summary__acoes-secundarias">
+          {onContinuarEscolhendo && (
+            <Button type="button" variant="secondary" onClick={onContinuarEscolhendo} disabled={criandoPedido}>
+              Continuar escolhendo
             </Button>
           )}
-
-          {formAberto && (
-            <form className="cart-summary__form" onSubmit={handleSubmit}>
-              <Input
-                id="clienteNome"
-                label="Seu nome"
-                value={clienteNome}
-                onChange={(event) => setClienteNome(event.target.value)}
-                placeholder="Ex.: Fabio"
-              />
-
-              <div className="cart-summary__tipo-consumo">
-                <span className="cart-summary__tipo-consumo-rotulo">Tipo de consumo</span>
-                <div className="cart-summary__tipo-consumo-opcoes">
-                  {OPCOES_TIPO_CONSUMO.map((opcao) => (
-                    <button
-                      key={opcao.valor}
-                      type="button"
-                      className={
-                        "cart-summary__tipo-consumo-botao" +
-                        (tipoConsumo === opcao.valor ? " cart-summary__tipo-consumo-botao--ativo" : "")
-                      }
-                      aria-pressed={tipoConsumo === opcao.valor}
-                      onClick={() => setTipoConsumo(opcao.valor)}
-                    >
-                      {opcao.rotulo}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <ErrorMessage message={erroValidacao ?? erroPedido} />
-
-              <Button type="submit" fullWidth loading={criandoPedido}>
-                Criar pedido
-              </Button>
-            </form>
-          )}
-
-          <Button type="button" variant="danger" fullWidth onClick={onClear} disabled={criandoPedido}>
+          <Button type="button" variant="danger" onClick={onClear} disabled={criandoPedido}>
             Limpar carrinho
           </Button>
-        </>
-      )}
-    </aside>
+        </div>
+      </form>
+    </div>
   );
 }

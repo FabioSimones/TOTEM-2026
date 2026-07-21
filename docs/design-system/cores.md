@@ -66,6 +66,10 @@ A sidebar e o hero do dashboard (`AdminSidebar`/`AdminDashboardHero`) **não cri
 
 A `OperationalTopbar` **também não criou nenhuma cor nova** — mas, diferente da `AdminSidebar`, **não** reaproveita `--color-auth-brand-*`: usa `--color-surface` (fundo) e `--color-primary` (ícone/texto do módulo), os mesmos tokens gerais do tema ativo, porque as telas operacionais não têm um painel de marca fixo/sempre-escuro como o login/admin — a topbar acompanha o tema claro/escuro normalmente, sem exceção. Os dois tokens novos desta task (`--operational-topbar-height`, `--operational-action-height`, em `tokens.css`) também são só de **dimensão**.
 
+### Autoatendimento — Totem (TASK-120)
+
+A `TotemSidebar`/`TotemTopbar` **também não criaram nenhuma cor nova** — e, como as telas operacionais (acima), **não** reaproveitam `--color-auth-brand-*`: usam `--color-surface`/`--color-border`/`--color-text` gerais do tema ativo. Diferente da `AdminSidebar` (sempre escura, identidade de marca fixa), a sidebar do Totem **precisa** acompanhar dark/light normalmente — é a tela voltada ao cliente, exibida num terminal físico onde o botão de tema (`ThemeToggle`, com ícone de lâmpada) precisa continuar legível nos dois modos. Os três tokens novos desta task (`--totem-sidebar-width`, `--totem-sidebar-collapsed-width`, `--totem-topbar-height`, em `tokens.css`) também são só de **dimensão**; `--totem-add-button-height` (56px) é o único touch target próprio desta task, para o botão "Adicionar" do card de produto — a ação mais repetida da tela.
+
 ## Cores semânticas (fixas, não variam por tema)
 
 Definidas em `frontend/src/styles/tokens.css`, pois representam estado (sucesso/erro), não identidade de marca:
