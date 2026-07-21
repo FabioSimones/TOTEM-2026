@@ -34,11 +34,20 @@ test.describe("Caixa → Cozinha → Caixa com operadores reais (E2E integrado, 
     await seedRealDeviceSession(caixaPage, cenario.caixaAtivado);
     await caixaPage.goto("/caixa");
 
-    await expect(caixaPage.getByText(/Operador não identificado/)).toBeVisible();
+    // TASK-123.1: desde a TASK-119.2, o intervalo "dispositivo pronto, operador ausente" já monta o
+    // `OperationalLayout` (topbar completa) — o conteúdo central é o `OperadorPainel`, identificado
+    // pelo seu <h1>, não mais um texto solto "Operador não identificado" da casca antiga.
+    await expect(caixaPage.getByRole("heading", { level: 1, name: "Identifique-se para acessar o Caixa" })).toBeVisible();
     await caixaPage.getByLabel("Email do operador").fill(cenario.operadorCaixa.email);
     await caixaPage.getByLabel("Senha").fill(cenario.operadorCaixa.senha);
     await caixaPage.getByRole("button", { name: "Identificar operador" }).click();
-    await expect(caixaPage.getByText(`Operador: ${cenario.operadorCaixa.nome}`)).toBeVisible();
+
+    // A identidade do operador aparece na topbar (`OperationalTopbar`), não mais como um texto
+    // "Operador: {nome}" solto na página — escopado ao landmark para não colidir com um nome de
+    // cliente igual num card de pedido.
+    const topbarCaixa = caixaPage.getByRole("banner");
+    await expect(topbarCaixa.getByText(cenario.operadorCaixa.nome)).toBeVisible();
+    await expect(topbarCaixa.getByRole("button", { name: "Trocar operador" })).toBeVisible();
 
     const cardCaixaInicial = cardDoPedido(caixaPage, cenario.numeroPedido);
     await expect(cardCaixaInicial).toBeVisible();
@@ -53,11 +62,14 @@ test.describe("Caixa → Cozinha → Caixa com operadores reais (E2E integrado, 
     await seedRealDeviceSession(cozinhaPage, cenario.cozinhaAtivado);
     await cozinhaPage.goto("/cozinha");
 
-    await expect(cozinhaPage.getByText(/Operador não identificado/)).toBeVisible();
+    await expect(cozinhaPage.getByRole("heading", { level: 1, name: "Identifique-se para acessar a Cozinha" })).toBeVisible();
     await cozinhaPage.getByLabel("Email do operador").fill(cenario.operadorCozinha.email);
     await cozinhaPage.getByLabel("Senha").fill(cenario.operadorCozinha.senha);
     await cozinhaPage.getByRole("button", { name: "Identificar operador" }).click();
-    await expect(cozinhaPage.getByText(`Operador: ${cenario.operadorCozinha.nome}`)).toBeVisible();
+
+    const topbarCozinha = cozinhaPage.getByRole("banner");
+    await expect(topbarCozinha.getByText(cenario.operadorCozinha.nome)).toBeVisible();
+    await expect(topbarCozinha.getByRole("button", { name: "Trocar operador" })).toBeVisible();
 
     const cardCozinha = cardDoPedido(cozinhaPage, cenario.numeroPedido);
     await expect(cardCozinha).toBeVisible();
