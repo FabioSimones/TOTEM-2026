@@ -16,19 +16,35 @@ import { dispositivoMock, seedDeviceSession } from "./helpers/storage";
  * homologar visualmente que cada tela carrega e reage a uma ação real de clique.
  */
 test.describe("Fluxo operacional — homologação visual mínima (mockado)", () => {
-  test("Totem: carrega o cardápio e adicionar um produto habilita o resumo do pedido", async ({ page }) => {
+  test("Totem: carrega o cardápio e adicionar um produto pelo modal atualiza a revisão do pedido", async ({
+    page,
+  }) => {
     await seedDeviceSession(page, dispositivoMock("TOTEM"));
     await mockJson(page, "**/api/totem/cardapio", 200, cardapioMock());
 
     await page.goto("/totem");
 
     await expect(page.getByText("X-Burger E2E")).toBeVisible();
-    await expect(page.getByText("Seu carrinho está vazio.", { exact: false })).toBeVisible();
 
+    // TASK-120.1: o carrinho deixou de ficar sempre visível na página — vira modal, aberto só pelo
+    // botão da topbar. Confirma o estado vazio dentro do dialog, não mais na página em si.
+    await page.getByRole("button", { name: "Abrir carrinho" }).click();
+    const dialogCarrinhoVazio = page.getByRole("dialog", { name: "Seu pedido" });
+    await expect(dialogCarrinhoVazio.getByText("Seu carrinho está vazio.", { exact: false })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    // "Adicionar" abre o modal de seleção do produto — não adiciona 1 unidade direto (TASK-120.1).
     await page.getByRole("button", { name: "Adicionar" }).click();
+    const dialogProduto = page.getByRole("dialog", { name: "X-Burger E2E" });
+    await expect(dialogProduto).toBeVisible();
+    await dialogProduto.getByRole("button", { name: "Adicionar ao carrinho" }).click();
 
-    await expect(page.getByText("Total estimado")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Finalizar pedido" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("button", { name: "Abrir carrinho, 1 item" }).click();
+    const dialogCarrinhoAtualizado = page.getByRole("dialog", { name: "Seu pedido" });
+    await expect(dialogCarrinhoAtualizado.getByText("X-Burger E2E")).toBeVisible();
+    await expect(dialogCarrinhoAtualizado.getByText("Total estimado")).toBeVisible();
   });
 
   test("Caixa: sem operador mostra só o login; após identificar, carrega a lista e mostra ação sugerida", async ({

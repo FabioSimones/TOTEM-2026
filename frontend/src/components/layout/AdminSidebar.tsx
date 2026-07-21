@@ -42,46 +42,50 @@ export function AdminSidebar({
         hidden={!mobileOpen}
       />
 
-      <nav className={classes} aria-label="Navegação administrativa" id={navId}>
-        <div className="admin-sidebar__brand">
-          <button
-            type="button"
-            className="admin-sidebar__collapse-toggle"
-            onClick={onToggleCollapsed}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Expandir menu administrativo" : "Recolher menu administrativo"}
-          >
-            <ChevronLeftIcon
-              className="admin-sidebar__collapse-icon"
-              style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
-            />
-          </button>
-          <span className="admin-sidebar__brand-text">
-            <span className="admin-sidebar__brand-name">TotemFood</span>
-            <span className="admin-sidebar__brand-tagline">Sistema de gestão</span>
-          </span>
-        </div>
+      <aside
+        className={"admin-sidebar-column" + (collapsed ? " admin-sidebar-column--collapsed" : "")}
+      >
+        <nav className={classes} aria-label="Navegação administrativa" id={navId}>
+          <div className="admin-sidebar__brand">
+            <button
+              type="button"
+              className="admin-sidebar__collapse-toggle"
+              onClick={onToggleCollapsed}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Expandir menu administrativo" : "Recolher menu administrativo"}
+            >
+              <ChevronLeftIcon
+                className="admin-sidebar__collapse-icon"
+                style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
+              />
+            </button>
+            <span className="admin-sidebar__brand-text">
+              <span className="admin-sidebar__brand-name">TotemFood</span>
+              <span className="admin-sidebar__brand-tagline">Sistema de gestão</span>
+            </span>
+          </div>
 
-        <ul className="admin-sidebar__list">
-          {itens.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                end={item.path === "/admin"}
-                title={item.label}
-                aria-label={item.label}
-                onClick={onCloseMobile}
-                className={({ isActive }) =>
-                  "admin-sidebar__link" + (isActive ? " admin-sidebar__link--active" : "")
-                }
-              >
-                <item.icon className="admin-sidebar__icon" />
-                <span className="admin-sidebar__label">{item.label}</span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+          <ul className="admin-sidebar__list">
+            {itens.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  end={item.path === "/admin"}
+                  title={item.label}
+                  aria-label={item.label}
+                  onClick={onCloseMobile}
+                  className={({ isActive }) =>
+                    "admin-sidebar__link" + (isActive ? " admin-sidebar__link--active" : "")
+                  }
+                >
+                  <item.icon className="admin-sidebar__icon" />
+                  <span className="admin-sidebar__label">{item.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
     </>
   );
 }

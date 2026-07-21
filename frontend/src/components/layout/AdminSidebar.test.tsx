@@ -109,6 +109,28 @@ describe("AdminSidebar — botão de recolher/expandir", () => {
   });
 });
 
+describe("AdminSidebar — coluna externa vs. conteúdo sticky (TASK-122)", () => {
+  it("o <nav> fica dentro de um wrapper de coluna (.admin-sidebar-column) que acompanha a altura do conteúdo", () => {
+    const { container } = renderSidebar();
+
+    const coluna = container.querySelector(".admin-sidebar-column");
+    const nav = container.querySelector("nav.admin-sidebar");
+
+    expect(coluna).toBeInTheDocument();
+    expect(nav).toBeInTheDocument();
+    // O <nav> (conteúdo sticky) é filho da coluna (dona do fundo/borda visual) — não o contrário.
+    expect(coluna?.contains(nav)).toBe(true);
+  });
+
+  it("recolhida, a coluna também recebe a classe de estado recolhido", () => {
+    const { container } = renderSidebar({ collapsed: true });
+
+    const coluna = container.querySelector(".admin-sidebar-column");
+    expect(coluna).toHaveClass("admin-sidebar-column--collapsed");
+    expect(container.querySelector("nav.admin-sidebar")).toHaveClass("admin-sidebar--collapsed");
+  });
+});
+
 describe("AdminSidebar — backdrop mobile", () => {
   it("clicar no backdrop chama onCloseMobile", async () => {
     const user = userEvent.setup();

@@ -2158,10 +2158,10 @@ a:hover {
    duplicar paleta. Só as DIMENSÕES (largura/altura) são tokens novos, ver tokens.css. */
 .admin-layout {
   display: flex;
+  align-items: stretch;
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
-  overflow-x: hidden;
 }
 
 .admin-layout__main {
@@ -2177,25 +2177,51 @@ a:hover {
 }
 
 /* ===== Sidebar ===== */
-.admin-sidebar {
+/* TASK-122: mesma causa raiz encontrada e corrigida no Totem (TASK-120.5) — a coluna e o conteúdo
+   sticky são elementos separados de propósito. `.admin-sidebar` (o `<nav>`) tinha fundo/borda e
+   `position: sticky; height: 100dvh` no MESMO elemento: sem `height` explícita esse elemento nunca
+   participava do `align-items: stretch` do `.admin-layout`, então sua caixa (e o fundo que carrega)
+   parava exatamente em uma tela de altura, mesmo com `.admin-layout__main` (irmão, onde o `Outlet`
+   das páginas administrativas renderiza) mais alto que a tela — o fundo da sidebar "terminava" no
+   meio de páginas longas (Usuários/Produtos/Pedidos com muitos cards). `.admin-sidebar-column`
+   (abaixo) é o item real do flex row: sem `height` própria, estica normalmente até acompanhar
+   `.admin-layout__main` (via `align-items: stretch` do pai) e carrega o fundo/borda. O `<nav
+   class="admin-sidebar">`, agora dentro dela, é só quem trava em `position: sticky; top: 0; height:
+   100dvh` para manter marca/navegação visíveis durante a rolagem — no desktop ele é transparente,
+   pois quem pinta a coluna inteira é o wrapper por trás. A segunda causa (overflow-x: hidden sem
+   overflow-y em `.admin-layout`, que quebrava esse mesmo sticky por spec do CSS) foi removida
+   abaixo — já coberta globalmente por `html { overflow-x: hidden }` desde a TASK-120.5. */
+.admin-sidebar-column {
   flex-shrink: 0;
   width: var(--admin-sidebar-width);
+  background-color: var(--color-auth-brand-background);
+  border-right: 1px solid var(--color-auth-brand-surface);
+  transition:
+    width var(--transition-base),
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.admin-sidebar-column--collapsed {
+  width: var(--admin-sidebar-collapsed-width);
+}
+
+.admin-sidebar {
+  flex-shrink: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-auth-brand-background);
   color: var(--color-auth-brand-text);
-  border-right: 1px solid var(--color-auth-brand-surface);
   position: sticky;
   top: 0;
   height: 100vh;
   height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width var(--transition-base);
 }
 
 .admin-sidebar--collapsed {
-  width: var(--admin-sidebar-collapsed-width);
+  width: 100%;
 }
 
 .admin-sidebar__backdrop {
@@ -2328,13 +2354,26 @@ a:hover {
 }
 
 /* ===== Drawer mobile ===== */
+/* TASK-122: no mobile o <nav> vira o próprio drawer (`position: fixed`, fora do fluxo do flex row)
+   — a coluna que o envolve precisa recolher a zero e ceder fundo/borda de volta para o `<nav>`,
+   senão sobra uma faixa lateral vazia (largura reservada, sem conteúdo) atrás do drawer fechado. */
 @media (max-width: 959px) {
+  .admin-sidebar-column {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+    background-color: transparent;
+    transition: none;
+  }
+
   .admin-sidebar {
     position: fixed;
     top: 0;
     left: 0;
     z-index: var(--z-overlay);
     width: min(var(--admin-sidebar-width), 85vw);
+    background-color: var(--color-auth-brand-background);
+    border-right: 1px solid var(--color-auth-brand-surface);
     transform: translateX(-100%);
   }
 

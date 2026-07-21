@@ -172,6 +172,194 @@ test.describe("Layout administrativo — drawer mobile", () => {
   });
 });
 
+/** TASK-122: usuários suficientes para o conteúdo principal (`/admin/usuarios`) ultrapassar várias
+ * telas de altura — usado para validar que a coluna lateral (`.admin-sidebar-column`) acompanha
+ * toda a extensão do documento, sem faixa vazia, enquanto o conteúdo interno (`nav.admin-sidebar`)
+ * permanece sticky/visível durante a rolagem. Mesma estratégia geométrica já validada em
+ * `totem-redesign.spec.ts` (TASK-120.5) — boundingBox/scrollHeight, nunca screenshot. */
+function usuarioLongoMock(id: number) {
+  return {
+    id,
+    restauranteId: null,
+    nome: `Usuário Longo ${id} E2E`,
+    email: `usuario.longo.${id}@totem.local`,
+    perfil: "SUPER_ADMIN" as const,
+    ativo: true,
+    criadoEm: "2026-01-01T00:00:00Z",
+    atualizadoEm: null,
+  };
+}
+
+async function abrirUsuariosComPaginaLonga(page: import("@playwright/test").Page) {
+  await seedAdminSession(page, superAdminUsuarioMock);
+  await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
+  await mockJson(page, "**/api/admin/restaurantes", 200, []);
+  await mockJson(
+    page,
+    "**/api/admin/usuarios**",
+    200,
+    Array.from({ length: 40 }, (_, i) => usuarioLongoMock(i + 1)),
+  );
+  await page.goto("/admin/usuarios");
+  // Garante que a listagem (assíncrona) já renderizou os 40 usuários antes de medir o documento —
+  // sem isso, `scrollHeight` é lido ainda com a lista vazia (só sidebar/topbar de uma tela).
+  await page.getByText("Usuário Longo 40 E2E").waitFor();
+  // Espera as fontes carregarem: sem isso, a métrica de altura pode ser lida entre dois reflows
+  // (fonte de fallback → fonte definitiva), tornando `scrollHeight` instável entre duas leituras.
+  await page.evaluate(() => document.fonts.ready);
+}
+
+test.describe("Layout administrativo — continuidade vertical da sidebar em páginas longas (TASK-122, mockado)", () => {
+  async function medir(page: import("@playwright/test").Page) {
+    return page.evaluate(() => {
+      const coluna = document.querySelector(".admin-sidebar-column")!;
+      const caixa = coluna.getBoundingClientRect();
+      return {
+        alturaColuna: caixa.height,
+        // Convertido para coordenadas absolutas do documento (não relativas ao viewport atual),
+        // para poder comparar com `scrollY + innerHeight` depois de rolar.
+        topoColunaDocumento: caixa.top + window.scrollY,
+        alturaDocumento: document.documentElement.scrollHeight,
+      };
+    });
+  }
+
+  test("conteúdo principal ultrapassa a altura da viewport com muitos usuários", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    const { alturaDocumento } = await medir(page);
+    expect(alturaDocumento).toBeGreaterThan(900 * 1.5);
+  });
+
+  test("a coluna lateral acompanha toda a altura do documento — sem faixa vazia no final da página", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    const inicial = await medir(page);
+    // A coluna deve ocupar (ao menos) toda a altura relevante do documento, não só uma viewport.
+    expect(inicial.alturaColuna).toBeGreaterThanOrEqual(inicial.alturaDocumento - 4);
+
+    await page.mouse.wheel(0, inicial.alturaDocumento);
+    await expect
+      .poll(async () => (await medir(page)).alturaColuna)
+      .toBeGreaterThanOrEqual(inicial.alturaDocumento - 4);
+
+    // Depois de rolar até o fim, a última posição visível do documento ainda deve estar coberta
+    // pela coluna — ou seja, o fundo lateral não "acaba" antes do fim da lista.
+    const final = await medir(page);
+    const scrollYFinal = await page.evaluate(() => window.scrollY + window.innerHeight);
+    expect(final.topoColunaDocumento + final.alturaColuna).toBeGreaterThanOrEqual(
+      Math.min(scrollYFinal, final.alturaDocumento) - 4,
+    );
+  });
+
+  test("o conteúdo interno (nav) permanece sticky e visível após rolar até o final da página", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    const nav = page.getByRole("navigation", { name: "Navegação administrativa" });
+    await expect(nav).toBeInViewport();
+
+    const { alturaDocumento } = await medir(page);
+    await page.mouse.wheel(0, alturaDocumento);
+
+    await expect(nav).toBeInViewport();
+    await expect(page.getByRole("link", { name: "Usuários" })).toBeVisible();
+  });
+
+  test("recolhida: a coluna também acompanha toda a altura do documento", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    await page.getByRole("button", { name: "Recolher menu administrativo" }).click();
+    await expect(page.getByRole("button", { name: "Expandir menu administrativo" })).toBeVisible();
+
+    const recolhida = await medir(page);
+    expect(recolhida.alturaColuna).toBeGreaterThanOrEqual(recolhida.alturaDocumento - 4);
+
+    // Expandir de volta preserva o mesmo comportamento.
+    await page.getByRole("button", { name: "Expandir menu administrativo" }).click();
+    await expect(page.getByRole("button", { name: "Recolher menu administrativo" })).toBeVisible();
+    const expandida = await medir(page);
+    expect(expandida.alturaColuna).toBeGreaterThanOrEqual(expandida.alturaDocumento - 4);
+  });
+
+  test("sem scroll horizontal e sem rolagem dupla problemática em página longa", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    const larguraDocumento = await page.evaluate(() => document.documentElement.scrollWidth);
+    const larguraViewport = await page.evaluate(() => window.innerWidth);
+    expect(larguraDocumento).toBeLessThanOrEqual(larguraViewport);
+
+    // A navegação da sidebar só rola internamente quando excede sua própria altura disponível —
+    // com os 7 itens fixos do menu administrativo, ela não deve ter overflow vertical próprio.
+    const overflowNav = await page
+      .locator("nav.admin-sidebar")
+      .evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(overflowNav).toBeLessThanOrEqual(0);
+  });
+
+  test("dashboard curto: a coluna preenche pelo menos a viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedAdminSession(page, superAdminUsuarioMock);
+    await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
+
+    await page.goto("/admin");
+    await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+
+    const { alturaColuna } = await medir(page);
+    expect(alturaColuna).toBeGreaterThanOrEqual(880);
+  });
+
+  test("dark: a coluna lateral continua contínua e visível em página longa", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    // Define o tema diretamente via atributo — o alvo aqui é validar que a coluna lateral continua
+    // contínua sob o tema escuro, não a mecânica do botão de alternância (coberta em outro teste).
+    await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+
+    const { alturaColuna, alturaDocumento } = await medir(page);
+    expect(alturaColuna).toBeGreaterThanOrEqual(alturaDocumento - 4);
+  });
+
+  test("mobile: página longa não cria coluna lateral permanente; drawer continua funcional", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 700 });
+    await abrirUsuariosComPaginaLonga(page);
+
+    const caixaColuna = await page.locator(".admin-sidebar-column").boundingBox();
+    // No mobile a coluna recolhe a zero — não deve reservar espaço lateral atrás do drawer fechado.
+    expect(caixaColuna?.width ?? 0).toBeLessThanOrEqual(1);
+
+    const larguraDocumento = await page.evaluate(() => document.documentElement.scrollWidth);
+    const larguraViewport = await page.evaluate(() => window.innerWidth);
+    expect(larguraDocumento).toBeLessThanOrEqual(larguraViewport);
+
+    await page.getByRole("button", { name: "Abrir menu administrativo" }).click();
+    const nav = page.getByRole("navigation", { name: "Navegação administrativa" });
+    await expect(nav).toBeInViewport();
+
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await expect(nav).not.toBeInViewport();
+  });
+
+  test("ADMIN_RESTAURANTE: coluna acompanha o layout com o conjunto reduzido de itens", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedAdminSession(page, adminRestauranteUsuarioMock);
+    await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
+
+    await page.goto("/admin");
+    await expect(page.getByRole("link", { name: "Restaurantes" })).toHaveCount(0);
+
+    const { alturaColuna, alturaDocumento } = await medir(page);
+    expect(alturaColuna).toBeGreaterThanOrEqual(alturaDocumento - 4);
+  });
+});
+
 test.describe("Layout administrativo — ADMIN_RESTAURANTE", () => {
   test("sidebar não mostra o link 'Restaurantes'", async ({ page }) => {
     await seedAdminSession(page, adminRestauranteUsuarioMock);

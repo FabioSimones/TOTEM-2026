@@ -19,6 +19,25 @@ export const STORAGE_KEYS = {
   operatorData: "totem.operator.data",
 } as const;
 
+/** Espelha `THEME_STORAGE_KEY` de `src/contexts/ThemeContext.tsx` — preferência de UI, não dado de
+ * sessão, por isso vive fora de `STORAGE_KEYS` (que só cobre autenticação). */
+const THEME_STORAGE_KEY = "totem.theme";
+
+/**
+ * TASK-123: semeia o tema inicial (chave real usada por `ThemeContext`) antes da navegação — sem
+ * isso, o tema inicial de cada teste depende do padrão hardcoded da aplicação (hoje "dark"), o que
+ * quebra qualquer teste que assuma um estado inicial fixo sem declará-lo explicitamente. Usar este
+ * helper em vez de `document.documentElement.setAttribute("data-theme", ...)` depois do `goto`:
+ * escrever só o atributo, sem tocar a fonte de verdade (`localStorage`), diverge do estado real que
+ * `ThemeContext` restauraria numa navegação futura dentro do mesmo teste.
+ */
+export async function seedTheme(page: Page, tema: "light" | "dark"): Promise<void> {
+  await page.addInitScript(
+    ({ chave, tema }) => window.localStorage.setItem(chave, tema),
+    { chave: THEME_STORAGE_KEY, tema },
+  );
+}
+
 export function dispositivoMock(
   tipoDispositivo: TipoDispositivo,
   overrides: Partial<DispositivoAutenticadoResponse> = {},

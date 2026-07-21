@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mockJson } from "./helpers/mockApi";
-import { dispositivoMock, seedDeviceSession } from "./helpers/storage";
+import { dispositivoMock, seedDeviceSession, seedTheme } from "./helpers/storage";
 
 /**
  * TASK-120: cobertura mockada do redesign da tela de autoatendimento (sidebar de categorias,
@@ -121,7 +121,15 @@ test.describe("Totem — redesign da sidebar/topbar (TASK-120, mockado)", () => 
   });
 
   test("alternar tema pela lâmpada muda para dark e o texto continua legível", async ({ page }) => {
+    // TASK-123: sem semear o tema inicial, o teste dependia do padrão hardcoded da aplicação
+    // ("dark") — um clique a partir daí produz "light", não "dark". Semear "light" explicitamente
+    // torna o teste determinístico independente do padrão da aplicação.
+    await seedTheme(page, "light");
     await abrirTotem(page);
+
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
+      .toBe("light");
 
     await page.getByRole("button", { name: /Alternar para modo/ }).click();
 
@@ -189,14 +197,34 @@ test.describe("Totem — redesign da sidebar/topbar (TASK-120, mockado)", () => 
     await page.emulateMedia({ reducedMotion: "reduce" });
     await abrirTotem(page);
 
-    const duracaoSegundos = await page.evaluate(() => {
-      const icone = document.querySelector(".totem-hero__icone");
-      const valor = icone ? getComputedStyle(icone).animationDuration : null;
-      return valor ? parseFloat(valor) : null;
+    // TASK-123: esperar o ícone estar visível antes de ler o estilo computado — sem isso, o
+    // `querySelector` podia rodar antes do React montar o hero, retornando `null` de forma
+    // intermitente (condição de corrida, não uma falha real de CSS).
+    const icone = page.locator(".totem-hero__icone");
+    await expect(icone).toBeVisible();
+
+    const { nomeAnimacao, duracaoAnimacao } = await icone.evaluate((elemento) => {
+      const estilo = getComputedStyle(elemento);
+      return { nomeAnimacao: estilo.animationName, duracaoAnimacao: estilo.animationDuration };
     });
 
-    expect(duracaoSegundos).not.toBeNull();
-    expect(duracaoSegundos as number).toBeLessThan(0.001);
+    // Com `prefers-reduced-motion: reduce`, o CSS (`@media (prefers-reduced-motion: no-preference)`
+    // em global.css) simplesmente nunca aplica `animation` ao ícone — o valor computado esperado é
+    // `animation-name: none` (nenhuma animação declarada), não uma duração numérica. Aceita também
+    // duração desprezível (<1ms) como válido, cobrindo o `!important` global de
+    // `prefers-reduced-motion` que reduz (em vez de remover) animações em outros elementos do app —
+    // sem depender de uma string exata: `getComputedStyle` pode retornar "0s", "0.01ms" ou notação
+    // científica ("1e-05s"), e o valor pode vir como uma lista separada por vírgula.
+    const semAnimacaoDeclarada = nomeAnimacao === "none";
+    const duracaoDesprezivel = duracaoAnimacao
+      .split(",")
+      .map((parte) => parte.trim())
+      .every((parte) => {
+        const valorEmSegundos = parte.endsWith("ms") ? parseFloat(parte) / 1000 : parseFloat(parte);
+        return Number.isFinite(valorEmSegundos) && valorEmSegundos < 0.001;
+      });
+
+    expect(semAnimacaoDeclarada || duracaoDesprezivel).toBe(true);
   });
 });
 
@@ -238,8 +266,12 @@ test.describe("Totem — modal de produto e modal de carrinho (TASK-120.1, mocka
     await dialogProduto.getByRole("button", { name: "Adicionar ao carrinho" }).click();
 
     await page.getByRole("button", { name: "Abrir carrinho, 2 itens" }).click();
+    // TASK-120.3: a observação passou a ser um resumo somente leitura em `CartReviewItem`
+    // ("Obs.: sem cebola") — não existe mais um `<input>`/`<textarea>` sempre aberto no carrinho, só
+    // dentro do `ProductSelectionModal` (usado sob demanda, via "Editar"). `getByDisplayValue`
+    // não se aplica aqui: não há elemento de formulário para essa observação na revisão do pedido.
     const dialogCarrinho = page.getByRole("dialog", { name: "Seu pedido" });
-    await expect(dialogCarrinho.getByDisplayValue("sem cebola")).toBeVisible();
+    await expect(dialogCarrinho.getByText("Obs.: sem cebola")).toBeVisible();
   });
 
   test("cancelar o modal do produto não altera o carrinho", async ({ page }) => {
@@ -523,15 +555,19 @@ test.describe("Totem — ícones semânticos e sidebar de altura integral (TASK-
     expect(caixaNav?.height).toBeGreaterThanOrEqual(690);
 
     await expect(page.getByRole("button", { name: "Bebidas" }).locator("svg")).toBeVisible();
-    await expect(page.getByText("Bebidas")).toBeVisible();
+    // TASK-123: "Bebidas" também aparece como heading da seção de produtos no main (cardápio
+    // "Todas") — `getByText` sem escopo é ambíguo (strict mode). Restrito ao landmark da sidebar.
+    await expect(nav.getByText("Bebidas")).toBeVisible();
 
     await page.getByRole("button", { name: "Bebidas" }).click();
     await expect(nav).not.toBeInViewport();
   });
 
   test("dark e light: ícones e textos da sidebar continuam visíveis", async ({ page }) => {
+    await seedTheme(page, "light");
     await abrirTotem(page);
 
+    const nav = page.getByRole("navigation", { name: "Categorias do cardápio" });
     await expect(page.getByRole("button", { name: "Lanches" }).locator("svg")).toBeVisible();
 
     await page.getByRole("button", { name: /Alternar para modo/ }).click();
@@ -539,7 +575,9 @@ test.describe("Totem — ícones semânticos e sidebar de altura integral (TASK-
       .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
       .toBe("dark");
     await expect(page.getByRole("button", { name: "Lanches" }).locator("svg")).toBeVisible();
-    await expect(page.getByText("Lanches")).toBeVisible();
+    // TASK-123: "Lanches" também é o heading da seção de produtos no main — escopo à sidebar evita
+    // o mesmo strict-mode violation do teste "Bebidas" acima.
+    await expect(nav.getByText("Lanches")).toBeVisible();
   });
 
   test("touch targets dos itens de categoria continuam ≥44x44px com os novos ícones", async ({ page }) => {
@@ -621,8 +659,6 @@ test.describe("Totem — continuidade vertical da sidebar em cardápios longos (
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await abrirTotemComPaginaLonga(page);
-
-    const coluna = page.locator(".totem-sidebar-column");
 
     // Lê altura da coluna e do documento numa única volta ao browser — medi-las em chamadas
     // separadas (duas idas e voltas ao page.evaluate/boundingBox) deixa uma janela para reflow
@@ -789,8 +825,11 @@ test.describe("Totem — revisão e edição do carrinho (TASK-120.3, mockado)",
     const dialogCarrinho = page.getByRole("dialog", { name: "Seu pedido" });
     await expect(dialogCarrinho.getByText("X-Burger E2E")).toBeVisible();
     await expect(dialogCarrinho.getByText("1 unidade")).toBeVisible();
-    // Produto mockado sem imagemUrl — mostra o ícone de fallback, não um <img>.
-    await expect(dialogCarrinho.locator(".cart-review-item__imagem--placeholder svg")).toBeVisible();
+    // Produto mockado sem imagemUrl — mostra o ícone de fallback compartilhado (TASK-120.4,
+    // `ProductImage` — `.cart-review-item__imagem--placeholder` era a classe própria e antiga do
+    // `CartReviewItem`, removida quando a imagem foi centralizada), não um <img> quebrada.
+    await expect(dialogCarrinho.locator(".product-image__fallback svg")).toBeVisible();
+    await expect(dialogCarrinho.locator("img")).toHaveCount(0);
 
     await expect(dialogCarrinho.getByRole("button", { name: /Aumentar quantidade/ })).toHaveCount(0);
     await expect(dialogCarrinho.getByRole("button", { name: /Diminuir quantidade/ })).toHaveCount(0);
@@ -1018,6 +1057,7 @@ test.describe("Totem — fallback visual padronizado de produtos (TASK-120.4, mo
   });
 
   test("dark e light: fallback permanece visível nas duas telas", async ({ page }) => {
+    await seedTheme(page, "light");
     await abrirTotemComImagens(page);
 
     const fallbackCard = page.locator(".produto-card", { hasText: "Sem Imagem E2E" }).locator(".product-image__fallback svg");
