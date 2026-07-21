@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppLayout } from "../../components/layout/AppLayout";
-import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { PedidoAdminCard } from "../../components/admin/pedidos/PedidoAdminCard";
 import { PedidoAdminDetalhe } from "../../components/admin/pedidos/PedidoAdminDetalhe";
 import { Button } from "../../components/ui/Button";
@@ -173,9 +171,7 @@ export function AdminPedidosPage() {
   }
 
   return (
-    <AppLayout title="Pedidos" description="Listagem administrativa de pedidos, com consulta de itens, pagamentos e histórico.">
-      <AdminVoltarLink />
-
+    <>
       <div className="caixa-toolbar">
         <Button type="button" onClick={() => void carregarPedidos(filtroRestauranteId, filtroStatus, pagina)} loading={loading}>
           Atualizar lista
@@ -305,6 +301,6 @@ export function AdminPedidosPage() {
           )}
         </>
       )}
-    </AppLayout>
+    </>
   );
 }

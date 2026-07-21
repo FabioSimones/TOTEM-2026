@@ -147,21 +147,41 @@ describe("CaixaHomePage com dispositivo de outro tipo (TASK-112)", () => {
   });
 });
 
-describe("CaixaHomePage sem operador identificado", () => {
-  it("mostra somente o login centralizado, com ação 'Trocar dispositivo', e não busca pendências", async () => {
+describe("CaixaHomePage sem operador identificado (TASK-119.2)", () => {
+  it("usa o OperationalLayout: topbar com dispositivo/ThemeToggle/Trocar dispositivo, e o formulário de login como conteúdo principal", async () => {
     ativarSessaoDeDispositivo();
     renderPagina();
 
-    expect(await screen.findByText(/Operador não identificado/)).toBeInTheDocument();
-    expect(screen.getByText("Identifique-se para acessar o Caixa.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Atualizar lista" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Identifique-se para acessar o Caixa" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Entre com suas credenciais de operador para acessar os pedidos deste dispositivo."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(dispositivoCaixaMock.nome)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Alternar para modo/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar dispositivo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Atualizar lista" })).not.toBeInTheDocument();
     expect(listarPendenciasMock).not.toHaveBeenCalled();
+  });
+
+  it("não mostra avatar/perfil de operador nem o botão 'Trocar operador' antes do login", async () => {
+    ativarSessaoDeDispositivo();
+    renderPagina();
+
+    await screen.findByLabelText("Email do operador");
+    expect(screen.queryByRole("button", { name: "Trocar operador" })).not.toBeInTheDocument();
+  });
+
+  it("não há apenas um único 'Trocar dispositivo' na tela (sem duplicação entre topbar e formulário)", async () => {
+    ativarSessaoDeDispositivo();
+    renderPagina();
+
+    await screen.findByLabelText("Email do operador");
+    expect(screen.getAllByRole("button", { name: "Trocar dispositivo" })).toHaveLength(1);
   });
 });
 
 describe("CaixaHomePage com operador identificado", () => {
-  it("faz login do operador e carrega a lista de pendências", async () => {
+  it("faz login do operador e carrega a lista de pendências, mantendo a mesma topbar", async () => {
     ativarSessaoDeDispositivo();
     listarPendenciasMock.mockResolvedValue([pedidoMock]);
     loginOperadorMock.mockResolvedValue(operadorLoginResponse);
@@ -176,11 +196,13 @@ describe("CaixaHomePage com operador identificado", () => {
 
     await waitFor(() => expect(listarPendenciasMock).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("A1")).toBeInTheDocument();
-    expect(screen.getByText(`Operador: ${operadorCaixaMock.nome}`)).toBeInTheDocument();
+    expect(screen.getByText(operadorCaixaMock.nome)).toBeInTheDocument();
+    expect(screen.getByText("Operador de caixa")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trocar operador" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar dispositivo" })).toBeInTheDocument();
   });
 
-  it("ao trocar operador, oculta a lista imediatamente e volta ao login", async () => {
+  it("ao trocar operador, oculta a lista imediatamente e volta ao formulário de login (mesma topbar)", async () => {
     ativarSessaoDeDispositivo();
     listarPendenciasMock.mockResolvedValue([pedidoMock]);
     loginOperadorMock.mockResolvedValue(operadorLoginResponse);
@@ -195,7 +217,9 @@ describe("CaixaHomePage com operador identificado", () => {
     await user.click(screen.getByRole("button", { name: "Trocar operador" }));
 
     expect(screen.queryByText("A1")).not.toBeInTheDocument();
-    expect(await screen.findByText(/Operador não identificado/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Identifique-se para acessar o Caixa" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Trocar operador" })).not.toBeInTheDocument();
+    expect(screen.getByText(dispositivoCaixaMock.nome)).toBeInTheDocument();
   });
 
   it("'Trocar dispositivo' confirmado limpa operador e dispositivo e navega para a ativação", async () => {

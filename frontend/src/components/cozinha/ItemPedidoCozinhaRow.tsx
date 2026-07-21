@@ -8,7 +8,7 @@ export function ItemPedidoCozinhaRow({ item }: ItemPedidoCozinhaRowProps) {
   return (
     <li className="item-pedido-cozinha-row">
       <span>
-        {item.quantidade}x {item.nomeProduto}
+        <strong className="item-pedido-cozinha-row__quantidade">{item.quantidade}x</strong> {item.nomeProduto}
         {item.observacao && <em className="item-pedido-cozinha-row__observacao"> ({item.observacao})</em>}
       </span>
     </li>

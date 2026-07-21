@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppLayout } from "../../components/layout/AppLayout";
-import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { DispositivoCard } from "../../components/admin/dispositivos/DispositivoCard";
 import { DispositivoForm } from "../../components/admin/dispositivos/DispositivoForm";
 import { Button } from "../../components/ui/Button";
@@ -322,12 +320,7 @@ export function AdminDispositivosPage() {
   );
 
   return (
-    <AppLayout
-      title="Dispositivos"
-      description="Cadastro e gestão de dispositivos Totem, Caixa, Cozinha e Administração."
-    >
-      <AdminVoltarLink />
-
+    <>
       <div className="caixa-toolbar">
         <Button type="button" onClick={handleNovo}>
           Novo dispositivo
@@ -483,6 +476,6 @@ export function AdminDispositivosPage() {
           )}
         </>
       )}
-    </AppLayout>
+    </>
   );
 }

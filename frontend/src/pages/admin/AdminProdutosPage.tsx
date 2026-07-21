@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppLayout } from "../../components/layout/AppLayout";
-import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { ProdutoCard } from "../../components/admin/produtos/ProdutoCard";
 import { ProdutoForm } from "../../components/admin/produtos/ProdutoForm";
 import { Button } from "../../components/ui/Button";
@@ -293,9 +291,7 @@ export function AdminProdutosPage() {
   }
 
   return (
-    <AppLayout title="Produtos" description="Cadastro e gestão dos produtos do cardápio, por restaurante e categoria.">
-      <AdminVoltarLink />
-
+    <>
       <div className="caixa-toolbar">
         <Button type="button" onClick={handleNovo}>
           Novo produto
@@ -422,6 +418,6 @@ export function AdminProdutosPage() {
           )}
         </>
       )}
-    </AppLayout>
+    </>
   );
 }

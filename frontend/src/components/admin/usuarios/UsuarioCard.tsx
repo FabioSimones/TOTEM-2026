@@ -139,18 +139,23 @@ export function UsuarioCard({
         </span>
       </div>
 
-      <dl className="pedido-pendente-card__detalhes">
-        <div>
-          <dt>Email</dt>
-          <dd>{usuario.email}</dd>
+      {/* TASK-119.1: bloco de dados próprio, não a `dl.pedido-pendente-card__detalhes` compartilhada
+          com Caixa/Cozinha — aquela grid de 2-3 colunas (`auto-fit, minmax(8rem, 1fr)`) foi
+          desenhada para valores curtos ("Criado em", "Tipo de consumo") e sem `min-width: 0`/
+          `overflow-wrap`, então um e-mail ou perfil longo extrapolava a coluna e sobrepunha a
+          vizinha. Aqui cada campo ocupa sua própria linha, largura cheia. */}
+      <dl className="usuario-card__detalhes">
+        <div className="usuario-card__campo">
+          <dt className="usuario-card__rotulo">E-mail</dt>
+          <dd className="usuario-card__valor">{usuario.email}</dd>
         </div>
-        <div>
-          <dt>Perfil</dt>
-          <dd>{ROTULO_PERFIL[usuario.perfil]}</dd>
+        <div className="usuario-card__campo">
+          <dt className="usuario-card__rotulo">Perfil</dt>
+          <dd className="usuario-card__valor">{ROTULO_PERFIL[usuario.perfil]}</dd>
         </div>
-        <div>
-          <dt>Restaurante</dt>
-          <dd>{nomeRestaurante ?? "—"}</dd>
+        <div className="usuario-card__campo">
+          <dt className="usuario-card__rotulo">Restaurante</dt>
+          <dd className="usuario-card__valor">{nomeRestaurante ?? "—"}</dd>
         </div>
       </dl>
 

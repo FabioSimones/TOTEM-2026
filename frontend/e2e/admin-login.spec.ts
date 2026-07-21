@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { loginResponseMock, mockJson, superAdminUsuarioMock } from "./helpers/mockApi";
+import { dashboardAdminResumoMock, loginResponseMock, mockJson, superAdminUsuarioMock } from "./helpers/mockApi";
 
 test.describe("Login central (mockado)", () => {
   test("login com credenciais válidas redireciona para /admin e mostra o usuário autenticado", async ({ page }) => {
     await mockJson(page, "**/api/auth/login", 200, loginResponseMock());
+    await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
 
     await page.goto("/login");
 
@@ -14,7 +15,8 @@ test.describe("Login central (mockado)", () => {
     await page.getByRole("button", { name: "Entrar" }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByText(superAdminUsuarioMock.nome)).toBeVisible();
+    // exact:true — sem isso colide com a saudação do hero ("Bem-vindo, Admin E2E!", TASK-118).
+    await expect(page.getByText(superAdminUsuarioMock.nome, { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
   });
 

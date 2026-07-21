@@ -36,6 +36,28 @@ export function loginResponseMock() {
   };
 }
 
+/**
+ * TASK-118: GET /api/admin/dashboard — o dashboard fundido (`AdminDashboardPage`) chama isso
+ * assim que `/admin` monta, então qualquer teste que navegue até lá precisa mockar este endpoint
+ * (senão a chamada tentaria ir para a rede de verdade, cross-origin, sem interceptação).
+ */
+export function dashboardAdminResumoMock() {
+  return {
+    restauranteId: null,
+    restauranteNome: null,
+    dataReferencia: "2026-01-01",
+    totalPedidosHoje: 5,
+    pendentesPagamento: 1,
+    pagosAguardandoCozinha: 1,
+    emOperacao: 1,
+    prontosRetirada: 0,
+    retiradosHoje: 2,
+    canceladosHoje: 0,
+    expiradosHoje: 0,
+    valorPagoHoje: 123.4,
+  };
+}
+
 export const adminRestauranteUsuarioMock = {
   id: 2,
   nome: "Admin Restaurante E2E",

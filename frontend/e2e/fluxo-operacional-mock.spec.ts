@@ -40,8 +40,9 @@ test.describe("Fluxo operacional — homologação visual mínima (mockado)", ()
 
     await page.goto("/caixa");
 
-    // TASK-111: sem operador identificado, nenhum pedido aparece.
-    await expect(page.getByText(/Operador não identificado/)).toBeVisible();
+    // TASK-111/119.2: sem operador identificado, nenhum pedido aparece — só o formulário de login,
+    // já dentro do layout operacional (topbar com dispositivo/ThemeToggle/Trocar dispositivo).
+    await expect(page.getByRole("heading", { level: 1, name: "Identifique-se para acessar o Caixa" })).toBeVisible();
     await expect(page.getByText("A1")).not.toBeVisible();
 
     await page.getByLabel("Email do operador").fill(operadorMock.email);
@@ -61,8 +62,9 @@ test.describe("Fluxo operacional — homologação visual mínima (mockado)", ()
 
     await page.goto("/cozinha");
 
-    // TASK-111: sem operador identificado, nenhum pedido aparece.
-    await expect(page.getByText(/Operador não identificado/)).toBeVisible();
+    // TASK-111/119.2: sem operador identificado, nenhum pedido aparece — só o formulário de login,
+    // já dentro do layout operacional (topbar com dispositivo/ThemeToggle/Trocar dispositivo).
+    await expect(page.getByRole("heading", { level: 1, name: "Identifique-se para acessar a Cozinha" })).toBeVisible();
     await expect(page.getByText("A2")).not.toBeVisible();
 
     await page.getByLabel("Email do operador").fill(operadorMock.email);

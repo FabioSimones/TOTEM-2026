@@ -38,13 +38,18 @@ test.describe("Ativação e troca de dispositivo nas telas operacionais (mockado
     await page.getByRole("button", { name: "Ativar dispositivo" }).click();
 
     await expect(page).toHaveURL(/\/caixa$/, { timeout: 5000 });
-    await expect(page.getByText(/Operador não identificado/)).toBeVisible();
+    // TASK-119.2: logo após ativar, a página já usa o novo layout operacional — topbar com módulo,
+    // dispositivo e ThemeToggle visíveis, não mais o cabeçalho genérico antigo.
+    await expect(page.getByRole("heading", { level: 1, name: "Identifique-se para acessar o Caixa" })).toBeVisible();
+    await expect(page.getByRole("banner")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Alternar para modo/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Trocar operador" })).toHaveCount(0);
 
     await page.getByLabel("Email do operador").fill(operadorMock.email);
     await page.getByLabel("Senha").fill("senha-operador-e2e");
     await page.getByRole("button", { name: "Identificar operador" }).click();
 
-    await expect(page.getByText(`Operador: ${operadorMock.nome}`)).toBeVisible();
+    await expect(page.getByText(operadorMock.nome)).toBeVisible();
   });
 
   test("'Trocar dispositivo' com operador identificado limpa a sessão e volta para /ativar-dispositivo", async ({
@@ -60,7 +65,7 @@ test.describe("Ativação e troca de dispositivo nas telas operacionais (mockado
     await page.getByLabel("Email do operador").fill(operadorMock.email);
     await page.getByLabel("Senha").fill("senha-operador-e2e");
     await page.getByRole("button", { name: "Identificar operador" }).click();
-    await expect(page.getByText(`Operador: ${operadorMock.nome}`)).toBeVisible();
+    await expect(page.getByText(operadorMock.nome)).toBeVisible();
 
     await page.getByRole("button", { name: "Trocar dispositivo" }).click();
 

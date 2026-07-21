@@ -178,6 +178,13 @@ a:hover {
   transform: scale(0.98);
 }
 
+/* TASK-119: botões que combinam ícone SVG + texto (ex.: "Atualizar lista") — alinha o ícone com a
+   linha de base do texto e dá um respiro entre os dois, sem exigir wrapper/flex no botão em si. */
+.ui-button svg {
+  vertical-align: -0.2rem;
+  margin-right: var(--spacing-xs);
+}
+
 .ui-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -1157,39 +1164,6 @@ a:hover {
   width: 100%;
 }
 
-/* ===== Operador (TASK-092) — identificação humana dentro do dispositivo CAIXA/COZINHA ===== */
-.operador-painel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md) var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
-  transition:
-    background-color var(--transition-base),
-    border-color var(--transition-base);
-}
-
-.operador-painel--identificacao {
-  flex-direction: column;
-  align-items: stretch;
-  /* TASK-111: este card passou a ser, sozinho, o conteúdo inteiro de /caixa e /cozinha enquanto
-     não há operador identificado (via AppLayout centralizado) — precisa de largura própria em vez
-     de esticar por todo o container. */
-  width: 100%;
-  max-width: 28rem;
-}
-
-/* ===== Ações extras do operador (TASK-112) — "Trocar operador" + "Trocar dispositivo" lado a lado ===== */
-.operador-painel__acoes {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
 /* ===== Estado de acesso ao dispositivo (TASK-112) — Caixa/Cozinha sem terminal pronto ===== */
 .dispositivo-acesso-card {
   display: flex;
@@ -1204,20 +1178,44 @@ a:hover {
   box-shadow: var(--shadow-card);
 }
 
-.operador-painel__nome {
-  font-family: var(--font-body);
-  font-weight: 600;
-}
-
-.operador-painel__form {
+/* ===== Login de operador integrado ao layout operacional (TASK-119.2) =====
+   Substitui `.operador-painel*` (removidas — a topbar já monta ao redor deste conteúdo, então este
+   bloco só precisa do card do formulário, sem largura/alinhamento pensados para um card solto e
+   centralizado pelo `AppLayout` antigo). */
+.operational-login {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--spacing-md);
+  justify-content: center;
+  padding: var(--spacing-xl) 0;
 }
 
-.operador-painel__form .ui-input {
-  flex: 1 1 14rem;
+.operational-login__card {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.operational-login__titulo {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.operational-login__descricao {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+}
+
+.operational-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 /* ===== Caixa — lista de pendências ===== */
@@ -1315,6 +1313,43 @@ a:hover {
   margin: 0;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
+}
+
+/* TASK-119.1: bloco de dados do card de usuário — coluna única (diferente da grid de 2-3 colunas
+   de `.pedido-pendente-card__detalhes`, dimensionada para valores curtos). E-mail e perfil podem
+   ser bem mais longos que "Criado em"/"Tipo de consumo", então cada campo precisa de largura cheia
+   e de poder quebrar linha sem sobrepor o campo vizinho. */
+.usuario-card__detalhes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
+}
+
+.usuario-card__campo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.usuario-card__rotulo {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.usuario-card__valor {
+  margin: 0;
+  min-width: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  /* Quebra em qualquer ponto se necessário (ex.: e-mail sem espaços) — só entra em ação quando a
+     palavra não cabe inteira na linha; texto curto continua quebrando normalmente entre palavras. */
+  overflow-wrap: anywhere;
 }
 
 .pedido-pendente-card__itens {
@@ -1762,116 +1797,20 @@ a:hover {
   padding: 0;
 }
 
-/* ===== Painel administrativo ===== */
-.admin-dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.admin-dashboard__usuario {
+/* ===== Admin Dashboard — indicadores (TASK-074, reaproveitado pela fusão da TASK-118) ===== */
+.dashboard-admin__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-md);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  box-shadow: var(--shadow-card);
+  margin-top: var(--spacing-lg);
 }
 
-.admin-dashboard__usuario-nome {
+.dashboard-admin__secao-titulo {
   margin: 0;
-  font-family: var(--font-heading);
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
 }
 
-.admin-dashboard__usuario-detalhe {
-  margin: var(--spacing-xs) 0 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.admin-dashboard__sair {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: none;
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.admin-dashboard__sair:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.admin-dashboard__areas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: var(--spacing-md);
-}
-
-.admin-dashboard__area-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  font-family: var(--font-body);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-muted);
-}
-
-.admin-dashboard__area-card-tag {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-full);
-  background-color: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-regular);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.admin-dashboard__area-card--link {
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.admin-dashboard__area-card--link:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.admin-voltar-link {
-  display: inline-block;
-  margin-bottom: var(--spacing-md);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  text-decoration: none;
-}
-
-.admin-voltar-link:hover {
-  text-decoration: underline;
-}
-
-/* ===== Admin Dashboard (TASK-074) ===== */
 .dashboard-admin__restaurante,
 .dashboard-admin__data {
   margin: 0 0 var(--spacing-sm);
@@ -1879,9 +1818,21 @@ a:hover {
 
 .dashboard-admin__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-md);
   margin-top: var(--spacing-md);
+}
+
+@media (min-width: 640px) {
+  .dashboard-admin__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-admin__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .dashboard-admin__card {
@@ -1895,6 +1846,11 @@ a:hover {
   box-shadow: var(--shadow-card);
 }
 
+.dashboard-admin__card-icon {
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
 .dashboard-admin__card-rotulo {
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
@@ -1906,6 +1862,19 @@ a:hover {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
+}
+
+.dashboard-admin__card-valor--loading {
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.dashboard-admin__card-erro {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
 }
 
 /* ===== Admin — cadastro de dispositivos ===== */
@@ -2135,4 +2104,743 @@ a:hover {
 .pedido-admin-detalhe__item-data {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* ===== Layout administrativo — sidebar + topbar (TASK-118) =====
+   A cor do painel da sidebar/hero reaproveita os tokens de marca da TASK-117
+   (--color-auth-brand-*) em vez de criar tokens novos — mesma identidade visual do login, sem
+   duplicar paleta. Só as DIMENSÕES (largura/altura) são tokens novos, ver tokens.css. */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.admin-layout__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-layout__content {
+  flex: 1;
+  padding: var(--spacing-lg) var(--spacing-md);
+}
+
+/* ===== Sidebar ===== */
+.admin-sidebar {
+  flex-shrink: 0;
+  width: var(--admin-sidebar-width);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-auth-brand-background);
+  color: var(--color-auth-brand-text);
+  border-right: 1px solid var(--color-auth-brand-surface);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width var(--transition-base);
+}
+
+.admin-sidebar--collapsed {
+  width: var(--admin-sidebar-collapsed-width);
+}
+
+.admin-sidebar__backdrop {
+  display: none;
+}
+
+.admin-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  min-height: var(--admin-topbar-height);
+}
+
+.admin-sidebar__collapse-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-auth-brand-surface);
+  background: none;
+  color: var(--color-auth-brand-text);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.admin-sidebar__collapse-toggle:hover {
+  background-color: var(--color-auth-brand-surface);
+  border-color: var(--color-auth-brand-accent);
+}
+
+.admin-sidebar__collapse-icon {
+  transition: transform var(--transition-base);
+}
+
+.admin-sidebar__brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.admin-sidebar__brand-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-md);
+}
+
+.admin-sidebar__brand-tagline {
+  font-size: var(--font-size-sm);
+  color: var(--color-auth-brand-text-muted);
+}
+
+.admin-sidebar--collapsed .admin-sidebar__brand-text {
+  width: 0;
+  opacity: 0;
+}
+
+.admin-sidebar__list {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0 0;
+  padding: 0 var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.admin-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  min-height: 2.75rem;
+  color: var(--color-auth-brand-text-muted);
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  border-left: 3px solid transparent;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.admin-sidebar__link:hover {
+  background-color: var(--color-auth-brand-surface);
+  color: var(--color-auth-brand-text);
+}
+
+.admin-sidebar__link--active {
+  background-color: var(--color-auth-brand-surface);
+  color: var(--color-auth-brand-text);
+  border-left-color: var(--color-auth-brand-accent);
+}
+
+.admin-sidebar__icon {
+  flex-shrink: 0;
+}
+
+.admin-sidebar--collapsed .admin-sidebar__list {
+  align-items: center;
+}
+
+.admin-sidebar--collapsed .admin-sidebar__link {
+  justify-content: center;
+  width: 2.75rem;
+  padding: var(--spacing-sm);
+}
+
+/* Rótulo permanece no DOM/árvore de acessibilidade quando recolhido (nunca `display:none`) — só
+   fica visualmente oculto; `title`/`aria-label` no link reforçam o nome, o texto real continua
+   sendo a fonte primária do nome acessível. */
+.admin-sidebar--collapsed .admin-sidebar__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== Drawer mobile ===== */
+@media (max-width: 959px) {
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: var(--z-overlay);
+    width: min(var(--admin-sidebar-width), 85vw);
+    transform: translateX(-100%);
+  }
+
+  .admin-sidebar--collapsed {
+    /* Estado "recolhido" não se aplica no drawer mobile — sempre abre em largura total. */
+    width: min(var(--admin-sidebar-width), 85vw);
+  }
+
+  .admin-sidebar--collapsed .admin-sidebar__brand-text,
+  .admin-sidebar--collapsed .admin-sidebar__label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    clip: auto;
+    opacity: 1;
+  }
+
+  .admin-sidebar--mobile-open {
+    transform: translateX(0);
+  }
+
+  .admin-sidebar__backdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgb(0 0 0 / 0.5);
+    z-index: calc(var(--z-overlay) - 1);
+  }
+
+  /* O drawer mobile sempre abre em largura total (não existe "recolhido" aqui) — esconder o botão
+     evita que um toque acidental altere a preferência persistida de desktop sem nenhum efeito
+     visual imediato nesta tela (achado da validação visual manual, TASK-118). */
+  .admin-sidebar__collapse-toggle {
+    display: none;
+  }
+}
+
+/* ===== Topbar ===== */
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  min-height: var(--admin-topbar-height);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.admin-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.admin-topbar__menu-button {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+@media (max-width: 959px) {
+  .admin-topbar__menu-button {
+    display: inline-flex;
+  }
+}
+
+.admin-topbar__titles {
+  min-width: 0;
+}
+
+.admin-topbar h1 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-topbar__description {
+  margin: var(--spacing-xs) 0 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 959px) {
+  /* TASK-118: em telas estreitas, hambúrguer + título + theme toggle + avatar + logout não cabem
+     numa única linha com o padding/gap padrão — reduz ambos e trunca a descrição em vez de deixá-la
+     quebrar em várias linhas estreitas (achado da validação visual manual). */
+  .admin-topbar {
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .admin-topbar__right {
+    gap: var(--spacing-sm);
+  }
+
+  .admin-topbar__logout span {
+    display: none;
+  }
+}
+
+.admin-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.admin-topbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.admin-topbar__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-button);
+  color: var(--color-primary-contrast);
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-topbar__user-info {
+  display: none;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .admin-topbar__user-info {
+    display: flex;
+  }
+}
+
+.admin-topbar__user-name {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 12rem;
+}
+
+.admin-topbar__user-role {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.admin-topbar__logout {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 2.75rem;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.admin-topbar__logout:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+/* ===== Dashboard: hero de boas-vindas ===== */
+.admin-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-auth-brand-background);
+  color: var(--color-auth-brand-text);
+  margin-bottom: var(--spacing-lg);
+}
+
+.admin-hero__content {
+  position: relative;
+  z-index: 1;
+  max-width: 34rem;
+}
+
+.admin-hero__eyebrow {
+  margin: 0 0 var(--spacing-xs) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-auth-brand-accent);
+}
+
+.admin-hero__greeting {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-hero__description {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-auth-brand-text-muted);
+  max-width: 42ch;
+}
+
+.admin-hero__illustration {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  color: var(--color-auth-brand-accent);
+  animation: admin-hero-illustration-float 5s ease-in-out infinite;
+}
+
+@keyframes admin-hero-illustration-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.5rem);
+  }
+}
+
+.admin-hero__blob {
+  position: absolute;
+  border-radius: var(--radius-full);
+  background-color: var(--color-auth-brand-surface);
+  pointer-events: none;
+  filter: blur(2rem);
+}
+
+.admin-hero__blob--top {
+  width: 12rem;
+  height: 12rem;
+  top: -4rem;
+  right: 6rem;
+}
+
+.admin-hero__blob--bottom {
+  width: 14rem;
+  height: 14rem;
+  bottom: -6rem;
+  left: -4rem;
+}
+
+@media (max-width: 639px) {
+  .admin-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .admin-hero__illustration {
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+}
+
+/* =============================================================================
+   Painéis operacionais (Caixa/Cozinha) — TASK-119
+
+   Reaproveita o vocabulário visual da TASK-118 (avatar textual, ações com
+   aria-label + texto ocultável em mobile, tokens --color-auth-brand-*) sem a
+   AdminSidebar — telas de toque, poucos elementos, ações grandes.
+   ============================================================================= */
+
+.operational-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.operational-layout__content {
+  flex: 1;
+  padding: var(--spacing-lg) var(--spacing-md);
+}
+
+@media (min-width: 640px) {
+  .operational-layout__content {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* ===== Topbar operacional ===== */
+.operational-topbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  min-height: var(--operational-topbar-height);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.operational-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.operational-topbar__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.operational-topbar__modulo {
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+}
+
+.operational-topbar__marca {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.operational-topbar__dispositivo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text-muted);
+  min-width: 0;
+  margin-right: auto;
+}
+
+.operational-topbar__dispositivo-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.operational-topbar__dispositivo-nome {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 12rem;
+}
+
+.operational-topbar__dispositivo-tipo {
+  font-size: var(--font-size-sm);
+}
+
+.operational-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.operational-topbar__operador {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.operational-topbar__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-button);
+  color: var(--color-primary-contrast);
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-bold);
+}
+
+.operational-topbar__operador-info {
+  display: none;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+  .operational-topbar__operador-info {
+    display: flex;
+  }
+}
+
+.operational-topbar__operador-nome {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 10rem;
+}
+
+.operational-topbar__operador-perfil {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.operational-topbar__acao {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 2.75rem;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.operational-topbar__acao:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+@media (max-width: 767px) {
+  /* Mesmo achado da TASK-118: hambúrguer inexistente aqui, mas título+dispositivo+operador+2 ações
+     não cabem numa única linha estreita — reduz padding/gap e oculta o texto das ações (mantidas
+     via aria-label) e o tipo do dispositivo, preservando nome do dispositivo e do operador. */
+  .operational-topbar {
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .operational-topbar__marca,
+  .operational-topbar__dispositivo-tipo,
+  .operational-topbar__acao span {
+    display: none;
+  }
+
+  .operational-topbar__dispositivo-nome {
+    max-width: 6rem;
+  }
+}
+
+/* ===== Cabeçalho contextual (Caixa/Cozinha) ===== */
+.operational-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.operational-page-header__titulo {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-xl);
+}
+
+.operational-page-header__descricao {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+}
+
+.operational-page-header__contador {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ===== Cards de pedido — ajustes específicos da Cozinha (TASK-119) ===== */
+.pedido-cozinha-card__tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.pedido-pendente-card__rodape {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== Ações operacionais — botões grandes para touch (TASK-119) ===== */
+.pedido-pendente-card__acao {
+  min-height: var(--operational-action-height);
+  font-size: var(--font-size-md);
 }

@@ -46,6 +46,19 @@
   --z-overlay: 100;
   --z-toast: 200;
 
+  /* TASK-118: dimensões estruturais do layout administrativo (sidebar/topbar) — só tamanho, a cor
+     do painel reaproveita os tokens de marca da TASK-117 (--color-auth-brand-*), ver themes.css. */
+  --admin-sidebar-width: 16rem;
+  --admin-sidebar-collapsed-width: 4.75rem;
+  --admin-topbar-height: 4rem;
+
+  /* TASK-119: dimensões estruturais dos painéis operacionais (Caixa/Cozinha) — mesma altura de
+     topbar do admin para consistência, mas sem sidebar. Ações operacionais (confirmar pagamento,
+     avançar status) usam --operational-action-height (48px, acima do mínimo geral de 44px, pela
+     exigência explícita de toque em terminal físico). */
+  --operational-topbar-height: 4rem;
+  --operational-action-height: 3rem;
+
   /* Cores semânticas de status — fixas nos dois temas (contraste ok em
      fundo quase-preto e em fundo quente-claro), não fazem parte da
      identidade visual dark/light. */

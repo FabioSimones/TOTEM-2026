@@ -53,6 +53,31 @@ export function formatarHora(value?: string | null): string {
 }
 
 /**
+ * TASK-119: tempo decorrido desde `value` até `agora` (padrão `new Date()`), em texto curto
+ * (`"5 min"`, `"1 h 12 min"`) — só mostra a passagem de tempo, sem classificar como
+ * "recente"/"atrasado" (nenhuma regra desse tipo existe hoje no backend; documentado como
+ * decisão deliberada em `docs/design-system/componentes.md`). `agora` é parametrizável para
+ * permitir teste determinístico.
+ */
+export function formatarTempoDecorrido(value?: string | null, agora: Date = new Date()): string {
+  const data = parseBackendUtcDateTime(value);
+  if (!data) {
+    return "—";
+  }
+  const diffMs = agora.getTime() - data.getTime();
+  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMin < 1) {
+    return "agora mesmo";
+  }
+  if (diffMin < 60) {
+    return `${diffMin} min`;
+  }
+  const horas = Math.floor(diffMin / 60);
+  const minutosRestantes = diffMin % 60;
+  return minutosRestantes === 0 ? `${horas} h` : `${horas} h ${minutosRestantes} min`;
+}
+
+/**
  * Formata um `LocalDate` puro do backend (ex.: `dataReferencia` do Dashboard, `"2026-07-12"`)
  * como `dd/mm/aaaa`. Diferente de {@link formatarData}, nunca passa por `Date`/conversão de
  * fuso horário — um `LocalDate` não tem hora, então não há offset a corrigir, e converter via

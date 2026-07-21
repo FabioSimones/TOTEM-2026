@@ -1,42 +1,31 @@
 import { useState, type FormEvent } from "react";
 import { loginOperador } from "../../services/authService";
-import { clearOperadorSession, saveOperadorSession } from "../../services/tokenStorage";
+import { saveOperadorSession } from "../../services/tokenStorage";
 import { ApiError } from "../../types/api";
-import type { OperadorAutenticadoResponse, OperadorLoginResponse } from "../../types/auth";
+import type { OperadorLoginResponse } from "../../types/auth";
 import { Button } from "../ui/Button";
 import { ErrorMessage } from "../ui/ErrorMessage";
 import { Input } from "../ui/Input";
 
 interface OperadorPainelProps {
-  operador: OperadorAutenticadoResponse | null;
+  /** TASK-119.2: título da tela (`<h1>` — único título renderizado nesse estado da página). */
+  titulo: string;
+  /** Explicação curta abaixo do título. Opcional, mas usado pelas duas páginas que consomem isto. */
+  descricao?: string;
   onIdentificado: (response: OperadorLoginResponse) => void;
-  onTrocar: () => void;
-  /**
-   * Mensagem de contexto mostrada abaixo de "Operador não identificado." (TASK-111) — cada página
-   * (Caixa/Cozinha) informa a sua própria, já que o conteúdo operacional fica bloqueado até o login.
-   */
-  mensagemIdentificacao?: string;
-  /**
-   * Ação extra (TASK-112) exibida junto de "Trocar operador" (com operador identificado) e abaixo
-   * do formulário de login (sem operador) — tipicamente "Trocar dispositivo". Opcional para não
-   * forçar toda página que usa este componente a lidar com dispositivo.
-   */
-  acaoTrocarDispositivo?: { rotulo: string; onAcionar: () => void };
 }
 
 /**
  * Identificação de operador humano dentro de um dispositivo CAIXA/COZINHA já ativo (TASK-092).
- * Desde a TASK-111, Caixa/Cozinha só renderizam este componente (sem o restante da tela) enquanto
+ * Desde a TASK-111, Caixa/Cozinha só renderizam o formulário (sem o restante do conteúdo) enquanto
  * não houver operador identificado — a ação de login é obrigatória para ver dados operacionais,
- * não apenas para fins de auditoria.
+ * não apenas para fins de auditoria. TASK-119: a exibição do operador já identificado (nome,
+ * perfil, "Trocar operador") passou para `OperationalTopbar`. TASK-119.2: este componente passou a
+ * ser o próprio conteúdo central do `OperationalLayout` nesse estado (título + card + formulário,
+ * classes `.operational-login*`) — a topbar já está montada ao redor dele, então não repete
+ * "Trocar dispositivo" (removido daqui; é responsabilidade exclusiva da topbar agora).
  */
-export function OperadorPainel({
-  operador,
-  onIdentificado,
-  onTrocar,
-  mensagemIdentificacao = "Identifique-se para continuar.",
-  acaoTrocarDispositivo,
-}: OperadorPainelProps) {
+export function OperadorPainel({ titulo, descricao, onIdentificado }: OperadorPainelProps) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
@@ -73,64 +62,39 @@ export function OperadorPainel({
     }
   }
 
-  function handleTrocar() {
-    clearOperadorSession();
-    onTrocar();
-  }
-
-  if (operador) {
-    return (
-      <div className="operador-painel">
-        <span className="operador-painel__nome">Operador: {operador.nome}</span>
-        <div className="operador-painel__acoes">
-          <Button type="button" variant="secondary" onClick={handleTrocar}>
-            Trocar operador
-          </Button>
-          {acaoTrocarDispositivo && (
-            <Button type="button" variant="secondary" onClick={acaoTrocarDispositivo.onAcionar}>
-              {acaoTrocarDispositivo.rotulo}
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="operador-painel operador-painel--identificacao">
-      <p className="totem-estado">
-        Operador não identificado. {mensagemIdentificacao}
-      </p>
-      <form onSubmit={(event) => void handleSubmit(event)} className="operador-painel__form">
-        <Input
-          id="operadorEmail"
-          label="Email do operador"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="operador@restaurante.com"
-          disabled={loading}
-          autoComplete="username"
-        />
-        <Input
-          id="operadorSenha"
-          label="Senha"
-          type="password"
-          value={senha}
-          onChange={(event) => setSenha(event.target.value)}
-          disabled={loading}
-          autoComplete="current-password"
-        />
-        <ErrorMessage message={erro} />
-        <Button type="submit" loading={loading}>
-          Identificar operador
-        </Button>
-      </form>
-      {acaoTrocarDispositivo && (
-        <Button type="button" variant="secondary" onClick={acaoTrocarDispositivo.onAcionar}>
-          {acaoTrocarDispositivo.rotulo}
-        </Button>
-      )}
+    <div className="operational-login">
+      <div className="operational-login__card">
+        <h1 className="operational-login__titulo">{titulo}</h1>
+        {descricao && <p className="operational-login__descricao">{descricao}</p>}
+
+        <form onSubmit={(event) => void handleSubmit(event)} className="operational-login__form">
+          <Input
+            id="operadorEmail"
+            label="Email do operador"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="operador@restaurante.com"
+            disabled={loading}
+            autoComplete="username"
+            autoFocus
+          />
+          <Input
+            id="operadorSenha"
+            label="Senha"
+            type="password"
+            value={senha}
+            onChange={(event) => setSenha(event.target.value)}
+            disabled={loading}
+            autoComplete="current-password"
+          />
+          <ErrorMessage message={erro} />
+          <Button type="submit" loading={loading} fullWidth>
+            Identificar operador
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

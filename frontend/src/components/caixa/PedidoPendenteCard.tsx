@@ -3,9 +3,9 @@ import type { PedidoPendenteCaixaResponse } from "../../types/caixa";
 import { getAcaoCaixaDescription, getAcaoCaixaLabel } from "../../utils/caixaStatus";
 import { formatarDataHora } from "../../utils/dateTime";
 import { formatCurrencyBRL } from "../../utils/formatters";
-import { getPedidoStatusLabel } from "../../utils/pedidoStatus";
 import { Button } from "../ui/Button";
 import { ErrorMessage } from "../ui/ErrorMessage";
+import { PedidoStatusBadge } from "../ui/PedidoStatusBadge";
 import { ItemPedidoCaixaRow } from "./ItemPedidoCaixaRow";
 
 interface PedidoPendenteCardProps {
@@ -81,7 +81,7 @@ export function PedidoPendenteCard({
     <article className="pedido-pendente-card">
       <div className="pedido-pendente-card__cabecalho">
         <h3 className="pedido-pendente-card__numero">{pedido.numeroPedido}</h3>
-        <span className="pedido-pendente-card__status">{getPedidoStatusLabel(pedido.statusPedido)}</span>
+        <PedidoStatusBadge status={pedido.statusPedido} />
       </div>
 
       <p className="pedido-pendente-card__orientacao">{getAcaoCaixaDescription(pedido.acaoSugerida)}</p>

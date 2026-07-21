@@ -4,6 +4,7 @@ import {
   formatarDataHora,
   formatarDataReferencia,
   formatarHora,
+  formatarTempoDecorrido,
   parseBackendUtcDateTime,
 } from "./dateTime";
 
@@ -66,5 +67,37 @@ describe("formatarDataReferencia", () => {
 
   it("retorna o valor original se o formato não tiver 3 partes separadas por hífen", () => {
     expect(formatarDataReferencia("2026-07")).toBe("2026-07");
+  });
+});
+
+describe("formatarTempoDecorrido (TASK-119)", () => {
+  it("retorna o fallback amigável para valor ausente", () => {
+    expect(formatarTempoDecorrido(null)).toBe("—");
+    expect(formatarTempoDecorrido(undefined)).toBe("—");
+  });
+
+  it("menos de um minuto retorna 'agora mesmo'", () => {
+    const agora = new Date("2026-07-12T15:30:30Z");
+    expect(formatarTempoDecorrido("2026-07-12T15:30:00", agora)).toBe("agora mesmo");
+  });
+
+  it("minutos decorridos, sem horas", () => {
+    const agora = new Date("2026-07-12T15:35:00Z");
+    expect(formatarTempoDecorrido("2026-07-12T15:30:00", agora)).toBe("5 min");
+  });
+
+  it("horas exatas, sem minutos restantes", () => {
+    const agora = new Date("2026-07-12T17:00:00Z");
+    expect(formatarTempoDecorrido("2026-07-12T15:00:00", agora)).toBe("2 h");
+  });
+
+  it("horas e minutos combinados", () => {
+    const agora = new Date("2026-07-12T16:12:00Z");
+    expect(formatarTempoDecorrido("2026-07-12T15:00:00", agora)).toBe("1 h 12 min");
+  });
+
+  it("nunca retorna tempo negativo (relógio do cliente ligeiramente atrasado em relação ao servidor)", () => {
+    const agora = new Date("2026-07-12T15:29:00Z");
+    expect(formatarTempoDecorrido("2026-07-12T15:30:00", agora)).toBe("agora mesmo");
   });
 });

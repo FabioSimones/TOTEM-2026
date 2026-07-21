@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppLayout } from "../../components/layout/AppLayout";
-import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { CategoriaCard } from "../../components/admin/categorias/CategoriaCard";
 import { CategoriaForm } from "../../components/admin/categorias/CategoriaForm";
 import { Button } from "../../components/ui/Button";
@@ -256,9 +254,7 @@ export function AdminCategoriasPage() {
   }
 
   return (
-    <AppLayout title="Categorias" description="Cadastro e gestão das categorias do cardápio, por restaurante.">
-      <AdminVoltarLink />
-
+    <>
       <div className="caixa-toolbar">
         <Button type="button" onClick={handleNovo}>
           Nova categoria
@@ -381,6 +377,6 @@ export function AdminCategoriasPage() {
           )}
         </>
       )}
-    </AppLayout>
+    </>
   );
 }

@@ -58,6 +58,14 @@ Todas as variáveis abaixo vivem em `frontend/src/styles/themes.css`, escopadas 
 
 O painel do formulário (`.auth-split__panel`), ao lado, usa `--color-surface` normal (não `--color-bg`) — no dark, isso cria contraste visível entre os dois lados da tela (sem isso, `--color-bg` e `--color-auth-brand-background` ficam próximos demais e o layout dividido "some" visualmente).
 
+### Reaproveitamento pelo painel administrativo (TASK-118)
+
+A sidebar e o hero do dashboard (`AdminSidebar`/`AdminDashboardHero`) **não criaram nenhuma cor nova** — reaproveitam exatamente estes 5 tokens `--color-auth-brand-*` acima, para manter a mesma identidade de marca do login. `.admin-sidebar` usa `--color-auth-brand-background`/`-text`/`-surface` diretamente. `.admin-layout__content` (a área de conteúdo, à direita da sidebar) não define fundo próprio — fica transparente sobre o gradiente do `body` (`--color-bg-gradient-*`); quem cria o contraste entre "faixa de marca" e "área de trabalho" é a `.admin-topbar`, que usa `--color-surface` (não `--color-bg`), mesmo raciocínio do painel de formulário do login (`.auth-split__panel`, ver acima): sem isso, a topbar se misturaria com o corpo da página. Os tokens novos desta task (`--admin-sidebar-width`, `--admin-sidebar-collapsed-width`, `--admin-topbar-height`, em `tokens.css`) são só de **dimensão**, não de cor — por isso não aparecem nesta tabela.
+
+### Painéis operacionais — Caixa/Cozinha (TASK-119)
+
+A `OperationalTopbar` **também não criou nenhuma cor nova** — mas, diferente da `AdminSidebar`, **não** reaproveita `--color-auth-brand-*`: usa `--color-surface` (fundo) e `--color-primary` (ícone/texto do módulo), os mesmos tokens gerais do tema ativo, porque as telas operacionais não têm um painel de marca fixo/sempre-escuro como o login/admin — a topbar acompanha o tema claro/escuro normalmente, sem exceção. Os dois tokens novos desta task (`--operational-topbar-height`, `--operational-action-height`, em `tokens.css`) também são só de **dimensão**.
+
 ## Cores semânticas (fixas, não variam por tema)
 
 Definidas em `frontend/src/styles/tokens.css`, pois representam estado (sucesso/erro), não identidade de marca:

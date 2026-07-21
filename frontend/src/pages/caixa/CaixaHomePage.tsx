@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { DispositivoAcessoCard } from "../../components/dispositivo/DispositivoAcessoCard";
 import { OperadorPainel } from "../../components/operador/OperadorPainel";
 import { AppLayout } from "../../components/layout/AppLayout";
+import { OperationalLayout } from "../../components/layout/OperationalLayout";
+import { AtualizarIcon } from "../../components/layout/OperationalIcons";
 import { PedidoPendenteCard } from "../../components/caixa/PedidoPendenteCard";
 import { Button } from "../../components/ui/Button";
-import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { OperationalEmptyState } from "../../components/ui/OperationalEmptyState";
 import { useDispositivoOperacional } from "../../hooks/useDispositivoOperacional";
 import {
   cancelarPedido,
@@ -186,6 +188,17 @@ export function CaixaHomePage() {
     [carregarPendencias, marcarAcaoEmAndamento, tratarErroAcao],
   );
 
+  // TASK-119: a topbar operacional aciona a troca de operador diretamente (antes era o próprio
+  // OperadorPainel, embutido no fluxo de conteúdo) — mesma limpeza de sempre: operador some da
+  // sessão e a lista de pedidos é removida da tela imediatamente, sem esperar a próxima navegação.
+  const handleTrocarOperador = useCallback(() => {
+    clearOperadorSession();
+    setOperador(null);
+    setPendencias([]);
+    setErro(null);
+    setMensagemSucesso(null);
+  }, [setOperador]);
+
   // TASK-112: sem dispositivo (nunca ativado, ou sessão invalidada) — card com caminho claro para ativar.
   if (!dispositivo) {
     return (
@@ -212,82 +225,82 @@ export function CaixaHomePage() {
     );
   }
 
-  // TASK-111/112: sem operador identificado, a tela mostra só o login centralizado — nenhum pedido é
-  // buscado nem renderizado (ver o efeito acima, que só chama carregarPendencias quando há operador).
-  if (!operador) {
-    return (
-      <AppLayout title="Caixa" description="Identifique-se para acessar o Caixa." centralizado>
-        <OperadorPainel
-          operador={null}
-          onIdentificado={(response) => setOperador(response.operador)}
-          onTrocar={() => setOperador(null)}
-          mensagemIdentificacao="Identifique-se para acessar o Caixa."
-          acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
-        />
-      </AppLayout>
-    );
-  }
-
+  // TASK-119.2: dispositivo pronto (compatível e autenticado) monta o OperationalLayout — com ou
+  // sem operador. Sem operador, o conteúdo principal é o formulário de identificação
+  // (`OperadorPainel`); a topbar já mostra dispositivo/ThemeToggle/"Trocar dispositivo" mesmo
+  // assim, e nunca "Trocar operador" nem os dados do operador (ver `OperationalTopbar`). Nenhum
+  // pedido é buscado nem renderizado antes do login — ver o efeito acima, que só chama
+  // `carregarPendencias` quando há operador.
   return (
-    <AppLayout title="Caixa" description="Pedidos pendentes de pagamento em dinheiro, envio à cozinha e retirada.">
-      <OperadorPainel
-        operador={operador}
-        onIdentificado={(response) => setOperador(response.operador)}
-        onTrocar={() => {
-          // TASK-111: troca de operador oculta os pedidos imediatamente — a próxima renderização já
-          // cai no branch "!operador" acima, então isto é só higiene de estado (evita reter dados
-          // do operador anterior em memória entre uma troca e a próxima identificação).
-          setOperador(null);
-          setPendencias([]);
-          setErro(null);
-          setMensagemSucesso(null);
-        }}
-        acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
-      />
+    <OperationalLayout
+      modulo="Caixa"
+      dispositivo={dispositivo}
+      operador={operador}
+      onTrocarOperador={operador ? handleTrocarOperador : undefined}
+      onTrocarDispositivo={handleTrocarDispositivo}
+    >
+      {!operador ? (
+        <OperadorPainel
+          titulo="Identifique-se para acessar o Caixa"
+          descricao="Entre com suas credenciais de operador para acessar os pedidos deste dispositivo."
+          onIdentificado={(response) => setOperador(response.operador)}
+        />
+      ) : (
+        <>
+          <div className="operational-page-header">
+            <div>
+              <h1 className="operational-page-header__titulo">Pedidos pendentes</h1>
+              <p className="operational-page-header__descricao">
+                Pagamento em dinheiro, envio à cozinha e retirada.
+              </p>
+            </div>
+            {!loading && !erro && (
+              <span className="operational-page-header__contador">
+                {pendencias.length} {pendencias.length === 1 ? "pedido pendente" : "pedidos pendentes"}
+              </span>
+            )}
+          </div>
 
-      <div className="caixa-toolbar">
-        <Button type="button" onClick={() => void carregarPendencias()} loading={loading}>
-          Atualizar lista
-        </Button>
-      </div>
+          <div className="caixa-toolbar">
+            <Button type="button" variant="secondary" onClick={() => void carregarPendencias()} loading={loading}>
+              <AtualizarIcon /> Atualizar lista
+            </Button>
+          </div>
 
-      {!loading && !erro && mensagemSucesso && (
-        <p className="ui-success-message" role="status">
-          {mensagemSucesso}
-        </p>
+          {!loading && !erro && mensagemSucesso && (
+            <p className="ui-success-message" role="status">
+              {mensagemSucesso}
+            </p>
+          )}
+
+          {loading && <OperationalEmptyState variant="loading" mensagem="Carregando pendências..." />}
+
+          {!loading && erro && (
+            <OperationalEmptyState variant="erro" mensagem={erro} onTentarNovamente={() => void carregarPendencias()} />
+          )}
+
+          {!loading && !erro && pendencias.length === 0 && (
+            <OperationalEmptyState variant="vazio" mensagem="Nenhum pedido pendente no momento." />
+          )}
+
+          {!loading && !erro && pendencias.length > 0 && (
+            <div className="caixa-lista">
+              {pendencias.map((pedido) => (
+                <PedidoPendenteCard
+                  key={pedido.pedidoId}
+                  pedido={pedido}
+                  executando={acoesEmAndamento.has(pedido.pedidoId)}
+                  erro={errosAcao[pedido.pedidoId] ?? null}
+                  onConfirmarPagamento={handleConfirmarPagamento}
+                  onEnviarCozinha={handleEnviarCozinha}
+                  onRetirarPedido={handleRetirarPedido}
+                  onCancelarPedido={handleCancelarPedido}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
-
-      {loading && <p className="totem-estado">Carregando pendências...</p>}
-
-      {!loading && erro && (
-        <div className="totem-estado totem-estado--erro">
-          <ErrorMessage message={erro} />
-          <Button type="button" onClick={() => void carregarPendencias()}>
-            Tentar novamente
-          </Button>
-        </div>
-      )}
-
-      {!loading && !erro && pendencias.length === 0 && (
-        <p className="totem-estado">Nenhum pedido pendente no momento.</p>
-      )}
-
-      {!loading && !erro && pendencias.length > 0 && (
-        <div className="caixa-lista">
-          {pendencias.map((pedido) => (
-            <PedidoPendenteCard
-              key={pedido.pedidoId}
-              pedido={pedido}
-              executando={acoesEmAndamento.has(pedido.pedidoId)}
-              erro={errosAcao[pedido.pedidoId] ?? null}
-              onConfirmarPagamento={handleConfirmarPagamento}
-              onEnviarCozinha={handleEnviarCozinha}
-              onRetirarPedido={handleRetirarPedido}
-              onCancelarPedido={handleCancelarPedido}
-            />
-          ))}
-        </div>
-      )}
-    </AppLayout>
+    </OperationalLayout>
   );
 }

@@ -142,20 +142,40 @@ describe("CozinhaHomePage com dispositivo de outro tipo (TASK-112)", () => {
   });
 });
 
-describe("CozinhaHomePage sem operador identificado", () => {
-  it("mostra somente o login centralizado, com ação 'Trocar dispositivo', e não busca a fila", async () => {
+describe("CozinhaHomePage sem operador identificado (TASK-119.2)", () => {
+  it("usa o OperationalLayout: topbar com dispositivo/ThemeToggle/Trocar dispositivo, e o formulário de login como conteúdo principal", async () => {
     ativarSessaoDeDispositivo();
     renderPagina();
 
-    expect(await screen.findByText(/Operador não identificado/)).toBeInTheDocument();
-    expect(screen.getByText("Identifique-se para acessar a Cozinha.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Identifique-se para acessar a Cozinha" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Entre com suas credenciais de operador para acessar a fila de preparo."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(dispositivoCozinhaMock.nome)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Alternar para modo/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar dispositivo" })).toBeInTheDocument();
     expect(listarPedidosCozinhaMock).not.toHaveBeenCalled();
+  });
+
+  it("não mostra avatar/perfil de operador nem o botão 'Trocar operador' antes do login", async () => {
+    ativarSessaoDeDispositivo();
+    renderPagina();
+
+    await screen.findByLabelText("Email do operador");
+    expect(screen.queryByRole("button", { name: "Trocar operador" })).not.toBeInTheDocument();
+  });
+
+  it("não há duplicação de 'Trocar dispositivo' entre topbar e formulário", async () => {
+    ativarSessaoDeDispositivo();
+    renderPagina();
+
+    await screen.findByLabelText("Email do operador");
+    expect(screen.getAllByRole("button", { name: "Trocar dispositivo" })).toHaveLength(1);
   });
 });
 
 describe("CozinhaHomePage com operador identificado", () => {
-  it("faz login do operador e carrega a fila de pedidos", async () => {
+  it("faz login do operador e carrega a fila de pedidos, mantendo a mesma topbar", async () => {
     ativarSessaoDeDispositivo();
     listarPedidosCozinhaMock.mockResolvedValue([pedidoMock]);
     loginOperadorMock.mockResolvedValue(operadorLoginResponse);
@@ -170,11 +190,13 @@ describe("CozinhaHomePage com operador identificado", () => {
 
     await waitFor(() => expect(listarPedidosCozinhaMock).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("A2")).toBeInTheDocument();
-    expect(screen.getByText(`Operador: ${operadorCozinhaMock.nome}`)).toBeInTheDocument();
+    expect(screen.getByText(operadorCozinhaMock.nome)).toBeInTheDocument();
+    expect(screen.getByText("Operador de cozinha")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trocar operador" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar dispositivo" })).toBeInTheDocument();
   });
 
-  it("ao trocar operador, oculta a fila imediatamente e volta ao login", async () => {
+  it("ao trocar operador, oculta a fila imediatamente e volta ao formulário de login (mesma topbar)", async () => {
     ativarSessaoDeDispositivo();
     listarPedidosCozinhaMock.mockResolvedValue([pedidoMock]);
     loginOperadorMock.mockResolvedValue(operadorLoginResponse);
@@ -189,7 +211,9 @@ describe("CozinhaHomePage com operador identificado", () => {
     await user.click(screen.getByRole("button", { name: "Trocar operador" }));
 
     expect(screen.queryByText("A2")).not.toBeInTheDocument();
-    expect(await screen.findByText(/Operador não identificado/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Identifique-se para acessar a Cozinha" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Trocar operador" })).not.toBeInTheDocument();
+    expect(screen.getByText(dispositivoCozinhaMock.nome)).toBeInTheDocument();
   });
 
   it("'Trocar dispositivo' confirmado limpa operador e dispositivo e navega para a ativação", async () => {

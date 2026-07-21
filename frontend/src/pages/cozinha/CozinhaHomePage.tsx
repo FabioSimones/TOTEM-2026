@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { DispositivoAcessoCard } from "../../components/dispositivo/DispositivoAcessoCard";
 import { OperadorPainel } from "../../components/operador/OperadorPainel";
 import { AppLayout } from "../../components/layout/AppLayout";
+import { OperationalLayout } from "../../components/layout/OperationalLayout";
+import { AtualizarIcon } from "../../components/layout/OperationalIcons";
 import { PedidoCozinhaCard } from "../../components/cozinha/PedidoCozinhaCard";
 import { Button } from "../../components/ui/Button";
-import { ErrorMessage } from "../../components/ui/ErrorMessage";
+import { OperationalEmptyState } from "../../components/ui/OperationalEmptyState";
 import { useDispositivoOperacional } from "../../hooks/useDispositivoOperacional";
 import { atualizarStatusPedidoCozinha, listarPedidosCozinha } from "../../services/cozinhaService";
 import { clearOperadorSession, getOperadorToken } from "../../services/tokenStorage";
@@ -131,6 +133,16 @@ export function CozinhaHomePage() {
     [pedidos, carregarPedidos, marcarAcaoEmAndamento, invalidarSessaoDispositivo, setOperador],
   );
 
+  // TASK-119: a topbar operacional aciona a troca de operador diretamente (antes era o próprio
+  // OperadorPainel, embutido no fluxo de conteúdo) — mesma limpeza de sempre.
+  const handleTrocarOperador = useCallback(() => {
+    clearOperadorSession();
+    setOperador(null);
+    setPedidos([]);
+    setErro(null);
+    setMensagemSucesso(null);
+  }, [setOperador]);
+
   // TASK-112: sem dispositivo (nunca ativado, ou sessão invalidada) — card com caminho claro para ativar.
   if (!dispositivo) {
     return (
@@ -157,78 +169,79 @@ export function CozinhaHomePage() {
     );
   }
 
-  // TASK-111/112: sem operador identificado, a tela mostra só o login centralizado — nenhum pedido é
-  // buscado nem renderizado (ver o efeito acima, que só chama carregarPedidos quando há operador).
-  if (!operador) {
-    return (
-      <AppLayout title="Cozinha" description="Identifique-se para acessar a Cozinha." centralizado>
-        <OperadorPainel
-          operador={null}
-          onIdentificado={(response) => setOperador(response.operador)}
-          onTrocar={() => setOperador(null)}
-          mensagemIdentificacao="Identifique-se para acessar a Cozinha."
-          acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
-        />
-      </AppLayout>
-    );
-  }
-
+  // TASK-119.2: dispositivo pronto (compatível e autenticado) monta o OperationalLayout — com ou
+  // sem operador. Sem operador, o conteúdo principal é o formulário de identificação
+  // (`OperadorPainel`); a topbar já mostra dispositivo/ThemeToggle/"Trocar dispositivo" mesmo
+  // assim, e nunca "Trocar operador" nem os dados do operador (ver `OperationalTopbar`). Nenhum
+  // pedido é buscado nem renderizado antes do login — ver o efeito acima, que só chama
+  // `carregarPedidos` quando há operador.
   return (
-    <AppLayout title="Cozinha" description="Pedidos enviados para preparo e atualização de status.">
-      <OperadorPainel
-        operador={operador}
-        onIdentificado={(response) => setOperador(response.operador)}
-        onTrocar={() => {
-          // TASK-111: troca de operador oculta os pedidos imediatamente — a próxima renderização já
-          // cai no branch "!operador" acima, então isto é só higiene de estado.
-          setOperador(null);
-          setPedidos([]);
-          setErro(null);
-          setMensagemSucesso(null);
-        }}
-        acaoTrocarDispositivo={{ rotulo: "Trocar dispositivo", onAcionar: handleTrocarDispositivo }}
-      />
+    <OperationalLayout
+      modulo="Cozinha"
+      dispositivo={dispositivo}
+      operador={operador}
+      onTrocarOperador={operador ? handleTrocarOperador : undefined}
+      onTrocarDispositivo={handleTrocarDispositivo}
+    >
+      {!operador ? (
+        <OperadorPainel
+          titulo="Identifique-se para acessar a Cozinha"
+          descricao="Entre com suas credenciais de operador para acessar a fila de preparo."
+          onIdentificado={(response) => setOperador(response.operador)}
+        />
+      ) : (
+        <>
+          <div className="operational-page-header">
+            <div>
+              <h1 className="operational-page-header__titulo">Fila de preparo</h1>
+              <p className="operational-page-header__descricao">
+                Pedidos enviados para preparo e atualização de status.
+              </p>
+            </div>
+            {!loading && !erro && (
+              <span className="operational-page-header__contador">
+                {pedidos.length} {pedidos.length === 1 ? "pedido na fila" : "pedidos na fila"}
+              </span>
+            )}
+          </div>
 
-      <div className="caixa-toolbar">
-        <Button type="button" onClick={() => void carregarPedidos()} loading={loading}>
-          Atualizar lista
-        </Button>
-      </div>
+          <div className="caixa-toolbar">
+            <Button type="button" variant="secondary" onClick={() => void carregarPedidos()} loading={loading}>
+              <AtualizarIcon /> Atualizar lista
+            </Button>
+          </div>
 
-      {!loading && !erro && mensagemSucesso && (
-        <p className="ui-success-message" role="status">
-          {mensagemSucesso}
-        </p>
+          {!loading && !erro && mensagemSucesso && (
+            <p className="ui-success-message" role="status">
+              {mensagemSucesso}
+            </p>
+          )}
+
+          {loading && <OperationalEmptyState variant="loading" mensagem="Carregando pedidos..." />}
+
+          {!loading && erro && (
+            <OperationalEmptyState variant="erro" mensagem={erro} onTentarNovamente={() => void carregarPedidos()} />
+          )}
+
+          {!loading && !erro && pedidos.length === 0 && (
+            <OperationalEmptyState variant="vazio" mensagem="Nenhum pedido aguardando preparo." />
+          )}
+
+          {!loading && !erro && pedidos.length > 0 && (
+            <div className="caixa-lista">
+              {pedidos.map((pedido) => (
+                <PedidoCozinhaCard
+                  key={pedido.pedidoId}
+                  pedido={pedido}
+                  executando={acoesEmAndamento.has(pedido.pedidoId)}
+                  erro={errosAcao[pedido.pedidoId] ?? null}
+                  onAvancarStatus={handleAvancarStatus}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
-
-      {loading && <p className="totem-estado">Carregando pedidos...</p>}
-
-      {!loading && erro && (
-        <div className="totem-estado totem-estado--erro">
-          <ErrorMessage message={erro} />
-          <Button type="button" onClick={() => void carregarPedidos()}>
-            Tentar novamente
-          </Button>
-        </div>
-      )}
-
-      {!loading && !erro && pedidos.length === 0 && (
-        <p className="totem-estado">Nenhum pedido para preparar no momento.</p>
-      )}
-
-      {!loading && !erro && pedidos.length > 0 && (
-        <div className="caixa-lista">
-          {pedidos.map((pedido) => (
-            <PedidoCozinhaCard
-              key={pedido.pedidoId}
-              pedido={pedido}
-              executando={acoesEmAndamento.has(pedido.pedidoId)}
-              erro={errosAcao[pedido.pedidoId] ?? null}
-              onAvancarStatus={handleAvancarStatus}
-            />
-          ))}
-        </div>
-      )}
-    </AppLayout>
+    </OperationalLayout>
   );
 }

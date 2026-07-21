@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   cardapioMock,
+  dashboardAdminResumoMock,
   loginResponseMock,
   mockJson,
   operadorLoginResponseMock,
@@ -50,6 +51,7 @@ test.describe("Acessibilidade visual e touch targets (TASK-113)", () => {
 
   test("Modal administrativo: botão de fechar tem alvo de toque >= 44px e fecha o modal", async ({ page }) => {
     await mockJson(page, "**/api/auth/login", 200, loginResponseMock());
+    await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
     await mockJson(page, "**/api/admin/restaurantes", 200, []);
 
     await page.goto("/admin/login");
@@ -135,6 +137,7 @@ test.describe("Padronização de botões (TASK-114)", () => {
   }) => {
     await page.setViewportSize({ width: 375, height: 700 });
     await mockJson(page, "**/api/auth/login", 200, loginResponseMock());
+    await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
     await mockJson(page, "**/api/admin/restaurantes", 200, [
       {
         id: 1,

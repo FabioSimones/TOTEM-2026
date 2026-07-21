@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginResponseMock, mockJson, superAdminUsuarioMock } from "./helpers/mockApi";
+import { dashboardAdminResumoMock, loginResponseMock, mockJson, superAdminUsuarioMock } from "./helpers/mockApi";
 
 /**
  * TASK-117 — homologação do redesign do login (layout dividido, painel institucional, ícones
@@ -41,6 +41,7 @@ test.describe("Redesign do login — entrada padrão pela ativação de disposit
 
   test("login SUPER_ADMIN a partir do novo layout continua redirecionando para /admin", async ({ page }) => {
     await mockJson(page, "**/api/auth/login", 200, loginResponseMock());
+    await mockJson(page, "**/api/admin/dashboard", 200, dashboardAdminResumoMock());
 
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(superAdminUsuarioMock.email);
@@ -48,7 +49,8 @@ test.describe("Redesign do login — entrada padrão pela ativação de disposit
     await page.getByRole("button", { name: "Entrar" }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByText(superAdminUsuarioMock.nome)).toBeVisible();
+    // exact:true — sem isso colide com a saudação do hero ("Bem-vindo, ...!", TASK-118).
+    await expect(page.getByText(superAdminUsuarioMock.nome, { exact: true })).toBeVisible();
   });
 
   test("mobile (375px): sem scroll horizontal, formulário visível, ThemeToggle acessível e funcional", async ({

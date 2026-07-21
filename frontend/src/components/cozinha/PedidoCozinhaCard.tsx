@@ -1,9 +1,10 @@
 import type { PedidoCozinhaResponse } from "../../types/cozinha";
 import { getAcaoCozinhaDescription, getAcaoCozinhaLabel } from "../../utils/cozinhaStatus";
-import { formatarDataHora } from "../../utils/dateTime";
-import { getPedidoStatusLabel } from "../../utils/pedidoStatus";
+import { formatarTempoDecorrido } from "../../utils/dateTime";
 import { Button } from "../ui/Button";
 import { ErrorMessage } from "../ui/ErrorMessage";
+import { PedidoStatusBadge } from "../ui/PedidoStatusBadge";
+import { RelogioIcon } from "../layout/OperationalIcons";
 import { ItemPedidoCozinhaRow } from "./ItemPedidoCozinhaRow";
 
 interface PedidoCozinhaCardProps {
@@ -34,12 +35,25 @@ export function PedidoCozinhaCard({ pedido, executando, erro, onAvancarStatus }:
 
   return (
     <article className="pedido-pendente-card">
+      {/* TASK-119: prioridade da Cozinha é número → tempo de espera → itens → observações → status →
+          ação — o tempo fica no cabeçalho, ao lado do número, para leitura imediata sem precisar
+          abrir os detalhes do card. Mostra só o tempo decorrido, sem classificar como
+          "atrasado"/"recente" (nenhuma regra desse tipo existe no backend hoje). */}
       <div className="pedido-pendente-card__cabecalho">
         <h3 className="pedido-pendente-card__numero">{pedido.numeroPedido}</h3>
-        <span className="pedido-pendente-card__status">{getPedidoStatusLabel(pedido.statusPedido)}</span>
+        <span className="pedido-cozinha-card__tempo">
+          <RelogioIcon />
+          {formatarTempoDecorrido(pedido.criadoEm)}
+        </span>
       </div>
 
       {descricaoAcao && <p className="pedido-pendente-card__orientacao">{descricaoAcao}</p>}
+
+      <ul className="pedido-pendente-card__itens">
+        {pedido.itens.map((item) => (
+          <ItemPedidoCozinhaRow key={item.produtoId} item={item} />
+        ))}
+      </ul>
 
       <dl className="pedido-pendente-card__detalhes">
         {pedido.clienteNome && (
@@ -52,17 +66,11 @@ export function PedidoCozinhaCard({ pedido, executando, erro, onAvancarStatus }:
           <dt>Tipo de consumo</dt>
           <dd>{ROTULO_TIPO_CONSUMO[pedido.tipoConsumo]}</dd>
         </div>
-        <div>
-          <dt>Criado em</dt>
-          <dd>{formatarDataHora(pedido.criadoEm)}</dd>
-        </div>
       </dl>
 
-      <ul className="pedido-pendente-card__itens">
-        {pedido.itens.map((item) => (
-          <ItemPedidoCozinhaRow key={item.produtoId} item={item} />
-        ))}
-      </ul>
+      <div className="pedido-pendente-card__rodape">
+        <PedidoStatusBadge status={pedido.statusPedido} />
+      </div>
 
       <ErrorMessage message={erro} />
 

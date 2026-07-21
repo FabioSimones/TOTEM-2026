@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppLayout } from "../../components/layout/AppLayout";
-import { AdminVoltarLink } from "../../components/admin/AdminVoltarLink";
 import { UsuarioCard } from "../../components/admin/usuarios/UsuarioCard";
 import { UsuarioForm } from "../../components/admin/usuarios/UsuarioForm";
 import { Button } from "../../components/ui/Button";
@@ -302,9 +300,7 @@ export function AdminUsuariosPage() {
   }
 
   return (
-    <AppLayout title="Usuários" description="Cadastro e gestão dos usuários administrativos do sistema.">
-      <AdminVoltarLink />
-
+    <>
       <div className="caixa-toolbar">
         <Button type="button" onClick={handleNovo}>
           Novo usuário
@@ -426,6 +422,6 @@ export function AdminUsuariosPage() {
           )}
         </>
       )}
-    </AppLayout>
+    </>
   );
 }

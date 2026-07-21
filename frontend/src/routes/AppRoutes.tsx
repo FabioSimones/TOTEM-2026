@@ -5,7 +5,6 @@ import { TotemHomePage } from "../pages/totem/TotemHomePage";
 import { CaixaHomePage } from "../pages/caixa/CaixaHomePage";
 import { CozinhaHomePage } from "../pages/cozinha/CozinhaHomePage";
 import { LoginPage } from "../pages/auth/LoginPage";
-import { AdminHomePage } from "../pages/admin/AdminHomePage";
 import { AdminDashboardPage } from "../pages/admin/AdminDashboardPage";
 import { AdminDispositivosPage } from "../pages/admin/AdminDispositivosPage";
 import { AdminRestaurantesPage } from "../pages/admin/AdminRestaurantesPage";
@@ -13,6 +12,7 @@ import { AdminCategoriasPage } from "../pages/admin/AdminCategoriasPage";
 import { AdminProdutosPage } from "../pages/admin/AdminProdutosPage";
 import { AdminUsuariosPage } from "../pages/admin/AdminUsuariosPage";
 import { AdminPedidosPage } from "../pages/admin/AdminPedidosPage";
+import { AdminLayout } from "../components/layout/AdminLayout";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { RoleGuard } from "../auth/RoleGuard";
 
@@ -36,74 +36,46 @@ export function AppRoutes() {
       <Route path="/caixa" element={<CaixaHomePage />} />
       <Route path="/cozinha" element={<CozinhaHomePage />} />
 
+      {/*
+        TASK-118: rotas aninhadas com <Outlet/> — AdminLayout (sidebar + topbar) é montado uma
+        única vez pela rota pai; ProtectedRoute continua envolvendo TODO o subárvore /admin/*
+        exatamente como envolvia cada rota individualmente antes desta task (mesma proteção, sem
+        duplicar a checagem por página). RoleGuard continua por rota filha, preservando o mesmo
+        allowedRoles de antes.
+      */}
       <Route
         path="/admin"
         element={
           <ProtectedRoute>
-            <AdminHomePage />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute>
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/dispositivos"
-        element={
-          <ProtectedRoute>
-            <AdminDispositivosPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/restaurantes"
-        element={
-          <ProtectedRoute>
+      >
+        <Route index element={<AdminDashboardPage />} />
+        {/* Compatibilidade: /admin/dashboard existia como rota própria antes da fusão dos dois
+            "dashboards" (TASK-118) — redireciona para o destino único, /admin. */}
+        <Route path="dashboard" element={<Navigate to="/admin" replace />} />
+        <Route path="dispositivos" element={<AdminDispositivosPage />} />
+        <Route
+          path="restaurantes"
+          element={
             <RoleGuard allowedRoles={["SUPER_ADMIN"]}>
               <AdminRestaurantesPage />
             </RoleGuard>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/categorias"
-        element={
-          <ProtectedRoute>
-            <AdminCategoriasPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/produtos"
-        element={
-          <ProtectedRoute>
-            <AdminProdutosPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/usuarios"
-        element={
-          <ProtectedRoute>
+          }
+        />
+        <Route path="categorias" element={<AdminCategoriasPage />} />
+        <Route path="produtos" element={<AdminProdutosPage />} />
+        <Route
+          path="usuarios"
+          element={
             <RoleGuard allowedRoles={["SUPER_ADMIN", "ADMIN_RESTAURANTE"]}>
               <AdminUsuariosPage />
             </RoleGuard>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/pedidos"
-        element={
-          <ProtectedRoute>
-            <AdminPedidosPage />
-          </ProtectedRoute>
-        }
-      />
+          }
+        />
+        <Route path="pedidos" element={<AdminPedidosPage />} />
+      </Route>
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

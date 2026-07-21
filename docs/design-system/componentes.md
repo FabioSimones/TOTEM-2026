@@ -14,7 +14,7 @@ Casca compartilhada por toda página: `ModuleHeader` + área de conteúdo.
 </AppLayout>
 ```
 
-Toda página em `src/pages/` deve ser envolvida por `AppLayout` — é o que garante o cabeçalho consistente (título + `ThemeToggle`) em todas as telas.
+Toda página em `src/pages/` que **não** pertence a `/login` nem a `/admin/*` deve ser envolvida por `AppLayout` — é o que garante o cabeçalho consistente (título + `ThemeToggle`) nessas telas. Três exceções deliberadas, cada uma com sua própria casca (ver abaixo): `/login` usa `AuthSplitLayout` (TASK-117), `/admin/*` usa `AdminLayout` (TASK-118), e `/caixa`/`/cozinha` usam `OperationalLayout` (TASK-119) **só depois** que dispositivo e operador já estão prontos — nos três casos, o cabeçalho horizontal simples do `ModuleHeader` não comporta o layout necessário (painel institucional lado a lado / sidebar persistente / identidade de dispositivo+operador sempre visível). `/caixa`/`/cozinha` continuam usando `AppLayout centralizado` para os estados anteriores a isso (sem dispositivo, dispositivo incompatível, sem operador) — só o estado "pronto para operar" ganhou casca própria.
 
 Prop `centralizado?: boolean` (TASK-110/111/112): centraliza o conteúdo horizontal e verticalmente (`display:flex; align-items:center; justify-content:center` em `.app-layout__content`) — usado pelas telas de login administrativo e pelos estados de "sem dispositivo"/"sem operador" de Caixa/Cozinha.
 
@@ -35,6 +35,66 @@ Casca de duas colunas usada **só** em `/login` — não passa por `AppLayout`/`
 - `AuthSplitLayout`: grid de 2 colunas (`.auth-split`) a partir de 960px; em telas estreitas, empilha em coluna única com `flex-direction: column-reverse`, então o formulário (segundo filho no DOM) aparece visualmente primeiro, sem esconder a marca por completo. Reposiciona o `ThemeToggle` (mesmo componente, mesma classe `.theme-toggle`) para o canto do painel do formulário, em vez da barra padrão do `ModuleHeader`.
 - `LoginBrandPanel`: marca "TotemFood", `FoodIcons`, título/descrição institucionais e uma lista curta de recursos reais do sistema (nunca promete algo que não existe — ver `docs/status-mvp.md`). É o único lugar do app com um painel sempre escuro nos dois temas (`--color-auth-brand-*`, ver `cores.md`) — identidade de marca fixa, não segue o tema geral.
 - `FoodIcons`: três SVGs inline (hambúrguer, batata, bebida) — os primeiros SVGs do projeto (ver seção "Ícones" abaixo). Decorativos: `aria-hidden="true"` e `focusable="false"` em cada `<svg>`, nunca recebem foco por Tab. Flutuação sutil só com `transform`/`opacity` (`.food-icons__item*` em `global.css`), herdando a regra global de `prefers-reduced-motion` sem lógica JS própria — as keyframes sempre voltam ao estado neutro (`translateY(0) rotate(0)`) para não deixar o ícone "torto" quando a animação é reduzida a 0.01ms.
+
+### `AdminLayout` / `AdminSidebar` / `AdminTopbar` (`components/layout/`, TASK-118)
+
+Casca do painel administrativo — montada **uma única vez** pela rota pai `/admin` em `AppRoutes.tsx` (rotas aninhadas com `<Outlet/>`), não por cada página. As 7 páginas `/admin/*` não têm mais cabeçalho próprio nem `AppLayout`: só retornam seu conteúdo (toolbar, filtros, lista, modal).
+
+```tsx
+<Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+  <Route index element={<AdminDashboardPage />} />
+  <Route path="produtos" element={<AdminProdutosPage />} />
+  {/* ... */}
+</Route>
+```
+
+- **`AdminLayout`**: dono do estado (sidebar recolhida/expandida, persistido; drawer mobile, transitório), do `logout()` (via `useAuth()`, navega para `/login`) e do efeito de `Escape`/bloqueio de scroll/retorno de foco do drawer mobile. Estrutura: `<div class="admin-layout">` com `AdminSidebar` + `<div class="admin-layout__main">` (`AdminTopbar` + `<main><Outlet/></main>`).
+- **`AdminSidebar`**: navegação principal do Admin — marca "TotemFood" (com botão de recolher ao lado, TASK-118), lista de `NavLink` (um por item de `ADMIN_NAV_ITEMS`, ver `components/layout/adminNav.ts`) filtrada por perfil (`itensVisiveisParaPerfil`), e o backdrop mobile. **A visibilidade de um link aqui é só UX** — a rota continua protegida por `ProtectedRoute`/`RoleGuard` independente do que aparece na sidebar (ver auditoria da task: link oculto nunca substitui autorização; testado explicitamente em `AppRoutes.test.tsx` e `e2e/admin-layout.spec.ts`).
+- **`AdminTopbar`**: único responsável pelo `h1`/descrição de cada tela `/admin/*` — resolve o item atual por `useLocation()` + `encontrarItemPorRota` (mesma fonte `ADMIN_NAV_ITEMS`), evitando duplicar título em cada página. Também mostra: botão hambúrguer (só visível `<960px`, `aria-expanded`/`aria-controls` apontando para a sidebar), `ThemeToggle` (mesmo componente, reposicionado — nunca duplicado), identificação do usuário (avatar com a inicial do nome, nome, perfil amigável via `ROTULO_PERFIL` — nunca o nome técnico do perfil como `SUPER_ADMIN`) e o botão "Sair" (chama `AuthProvider.logout()` + navega para `/login`; em telas `<960px` o rótulo de texto fica oculto por CSS, com `aria-label="Sair"` explícito no `<button>` para preservar o nome acessível).
+- **`adminNav.ts`** (`components/layout/adminNav.ts`): fonte única (`ADMIN_NAV_ITEMS`) usada por `AdminSidebar` (itens + visibilidade) e `AdminTopbar` (título/descrição por rota) — evita duplicar essa informação em dois lugares. Cada item define `roles: PerfilUsuario[]`, replicando exatamente o `allowedRoles` do `RoleGuard` da mesma rota (ex.: `/admin/restaurantes` só `SUPER_ADMIN`) — nunca uma regra nova, só espelha a que já existe.
+- **Sidebar expandida/recolhida** (`--admin-sidebar-width: 16rem` / `--admin-sidebar-collapsed-width: 4.75rem`, `tokens.css`): recolhida, os ícones ficam centralizados e o texto do link vira visualmente oculto (técnica "clip", nunca `display:none`) — o nome acessível do link continua vindo do texto real (mais `title`/`aria-label` redundantes), não desaparece da árvore de acessibilidade. Preferência persistida em `localStorage` (`totem.admin.sidebarCollapsed`, hook `useAdminSidebarCollapsed` em `hooks/`) — chave própria, nunca lida por `tokenStorage.ts`, valor inválido cai no padrão seguro (expandida), falha de `localStorage` não quebra a aplicação.
+- **Drawer mobile** (`<960px`): sidebar fica `position:fixed`, fora da tela (`translateX(-100%)`) por padrão — **nunca inicia aberta nem persiste aberta** (diferente da preferência de recolher/expandir, que é só desktop). Abre com o botão hambúrguer da topbar; fecha por `Escape`, clique no backdrop, ou seleção de um item de navegação; devolve o foco ao botão hambúrguer ao fechar; bloqueia o scroll do conteúdo de fundo enquanto aberta. O botão de recolher/expandir fica oculto neste modo (achado da validação visual manual — ele não tem efeito visível no drawer, que sempre abre em largura total, e clicar nele alteraria sem querer a preferência persistida de desktop).
+- **Cor do painel**: sidebar e o hero do dashboard (`AdminDashboardHero`, abaixo) reaproveitam os tokens de marca da TASK-117 (`--color-auth-brand-*`) em vez de criar uma paleta nova — mesma identidade visual do login nos dois temas. O painel de conteúdo (`.admin-layout__content`, ao lado da sidebar) usa `--color-surface` (não `--color-bg`) para manter contraste visível entre os dois painéis no tema dark (achado da validação visual manual — com `--color-bg` os dois ficavam quase indistinguíveis).
+
+### `AdminDashboardHero` / `DashboardMetricCard` (TASK-118)
+
+```tsx
+<AdminDashboardHero nome={usuario.nome} descricao="..." />
+<DashboardMetricCard icon={PedidoIcon} label="Total de pedidos hoje" value={5} />
+```
+
+- **`AdminDashboardHero`** (`components/admin/`): área de boas-vindas do dashboard fundido (`AdminDashboardPage`, ver "Métricas do dashboard" abaixo) — eyebrow "Painel administrativo", saudação com o nome do usuário autenticado, descrição contextual por perfil (texto vem da própria página, que já sabe se é `SUPER_ADMIN`/`ADMIN_RESTAURANTE`) e uma ilustração SVG decorativa própria (não reaproveita `FoodIcons` do login, para não duplicar a mesma composição visual) com flutuação sutil, `aria-hidden`, `focusable="false"`, respeitando `prefers-reduced-motion` do mesmo jeito que `FoodIcons`.
+- **`DashboardMetricCard`** (`components/admin/`): card de indicador reutilizável — reaproveita as classes já existentes `dashboard-admin__card*` (TASK-074, antes só da extinta página "de métricas") em vez de criar uma variante nova. Props: `icon`, `label`, `value`, `loading?`, `error?` — quando `loading`, mostra "Carregando…"; quando `error`, mostra a mensagem de erro **só daquele card**, sem derrubar os demais nem a página (a falha de um indicador nunca vira um `0` disfarçado de dado real).
+
+### `OperationalLayout` / `OperationalTopbar` (`components/layout/`, TASK-119, operador opcional desde a TASK-119.2)
+
+Casca compartilhada por `/caixa` e `/cozinha` — montada assim que o **dispositivo** está pronto (compatível e autenticado), com ou sem operador identificado. Os estados anteriores a isso (sem dispositivo, dispositivo incompatível) continuam usando `AppLayout centralizado` + `DispositivoAcessoCard`, sem nenhuma mudança.
+
+```tsx
+<OperationalLayout
+  modulo="Caixa"
+  dispositivo={dispositivo}
+  operador={operador}                                        {/* OperadorAutenticadoResponse | null */}
+  onTrocarOperador={operador ? handleTrocarOperador : undefined}
+  onTrocarDispositivo={handleTrocarDispositivo}
+>
+  {!operador ? (
+    <OperadorPainel titulo="..." descricao="..." onIdentificado={...} />
+  ) : (
+    <>{/* cabeçalho contextual (h1 + descrição + contador) + lista de pedidos */}</>
+  )}
+</OperationalLayout>
+```
+
+- **`OperationalLayout`**: composição simples — `OperationalTopbar` + `<main className="operational-layout__content">{children}</main>`. Sem estado próprio (diferente do `AdminLayout`, que gerencia sidebar/drawer) — não há sidebar nem drawer aqui, só a topbar fixa no topo. `operador?: OperadorAutenticadoResponse | null` e `onTrocarOperador?: () => void` (TASK-119.2) — a topbar não desmonta durante a transição "sem operador" → "operador identificado", só o `children` decidido pela página muda.
+- **`OperationalTopbar`**: reaproveita o vocabulário visual do `AdminTopbar` (TASK-118) — avatar textual com a inicial do operador, ações com `aria-label` explícito + texto ocultável em mobile — **sem reaproveitar o componente em si** (contexto diferente: dispositivo+operador, não usuário administrativo) e **sem `AdminSidebar`**, conforme exigido pela task. Sempre visíveis, nunca atrás de menu: módulo (Caixa/Cozinha, com ícone), nome e tipo do dispositivo (`rotuloTipoDispositivo`), `ThemeToggle`, "Trocar dispositivo". **Só com operador presente**: avatar + nome + perfil amigável via `ROTULO_PERFIL` (nunca o enum técnico como `OPERADOR_CAIXA`) e "Trocar operador" — cada ação com ícone próprio (`TrocarOperadorIcon`/`TrocarDispositivoIcon`, ver "Ícones" abaixo), nunca o mesmo, para continuarem distinguíveis mesmo quando só o ícone fica visível em mobile (achado real de QA da TASK-119). **Sem operador** (TASK-119.2): nenhum texto substituto tipo "Operador não identificado" é renderizado na topbar — seria redundante com o `<h1>` do formulário de login logo abaixo, que já comunica isso.
+- **Trocar operador**: a página (`CaixaHomePage`/`CozinhaHomePage`) implementa `handleTrocarOperador` — limpa a sessão de operador (`clearOperadorSession`), zera a lista de pedidos e mensagens de erro/sucesso na tela, imediatamente. **Nunca** toca a sessão de dispositivo. Só passada à topbar quando há operador (`operador ? handleTrocarOperador : undefined`).
+- **Trocar dispositivo**: continua sendo `useDispositivoOperacional().handleTrocarDispositivo` — `window.confirm`, limpa dispositivo **e** operador, navega para `/ativar-dispositivo`. Sempre disponível na topbar, com ou sem operador — não foi alterado, só reaproveitado.
+- **Cabeçalho contextual** (dentro de `children`, só quando há operador): cada página renderiza seu próprio `<h1>`/descrição/contador dentro de `.operational-page-header` — "Pedidos pendentes" (Caixa) / "Fila de preparo" (Cozinha). O contador (`"3 pedidos pendentes"`/`"3 pedidos na fila"`) é derivado só do tamanho da lista já carregada (`pendencias.length`/`pedidos.length`) — nunca uma métrica agregada nova, nunca chamado de "faturamento" ou indicador administrativo.
+
+### `OperadorPainel` (`components/operador/OperadorPainel.tsx`, TASK-092, simplificado na TASK-119, integrado ao layout na TASK-119.2)
+
+Só o formulário de identificação (a exibição do operador identificado vive em `OperationalTopbar`, acima). A partir da TASK-119.2, este componente **é** o conteúdo central do `OperationalLayout` nesse estado — não fica mais numa casca `AppLayout centralizado` separada. Props: `titulo: string` (renderizado como `<h1>` — único título da tela nesse estado), `descricao?: string`, `onIdentificado`. `mensagemIdentificacao`/`acaoTrocarDispositivo` foram removidas: "Trocar dispositivo" é responsabilidade exclusiva da topbar agora — antes da TASK-119.2 este componente também renderizava seu próprio botão "Trocar dispositivo" (herdado de quando vivia sozinho, sem topbar ao redor); mantê-lo teria duplicado a ação na mesma tela. Classes CSS próprias (`operational-login`/`operational-login__card`/`operational-login__titulo`/`operational-login__descricao`/`operational-login__form`) substituem as antigas `operador-painel*`, removidas por não terem mais uso (confirmado por busca antes de remover). Campo de e-mail recebe foco automático (`autoFocus`) ao montar.
 
 ## UI
 
@@ -148,19 +208,23 @@ Três botões circulares, sem texto visível: `ThemeToggle` (💡), `.ui-modal__
 
 Não existe (e não foi criado nesta task) um componente `IconButton` genérico — os três casos têm cores/hover diferentes o suficiente (surface-elevated com borda vs. sem fundo, hover para primary vs. error) para não valer a pena forçar uma abstração única ainda; se um quarto caso aparecer com a mesma combinação exata de cores, vale reconsiderar.
 
-## Ícones (TASK-114/117)
+## Ícones (TASK-114/117/118/119)
 
-Até a TASK-116, todo "ícone" era um glifo Unicode (`×`, `+`, `−`) ou um emoji (💡) — sem nenhum SVG no projeto. A TASK-117 introduziu os **três primeiros SVGs** (`components/auth/FoodIcons.tsx`, hambúrguer/batata/bebida do painel institucional do login): geometria própria simples, `currentColor`, decorativos (`aria-hidden`/`focusable="false"`, nunca focáveis). Ainda não há biblioteca de ícones instalada nem `components/ui/icons/` — três símbolos continuam não justificando isso; se um quarto uso real de SVG aparecer fora do contexto decorativo do login, vale reconsiderar.
+Até a TASK-116, todo "ícone" era um glifo Unicode (`×`, `+`, `−`) ou um emoji (💡) — sem nenhum SVG no projeto. A TASK-117 introduziu os **três primeiros SVGs**, decorativos (`components/auth/FoodIcons.tsx`, hambúrguer/batata/bebida do painel institucional do login). A TASK-118 introduziu o **primeiro conjunto de SVGs funcionais** (`components/layout/AdminIcons.tsx`): 11 ícones (Dashboard, Restaurante, Dispositivo, Categoria, Produto, Usuário, Pedido, Menu/hambúrguer, Chevron de recolher, Logout, Moeda) usados na sidebar/topbar/dashboard administrativos — mesmo estilo consistente entre si (`viewBox="0 0 24 24"`, traço `currentColor`, sem preenchimento, peso `strokeWidth="1.8"`), geometria própria, nunca copiada de biblioteca externa. A TASK-119 adicionou `components/layout/OperationalIcons.tsx` (mesmo `IconBase`/estilo): Caixa, Cozinha, Trocar operador, Trocar dispositivo, Atualizar, Relógio, Iniciar, Pronto — reexportando (não duplicando) `DispositivoIcon`/`MoedaIcon`/`PedidoIcon`/`UsuarioIcon` de `AdminIcons.tsx` onde o mesmo símbolo já servia. Continua sem biblioteca de ícones instalada — o volume real (22 símbolos ao todo) ainda não justifica isso.
+
+**Achado real de QA visual (TASK-119)**: "Trocar operador" e "Trocar dispositivo" inicialmente usavam o mesmo ícone genérico de troca (duas setas opostas) — em mobile, onde só o ícone fica visível (o texto é ocultado por espaço, igual ao padrão já usado no `AdminTopbar`), os dois botões ficavam visualmente indistinguíveis um do outro, apesar do `aria-label` diferente em cada um (que resolve para leitor de tela, mas não para quem está olhando a tela). Corrigido trocando por dois ícones específicos — pessoa-com-setas (`TrocarOperadorIcon`) e dispositivo-com-setas (`TrocarDispositivoIcon`) — cada botão com um símbolo que representa a própria ação, não um genérico de "troca".
+
+Cada ícone funcional (o que acompanha um link/botão real, diferente dos decorativos) segue o mesmo padrão de acessibilidade dos "botões só-ícone" já documentado acima: `aria-hidden="true"`/`focusable="false"` no `<svg>`, nome acessível vindo do elemento que o envolve (`aria-label`/texto visível do link ou botão), nunca do ícone em si.
 
 Tokens de tamanho (`tokens.css`):
 
 | Token | Valor | Uso |
 |---|---|---|
 | `--icon-size-sm` | 1rem (16px) | reservado — nenhum uso real ainda |
-| `--icon-size-md` | 1.25rem (20px) | os 3 botões só-ícone (ver acima) |
+| `--icon-size-md` | 1.25rem (20px) | os 3 botões só-ícone da TASK-114 (ver acima) |
 | `--icon-size-lg` | 1.5rem (24px) | reservado — nenhum uso real ainda |
 
-`FoodIcons` não usa esses tokens (tamanho fixo em `width`/`height` no próprio SVG, por serem ilustrativos, não botões) — se um futuro SVG funcional (ex.: ícone de navegação dentro de um botão) for adicionado, prefira `currentColor` + os tokens acima antes de considerar uma biblioteca externa.
+`FoodIcons` e `AdminIcons` não usam esses tokens (tamanho fixo em `width`/`height` no próprio SVG — os ícones da sidebar/topbar são todos 20×20px, um valor único que não precisou de token dedicado) — se um quarto contexto de ícone aparecer com necessidade real de variar tamanho, vale promover isso a um token novo ou reaproveitar `--icon-size-*`.
 
 ## Badges / indicadores de status (TASK-114)
 
@@ -191,6 +255,10 @@ Todos os cards administrativos (`RestauranteCard`, `DispositivoCard`, `ProdutoCa
 
 Isso já cobre padding, radius, borda e sombra (`--radius-lg`, `--color-border`, `--shadow-card`) de forma consistente — não há necessidade de variantes `elevated`/`interactive`/`warning` hoje; nenhuma tela pediu isso ainda.
 
+**`PedidoStatusBadge` (`components/ui/PedidoStatusBadge.tsx`, TASK-119)**: extraído de `PedidoPendenteCard`/`PedidoCozinhaCard`, que renderizavam o mesmo `<span className="pedido-pendente-card__status">{getPedidoStatusLabel(...)}</span>` de forma duplicada — mesmo contrato visual, sem mudança de classe CSS. **Hierarquia da Cozinha** (TASK-119): reordenada para número → tempo de espera (`formatarTempoDecorrido`, `utils/dateTime.ts`) → itens → observações → status → ação, priorizando o que um cozinheiro precisa ver primeiro; o tempo fica no cabeçalho do card, ao lado do número (`.pedido-cozinha-card__tempo`), mostrando **só o tempo decorrido**, nunca uma classificação tipo "atrasado"/"recente" — nenhuma regra desse tipo existe no backend hoje, e inventar uma seria criar uma regra operacional arbitrária (fora do escopo pedido). A quantidade de cada item (`3x`) ganhou `<strong>` (`ItemPedidoCozinhaRow`) para leitura mais rápida à distância.
+
+**Exceção no bloco de dados do `UsuarioCard` (TASK-119.1)**: continua usando `.pedido-pendente-card` como raiz (cabeçalho + ações inalterados), mas **não** usa mais `dl.pedido-pendente-card__detalhes` para os metadados — aquela grid (`grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr))`, 2-3 colunas) foi dimensionada para valores curtos ("Criado em", "Tipo de consumo") e não tem `min-width: 0`/`overflow-wrap` nos itens; com um e-mail (`admin.local@totem.local`) ou perfil (`Administrador do restaurante`) bem mais longos, o texto extrapolava a coluna e sobrepunha o campo vizinho (bug real corrigido nesta task). `UsuarioCard` usa `dl.usuario-card__detalhes` própria — grid de **uma única coluna** (`grid-template-columns: minmax(0, 1fr)`), cada campo (`.usuario-card__campo`) com `min-width: 0` e `.usuario-card__valor` com `overflow-wrap: anywhere`, para o e-mail poder quebrar mesmo sem espaços. Não reutilize `.pedido-pendente-card__detalhes` para um card novo se os valores puderem ser mais longos que ~2-3 palavras — prefira esse padrão de coluna única.
+
 ## Grupo de ações (TASK-114)
 
 `.dispositivo-form__acoes` é o padrão de grupo de ações do projeto (`display: flex; flex-wrap: wrap; gap: var(--spacing-sm)`), usado em todo formulário e card administrativo. Não existe uma classe `.ui-actions` separada — `.dispositivo-form__acoes` já cumpre esse papel; renomear só por consistência de nome não foi feito nesta task (alto número de arquivos tocados, zero ganho visual/funcional).
@@ -202,6 +270,8 @@ Isso já cobre padding, radius, borda e sombra (`--radius-lg`, `--color-border`,
 
 - Vazio: `<p className="totem-estado">Nenhum restaurante cadastrado.</p>` — mesma classe em toda página (`totem-estado`), sem ícone/ilustração (fora do escopo). Mensagem descreve o que falta; a ação de criar já está sempre visível no cabeçalho ("Novo restaurante" etc.), então não repete um botão dentro do estado vazio.
 - Carregamento: `<p className="totem-estado">Carregando restaurantes...</p>` (texto simples, sem spinner animado) ou `Button` com `loading` (texto "Aguarde...", `aria-busy`, desabilitado). Nenhum spinner CSS existe hoje — se um for adicionado no futuro, deve respeitar `@media (prefers-reduced-motion: reduce)` (TASK-113).
+- Carregamento/erro **por item de uma grade** (não a página inteira): `DashboardMetricCard` (TASK-118) é o primeiro exemplo — cada card tem seu próprio `loading`/`error`, então uma falha em `GET /api/admin/dashboard` (fonte única dos 9 indicadores) não derruba o hero de boas-vindas nem gera um `0` disfarçado de dado real.
+- **`OperationalEmptyState` (`components/ui/OperationalEmptyState.tsx`, TASK-119)**: padroniza os três estados que `CaixaHomePage`/`CozinhaHomePage` renderizavam de forma duplicada (`variant="loading" | "erro" | "vazio"`) — mesma classe `totem-estado`/`ErrorMessage` de sempre, sem mudança visual. Diferença real desta task: o estado de carregamento ganhou `aria-live="polite"`/`aria-busy="true"` (ausentes antes), e o de erro só mostra "Tentar novamente" quando `onTentarNovamente` é passado.
 
 ## Convenções gerais
 
